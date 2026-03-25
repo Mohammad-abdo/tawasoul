@@ -1,0 +1,172 @@
+UserRegisterRequest:
+  type: object
+  required: [username, password]
+  properties:
+    username:
+      type: string
+      example: ahmed123
+    email:
+      type: string
+      format: email
+      nullable: true
+      example: ahmed@example.com
+    phone:
+      type: string
+      nullable: true
+      example: "01012345678"
+    password:
+      type: string
+      minLength: 6
+      example: secret123
+    interests:
+      type: array
+      items:
+        type: string
+        format: uuid
+      description: Array of Interest IDs
+
+UserLoginRequest:
+  type: object
+  required: [username, password]
+  properties:
+    username:
+      type: string
+      example: ahmed123
+    password:
+      type: string
+      example: secret123
+
+SendOTPRequest:
+  type: object
+  required: [phone, agreedToTerms]
+  properties:
+    phone:
+      type: string
+      description: Phone digits without + prefix
+      example: "01012345678"
+    fullName:
+      type: string
+      description: Required for new user registration
+      example: Ahmed Mohamed
+    relationType:
+      type: string
+      description: Relation to child (Arabic or enum value)
+      example: أب
+    agreedToTerms:
+      type: boolean
+      example: true
+
+VerifyOTPRequest:
+  type: object
+  required: [phone]
+  properties:
+    phone:
+      type: string
+      example: "01012345678"
+    code:
+      type: string
+      description: OTP code (accepts 'code' or 'otp' field name)
+      example: "12345"
+    otp:
+      type: string
+      description: Alias for code
+      example: "12345"
+
+SendOTPResponse:
+  type: object
+  properties:
+    success:
+      type: boolean
+      example: true
+    data:
+      type: object
+      properties:
+        message:
+          type: string
+          example: OTP sent successfully
+        otp:
+          type: string
+          description: Only present in TEST MODE
+          example: "12345"
+        expiresIn:
+          type: integer
+          description: Expiry in seconds
+          example: 600
+
+OTPAuthResponse:
+  type: object
+  properties:
+    user:
+      $ref: "#/components/schemas/UserProfile"
+    token:
+      type: string
+      example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+    message:
+      type: string
+      example: OTP verified successfully
+
+UserAuthResponse:
+  type: object
+  properties:
+    user:
+      $ref: "#/components/schemas/UserProfile"
+    token:
+      type: string
+      example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+UserProfile:
+  type: object
+  properties:
+    id:
+      type: string
+      format: uuid
+    username:
+      type: string
+      nullable: true
+    fullName:
+      type: string
+      nullable: true
+    email:
+      type: string
+      format: email
+      nullable: true
+    phone:
+      type: string
+      nullable: true
+    relationType:
+      type: string
+      nullable: true
+      enum: [FATHER, MOTHER, BROTHER, SISTER, UNCLE, AUNT]
+    language:
+      type: string
+      example: ar
+    allowPrivateMsg:
+      type: boolean
+    isAnonymous:
+      type: boolean
+    avatar:
+      type: string
+      nullable: true
+    isActive:
+      type: boolean
+    isApproved:
+      type: boolean
+    isPhoneVerified:
+      type: boolean
+    interests:
+      type: array
+      items:
+        type: object
+        properties:
+          interest:
+            type: object
+            properties:
+              id:
+                type: string
+              name:
+                type: string
+              nameAr:
+                type: string
+    createdAt:
+      type: string
+      format: date-time

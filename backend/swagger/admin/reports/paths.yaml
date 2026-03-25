@@ -1,0 +1,157 @@
+/admin/reports:
+  get:
+    tags: [Admin Reports]
+    summary: Get all generated reports
+    operationId: adminGetAllReports
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: page
+        in: query
+        schema:
+          type: integer
+          default: 1
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          default: 20
+    responses:
+      "200":
+        description: List of reports
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  type: object
+                  properties:
+                    reports:
+                      type: array
+                      items:
+                        $ref: "#/components/schemas/Report"
+                    pagination:
+                      $ref: "#/components/schemas/PaginationMeta"
+
+/admin/reports/generate:
+  post:
+    tags: [Admin Reports]
+    summary: Generate a new report
+    operationId: adminGenerateReport
+    security:
+      - BearerAuth: []
+    description: Rate-limited endpoint.
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/GenerateReportRequest"
+    responses:
+      "202":
+        description: Report generation started
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  $ref: "#/components/schemas/Report"
+
+/admin/reports/{id}:
+  get:
+    tags: [Admin Reports]
+    summary: Get report by ID
+    operationId: adminGetReportById
+    security:
+      - BearerAuth: []
+    parameters:
+      - $ref: "#/components/schemas/IdPathParam"
+    responses:
+      "200":
+        description: Report details
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  $ref: "#/components/schemas/Report"
+  delete:
+    tags: [Admin Reports]
+    summary: Delete a report
+    operationId: adminDeleteReport
+    security:
+      - BearerAuth: []
+    parameters:
+      - $ref: "#/components/schemas/IdPathParam"
+    responses:
+      "200":
+        description: Report deleted
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MessageResponse"
+
+/admin/reports/{id}/status:
+  get:
+    tags: [Admin Reports]
+    summary: Poll report generation status
+    operationId: adminGetReportStatus
+    security:
+      - BearerAuth: []
+    parameters:
+      - $ref: "#/components/schemas/IdPathParam"
+    responses:
+      "200":
+        description: Report status
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                    status:
+                      type: string
+                      enum: [PENDING, PROCESSING, COMPLETED, FAILED]
+                    completedAt:
+                      type: string
+                      format: date-time
+                      nullable: true
+
+/admin/reports/{id}/download:
+  get:
+    tags: [Admin Reports]
+    summary: Download report file
+    operationId: adminDownloadReport
+    security:
+      - BearerAuth: []
+    parameters:
+      - $ref: "#/components/schemas/IdPathParam"
+    responses:
+      "200":
+        description: Report file download
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+      "404":
+        description: Report not found or not ready
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"

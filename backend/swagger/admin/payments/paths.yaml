@@ -1,0 +1,177 @@
+/admin/payments:
+  get:
+    tags: [Admin Payments & Withdrawals]
+    summary: Get all payments
+    operationId: adminGetAllPayments
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: page
+        in: query
+        schema:
+          type: integer
+          default: 1
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          default: 20
+      - name: status
+        in: query
+        schema:
+          type: string
+          enum: [PENDING, COMPLETED, FAILED, REFUNDED]
+    responses:
+      "200":
+        description: Paginated payment list
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  type: object
+                  properties:
+                    payments:
+                      type: array
+                      items:
+                        $ref: "#/components/schemas/Payment"
+                    pagination:
+                      $ref: "#/components/schemas/PaginationMeta"
+
+/admin/payments/{id}/status:
+  put:
+    tags: [Admin Payments & Withdrawals]
+    summary: Update payment status
+    operationId: adminUpdatePaymentStatus
+    security:
+      - BearerAuth: []
+    parameters:
+      - $ref: "#/components/schemas/IdPathParam"
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [status]
+            properties:
+              status:
+                type: string
+                enum: [PENDING, COMPLETED, FAILED, REFUNDED]
+    responses:
+      "200":
+        description: Payment status updated
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MessageResponse"
+
+/admin/withdrawals:
+  get:
+    tags: [Admin Payments & Withdrawals]
+    summary: Get all withdrawal requests
+    operationId: adminGetAllWithdrawals
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: page
+        in: query
+        schema:
+          type: integer
+          default: 1
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          default: 20
+      - name: status
+        in: query
+        schema:
+          type: string
+          enum: [PENDING, PROCESSING, COMPLETED, REJECTED]
+    responses:
+      "200":
+        description: Paginated withdrawal list
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  type: object
+                  properties:
+                    withdrawals:
+                      type: array
+                      items:
+                        $ref: "#/components/schemas/Withdrawal"
+                    pagination:
+                      $ref: "#/components/schemas/PaginationMeta"
+
+/admin/withdrawals/{id}:
+  get:
+    tags: [Admin Payments & Withdrawals]
+    summary: Get withdrawal by ID
+    operationId: adminGetWithdrawalById
+    security:
+      - BearerAuth: []
+    parameters:
+      - $ref: "#/components/schemas/IdPathParam"
+    responses:
+      "200":
+        description: Withdrawal details
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  $ref: "#/components/schemas/Withdrawal"
+
+/admin/withdrawals/{id}/approve:
+  put:
+    tags: [Admin Payments & Withdrawals]
+    summary: Approve a withdrawal request
+    operationId: adminApproveWithdrawal
+    security:
+      - BearerAuth: []
+    parameters:
+      - $ref: "#/components/schemas/IdPathParam"
+    responses:
+      "200":
+        description: Withdrawal approved
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MessageResponse"
+
+/admin/withdrawals/{id}/reject:
+  put:
+    tags: [Admin Payments & Withdrawals]
+    summary: Reject a withdrawal request
+    operationId: adminRejectWithdrawal
+    security:
+      - BearerAuth: []
+    parameters:
+      - $ref: "#/components/schemas/IdPathParam"
+    requestBody:
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              reason:
+                type: string
+    responses:
+      "200":
+        description: Withdrawal rejected
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MessageResponse"

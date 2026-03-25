@@ -1,0 +1,69 @@
+Article:
+  type: object
+  properties:
+    id:
+      type: string
+      format: uuid
+    title:
+      type: string
+    content:
+      type: string
+    excerpt:
+      type: string
+      nullable: true
+    authorId:
+      type: string
+      format: uuid
+    author:
+      type: object
+      nullable: true
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        avatar:
+          type: string
+          nullable: true
+        specialization:
+          type: string
+          nullable: true
+    views:
+      type: integer
+    likes:
+      type: integer
+    comments:
+      type: integer
+    isRecommended:
+      type: boolean
+    isFeatured:
+      type: boolean
+    createdAt:
+      type: string
+      format: date-time
+    updatedAt:
+      type: string
+      format: date-time
+
+CreateArticleRequest:
+  type: object
+  required: [title, content]
+  properties:
+    title:
+      type: string
+    content:
+      type: string
+    excerpt:
+      type: string
+      nullable: true
+
+UpdateArticleRequest:
+  type: object
+  properties:
+    title:
+      type: string
+    content:
+      type: string
+    excerpt:
+      type: string
+      nullable: true

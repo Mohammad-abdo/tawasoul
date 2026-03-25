@@ -1,0 +1,98 @@
+DashboardStats:
+  type: object
+  properties:
+    users:
+      type: object
+      properties:
+        total:
+          type: integer
+        active:
+          type: integer
+        newThisMonth:
+          type: integer
+    doctors:
+      type: object
+      properties:
+        total:
+          type: integer
+        approved:
+          type: integer
+        pending:
+          type: integer
+    bookings:
+      type: object
+      properties:
+        total:
+          type: integer
+        pending:
+          type: integer
+        confirmed:
+          type: integer
+        completed:
+          type: integer
+        cancelled:
+          type: integer
+    revenue:
+      type: object
+      properties:
+        total:
+          type: number
+        thisMonth:
+          type: number
+    support:
+      type: object
+      properties:
+        openTickets:
+          type: integer
+        urgentTickets:
+          type: integer
+
+DashboardAnalytics:
+  type: object
+  properties:
+    period:
+      type: string
+      example: 30d
+    bookingsTrend:
+      type: array
+      items:
+        type: object
+        properties:
+          date:
+            type: string
+            format: date
+          count:
+            type: integer
+    revenueTrend:
+      type: array
+      items:
+        type: object
+        properties:
+          date:
+            type: string
+            format: date
+          amount:
+            type: number
+    newUsersTrend:
+      type: array
+      items:
+        type: object
+        properties:
+          date:
+            type: string
+            format: date
+          count:
+            type: integer
+    topDoctors:
+      type: array
+      items:
+        type: object
+        properties:
+          id:
+            type: string
+          name:
+            type: string
+          totalBookings:
+            type: integer
+          totalEarnings:
+            type: number

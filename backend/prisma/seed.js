@@ -211,7 +211,7 @@ async function main() {
     data: {
       title: 'مقياس التطور اللغوي والسمعي',
       titleAr: 'تمييز الأصوات',
-      category: 'AUDITORY',
+      type: 'AUDITORY',
       testType: 'SOUND_DISCRIMINATION',
       description: 'اختبار تمييز الأصوات: تقييم قدرة الطفل على تمييز الأصوات والكلمات.',
       questions: {
@@ -229,7 +229,7 @@ async function main() {
     data: {
       title: 'النطق والتكرار',
       titleAr: 'النطق والتكرار',
-      category: 'AUDITORY',
+      type: 'AUDITORY',
       testType: 'PRONUNCIATION_REPETITION',
       description: 'تقييم النطق والقدرة على تكرار الكلمات والعبارات.',
       questions: {
@@ -245,7 +245,7 @@ async function main() {
     data: {
       title: 'ربط الصوت بالصورة',
       titleAr: 'ربط الصوت بالصورة',
-      category: 'AUDITORY',
+      type: 'AUDITORY',
       testType: 'SOUND_IMAGE_LINKING',
       description: 'تقييم قدرة الطفل على ربط الأصوات بالصور المناسبة.',
       questions: {
@@ -261,7 +261,7 @@ async function main() {
     data: {
       title: 'اختبار الإدراك البصري المكاني',
       titleAr: 'التسلسل والترتيب',
-      category: 'VISUAL',
+      type: 'VISUAL',
       testType: 'SEQUENCE_ORDER',
       description: 'تقييم قدرة الطفل على الترتيب والتسلسل البصري.',
       questions: {

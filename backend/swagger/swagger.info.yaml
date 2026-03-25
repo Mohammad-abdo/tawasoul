@@ -1,0 +1,156 @@
+openapi: 3.0.3
+info:
+  title: Tawasoul API
+  description: |
+    Backend API for **Tawasoul (تواصل)** — Autism & Speech Disorder Therapy Application.
+
+    Connects parents/caregivers to specialist therapists. Provides community features,
+    e-commerce, child assessments, and sequential educational activities (Mahara Kids).
+
+    ## Authentication
+    Use the **Authorize** button to set your Bearer token.
+    - **User token**: from `POST /user/auth/login` or `POST /user/auth/verify-otp`
+    - **Doctor token**: from `POST /doctor/auth/login`
+    - **Admin token**: from `POST /admin/auth/login`
+
+    ## OTP Test Mode
+    In development, OTP is always `12345` and is returned in the API response.
+    Disable with `OTP_TEST_MODE=false` in production.
+  version: 1.0.0
+  contact:
+    name: Qeema Tech
+
+servers:
+  - url: http://localhost:3000/api
+    description: Local development
+  - url: http://{localIP}:3000/api
+    description: Local network (mobile)
+    variables:
+      localIP:
+        default: "192.168.1.100"
+        description: Your machine's local IP address
+
+tags:
+  - name: Public
+    description: Unauthenticated public endpoints
+  - name: User Auth
+    description: User registration and authentication
+  - name: User Children
+    description: Manage child profiles
+  - name: User Doctors
+    description: Browse and find doctors
+  - name: User Bookings
+    description: Book and manage therapy sessions
+  - name: User Messages
+    description: Direct messaging between users
+  - name: User Notifications
+    description: In-app notifications
+  - name: User Packages
+    description: Session bundle subscriptions
+  - name: User Products & Store
+    description: Products, cart, and orders
+  - name: User Settings
+    description: Account settings and password management
+  - name: User Assessments
+    description: Child speech/auditory assessment tests
+  - name: User Mahara Kids
+    description: Sequential educational activities for children
+  - name: Doctor Auth
+    description: Doctor registration, login, and profile management
+  - name: Doctor Bookings
+    description: Manage incoming session bookings
+  - name: Doctor Availability
+    description: Weekly schedule management
+  - name: Doctor Articles
+    description: Educational articles authored by doctors
+  - name: Doctor Payments
+    description: Earnings and payment history
+  - name: Doctor Withdrawals
+    description: Withdrawal requests management
+  - name: Doctor Children
+    description: Children profiles and assessment access for doctors
+  - name: Admin Auth
+    description: Admin panel authentication
+  - name: Admin Dashboard
+    description: Platform statistics and analytics
+  - name: Admin Users
+    description: User account management
+  - name: Admin Doctors
+    description: Doctor account management
+  - name: Admin Bookings
+    description: Booking oversight and management
+  - name: Admin Support
+    description: Support ticket management
+  - name: Admin Packages
+    description: Session package management
+  - name: Admin Products & Orders
+    description: Product catalog and order management
+  - name: Admin Coupons
+    description: Discount coupon management
+  - name: Admin Payments & Withdrawals
+    description: Financial transaction management
+  - name: Admin Reports
+    description: Report generation and export
+  - name: Admin Content
+    description: Home sliders, services, articles, FAQs, onboarding, and page content
+  - name: Admin Settings
+    description: Application-wide settings
+  - name: Admin Notifications
+    description: Admin notification management
+  - name: Admin Management
+    description: Admin account management (SUPER_ADMIN only)
+  - name: Admin Assessments
+    description: Assessment categories, tests, and questions management
+  - name: Admin Mahara
+    description: Mahara Kids categories, skill groups, and activities management
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: "JWT token (30-day expiry). Format: Bearer {token}"
+
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+              example: VALIDATION_ERROR
+            message:
+              type: string
+              example: Invalid input data
+
+    PaginationMeta:
+      type: object
+      properties:
+        page:
+          type: integer
+          example: 1
+        limit:
+          type: integer
+          example: 20
+        total:
+          type: integer
+          example: 100
+        pages:
+          type: integer
+          example: 5
+
+    MessageResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: Operation completed successfully

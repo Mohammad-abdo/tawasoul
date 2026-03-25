@@ -9,7 +9,7 @@ import { Server } from 'socket.io';
 import { networkInterfaces } from 'os';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-
+import { configureSwagger } from '../swagger/swagger.config.js';
 // Load environment variables
 dotenv.config();
 
@@ -41,6 +41,7 @@ const io = new Server(httpServer, {
   }
 });
 
+configureSwagger(app);
 const PORT = process.env.PORT || 3000;
 
 // ============================================

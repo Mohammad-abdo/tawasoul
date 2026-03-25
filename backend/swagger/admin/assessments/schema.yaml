@@ -1,0 +1,110 @@
+AdminAssessmentCategory:
+  type: object
+  properties:
+    id:
+      type: string
+    name:
+      type: string
+    nameAr:
+      type: string
+    _count:
+      type: object
+      nullable: true
+      properties:
+        tests:
+          type: integer
+    tests:
+      type: array
+      nullable: true
+      items:
+        $ref: "#/components/schemas/AdminTest"
+    createdAt:
+      type: string
+      format: date-time
+
+AdminTest:
+  type: object
+  properties:
+    id:
+      type: string
+    title:
+      type: string
+    titleAr:
+      type: string
+      nullable: true
+    categoryId:
+      type: string
+      nullable: true
+    category:
+      $ref: "#/components/schemas/AdminAssessmentCategory"
+    testType:
+      type: string
+      example: SOUND_DISCRIMINATION
+    description:
+      type: string
+      nullable: true
+    _count:
+      type: object
+      nullable: true
+      properties:
+        questions:
+          type: integer
+    questions:
+      type: array
+      nullable: true
+      items:
+        $ref: "#/components/schemas/AdminQuestion"
+    createdAt:
+      type: string
+      format: date-time
+
+AdminQuestion:
+  type: object
+  properties:
+    id:
+      type: string
+    testId:
+      type: string
+    test:
+      $ref: "#/components/schemas/AdminTest"
+    audioAssetPath:
+      type: string
+      nullable: true
+      description: Full URL to audio file
+    imageAssetPath:
+      type: string
+      nullable: true
+      description: Full URL to image file
+    choices:
+      type: array
+      nullable: true
+      items:
+        type: object
+    scoringGuide:
+      type: string
+      nullable: true
+    orderIndex:
+      type: integer
+    maxScore:
+      type: integer
+      nullable: true
+    createdAt:
+      type: string
+      format: date-time
+
+CreateTestRequest:
+  type: object
+  required: [title]
+  properties:
+    title:
+      type: string
+    titleAr:
+      type: string
+    categoryId:
+      type: string
+      nullable: true
+    testType:
+      type: string
+      default: SOUND_DISCRIMINATION
+    description:
+      type: string

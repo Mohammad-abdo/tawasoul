@@ -1,0 +1,31 @@
+ChildWithAssessments:
+  allOf:
+    - $ref: "#/components/schemas/Child"
+    - type: object
+      properties:
+        assessmentResults:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              questionId:
+                type: string
+              scoreGiven:
+                type: integer
+              sessionId:
+                type: string
+                nullable: true
+              timestamp:
+                type: string
+                format: date-time
+              question:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  testId:
+                    type: string
+                  maxScore:
+                    type: integer

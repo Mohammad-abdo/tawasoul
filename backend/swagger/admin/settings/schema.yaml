@@ -1,0 +1,103 @@
+AppSettings:
+  type: object
+  properties:
+    id:
+      type: string
+    appName:
+      type: string
+      example: تواصل
+    appNameEn:
+      type: string
+      example: Tawasoul
+    logo:
+      type: string
+      nullable: true
+    logoMobile:
+      type: string
+      nullable: true
+    favicon:
+      type: string
+      nullable: true
+    primaryFont:
+      type: string
+      example: Cairo
+    secondaryFont:
+      type: string
+      example: Tajawal
+    primaryColor:
+      type: string
+      example: "#14b8a6"
+    secondaryColor:
+      type: string
+      nullable: true
+    maintenanceMode:
+      type: boolean
+    registrationEnabled:
+      type: boolean
+    doctorRegistrationEnabled:
+      type: boolean
+    emailNotifications:
+      type: boolean
+    smsNotifications:
+      type: boolean
+    maxPostLength:
+      type: integer
+      nullable: true
+    maxFileSize:
+      type: integer
+      nullable: true
+    allowedFileTypes:
+      type: array
+      items:
+        type: string
+      nullable: true
+    paymentGateway:
+      type: string
+      nullable: true
+    emailService:
+      type: string
+      nullable: true
+
+UpdateAppSettingsRequest:
+  type: object
+  properties:
+    appName:
+      type: string
+    appNameEn:
+      type: string
+    logo:
+      type: string
+    logoMobile:
+      type: string
+    favicon:
+      type: string
+    primaryFont:
+      type: string
+    secondaryFont:
+      type: string
+    primaryColor:
+      type: string
+    secondaryColor:
+      type: string
+    maintenanceMode:
+      type: boolean
+    registrationEnabled:
+      type: boolean
+    doctorRegistrationEnabled:
+      type: boolean
+    emailNotifications:
+      type: boolean
+    smsNotifications:
+      type: boolean
+    maxPostLength:
+      type: integer
+    maxFileSize:
+      type: integer
+    allowedFileTypes:
+      type: array
+      items:
+        type: string
+    paymentGateway:
+      type: string
+    emailService:
+      type: string

@@ -1,0 +1,210 @@
+/admin/users:
+  get:
+    tags: [Admin Users]
+    summary: Get all users
+    operationId: adminGetAllUsers
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: page
+        in: query
+        schema:
+          type: integer
+          default: 1
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          default: 20
+      - name: search
+        in: query
+        schema:
+          type: string
+      - name: isActive
+        in: query
+        schema:
+          type: boolean
+      - name: isApproved
+        in: query
+        schema:
+          type: boolean
+    responses:
+      "200":
+        description: Paginated user list
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  type: object
+                  properties:
+                    users:
+                      type: array
+                      items:
+                        $ref: "#/components/schemas/UserProfile"
+                    pagination:
+                      $ref: "#/components/schemas/PaginationMeta"
+  post:
+    tags: [Admin Users]
+    summary: Create a user
+    operationId: adminCreateUser
+    security:
+      - BearerAuth: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/UserRegisterRequest"
+    responses:
+      "201":
+        description: User created
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  $ref: "#/components/schemas/UserProfile"
+
+/admin/users/{id}:
+  get:
+    tags: [Admin Users]
+    summary: Get user by ID
+    operationId: adminGetUserById
+    security:
+      - BearerAuth: []
+    parameters:
+      - $ref: "#/components/schemas/IdPathParam"
+    responses:
+      "200":
+        description: User details
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  $ref: "#/components/schemas/UserProfile"
+      "404":
+        description: User not found
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+  put:
+    tags: [Admin Users]
+    summary: Update a user
+    operationId: adminUpdateUser
+    security:
+      - BearerAuth: []
+    parameters:
+      - $ref: "#/components/schemas/IdPathParam"
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/UpdateUserSettingsRequest"
+    responses:
+      "200":
+        description: User updated
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  $ref: "#/components/schemas/UserProfile"
+  delete:
+    tags: [Admin Users]
+    summary: Delete a user
+    operationId: adminDeleteUser
+    security:
+      - BearerAuth: []
+    parameters:
+      - $ref: "#/components/schemas/IdPathParam"
+    responses:
+      "200":
+        description: User deleted
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MessageResponse"
+
+/admin/users/{id}/approve:
+  put:
+    tags: [Admin Users]
+    summary: Approve a user account
+    operationId: adminApproveUser
+    security:
+      - BearerAuth: []
+    parameters:
+      - $ref: "#/components/schemas/IdPathParam"
+    responses:
+      "200":
+        description: User approved
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MessageResponse"
+
+/admin/users/{id}/reject:
+  put:
+    tags: [Admin Users]
+    summary: Reject a user account
+    operationId: adminRejectUser
+    security:
+      - BearerAuth: []
+    parameters:
+      - $ref: "#/components/schemas/IdPathParam"
+    responses:
+      "200":
+        description: User rejected
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MessageResponse"
+
+/admin/users/{id}/activate:
+  put:
+    tags: [Admin Users]
+    summary: Activate a user account
+    operationId: adminActivateUser
+    security:
+      - BearerAuth: []
+    parameters:
+      - $ref: "#/components/schemas/IdPathParam"
+    responses:
+      "200":
+        description: User activated
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MessageResponse"
+
+/admin/users/{id}/deactivate:
+  put:
+    tags: [Admin Users]
+    summary: Deactivate a user account
+    operationId: adminDeactivateUser
+    security:
+      - BearerAuth: []
+    parameters:
+      - $ref: "#/components/schemas/IdPathParam"
+    responses:
+      "200":
+        description: User deactivated
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MessageResponse"

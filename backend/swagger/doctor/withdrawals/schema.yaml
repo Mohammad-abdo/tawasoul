@@ -1,0 +1,49 @@
+Withdrawal:
+  type: object
+  properties:
+    id:
+      type: string
+      format: uuid
+    doctorId:
+      type: string
+      format: uuid
+    amount:
+      type: number
+      format: float
+    method:
+      type: string
+      enum: [BANK_ACCOUNT, E_WALLET, PAYPAL, VODAFONE_CASH, FAWRY, INSTAPAY]
+    accountDetails:
+      type: string
+      description: JSON string with account/wallet details
+    status:
+      type: string
+      enum: [PENDING, PROCESSING, COMPLETED, REJECTED]
+    processedAt:
+      type: string
+      format: date-time
+      nullable: true
+    createdAt:
+      type: string
+      format: date-time
+    updatedAt:
+      type: string
+      format: date-time
+
+WithdrawalRequest:
+  type: object
+  required: [amount, method, accountDetails]
+  properties:
+    amount:
+      type: number
+      format: float
+      minimum: 0.01
+    method:
+      type: string
+      enum: [BANK_ACCOUNT, E_WALLET, PAYPAL, VODAFONE_CASH, FAWRY, INSTAPAY]
+    accountDetails:
+      type: object
+      description: Account/wallet details object (structure depends on method)
+      example:
+        accountNumber: "1234567890"
+        bankName: "CIB"

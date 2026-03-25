@@ -1,0 +1,124 @@
+AssessmentCategory:
+  type: object
+  properties:
+    id:
+      type: string
+      format: uuid
+    name:
+      type: string
+    nameAr:
+      type: string
+
+AssessmentTest:
+  type: object
+  properties:
+    id:
+      type: string
+      format: uuid
+    title:
+      type: string
+    titleAr:
+      type: string
+      nullable: true
+    categoryId:
+      type: string
+      format: uuid
+      nullable: true
+    category:
+      $ref: "#/components/schemas/AssessmentCategory"
+    type:
+      type: string
+      enum: [AUDITORY, VISUAL]
+      description: Test category (legacy)
+    testType:
+      type: string
+      enum: [SOUND_DISCRIMINATION, PRONUNCIATION_REPETITION, SOUND_IMAGE_LINKING, SEQUENCE_ORDER]
+    description:
+      type: string
+      nullable: true
+    createdAt:
+      type: string
+      format: date-time
+
+AssessmentQuestion:
+  type: object
+  properties:
+    id:
+      type: string
+      format: uuid
+    testId:
+      type: string
+      format: uuid
+    orderIndex:
+      type: integer
+    audioAssetPath:
+      type: string
+      nullable: true
+      description: URL to audio instruction file
+    imageAssetPath:
+      type: string
+      nullable: true
+      description: URL to question image
+    choices:
+      type: array
+      nullable: true
+      description: Answer choices (structure varies by test type)
+      items:
+        type: object
+        properties:
+          text:
+            type: string
+            nullable: true
+          imagePath:
+            type: string
+            nullable: true
+          audioPath:
+            type: string
+            nullable: true
+          isCorrect:
+            type: boolean
+    scoringGuide:
+      type: string
+      nullable: true
+    maxScore:
+      type: integer
+      default: 10
+
+AssessmentResult:
+  type: object
+  properties:
+    id:
+      type: string
+      format: uuid
+    childId:
+      type: string
+      format: uuid
+    questionId:
+      type: string
+      format: uuid
+    scoreGiven:
+      type: integer
+    sessionId:
+      type: string
+      nullable: true
+    timestamp:
+      type: string
+      format: date-time
+
+SubmitAssessmentResultRequest:
+  type: object
+  required: [childId, questionId, scoreGiven]
+  properties:
+    childId:
+      type: string
+      format: uuid
+    questionId:
+      type: string
+      format: uuid
+    scoreGiven:
+      type: integer
+      minimum: 0
+    sessionId:
+      type: string
+      nullable: true
+      description: Optional session grouping identifier
