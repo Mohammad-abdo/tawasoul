@@ -7,6 +7,7 @@ import dotenv from 'dotenv';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import { networkInterfaces } from 'os';
+import swaggerUi from 'swagger-ui-express';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 
@@ -26,6 +27,7 @@ import { rateLimiter } from './middleware/rateLimiter.middleware.js';
 
 // Import logger
 import { logger } from './utils/logger.js';
+import { getOpenApiSpec } from './config/swagger.js';
 
 const app = express();
 const httpServer = createServer(app);
@@ -134,6 +136,22 @@ app.get('/health', (req, res) => {
     host: req.get('host')
   });
 });
+
+// Swagger / OpenAPI documentation
+app.get('/api-docs.json', (req, res) => {
+  res.json(getOpenApiSpec(req));
+});
+
+app.use(
+  '/api-docs',
+  swaggerUi.serve,
+  swaggerUi.setup(null, {
+    explorer: true,
+    swaggerOptions: {
+      url: '/api-docs.json'
+    }
+  })
+);
 
 // Connection test endpoint for mobile
 app.get('/api/test-connection', (req, res) => {
