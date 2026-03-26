@@ -22,13 +22,7 @@ info:
 
 servers:
   - url: http://localhost:3000/api
-    description: Local development
-  - url: http://{localIP}:3000/api
-    description: Local network (mobile)
-    variables:
-      localIP:
-        default: "192.168.1.100"
-        description: Your machine's local IP address
+    description: API server
 
 tags:
   - name: Public

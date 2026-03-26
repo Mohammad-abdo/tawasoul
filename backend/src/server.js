@@ -6,10 +6,10 @@ import morgan from 'morgan';
 import dotenv from 'dotenv';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
-import { networkInterfaces } from 'os';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { configureSwagger } from '../swagger/swagger.config.js';
+
 // Load environment variables
 dotenv.config();
 
@@ -29,8 +29,8 @@ import { logger } from './utils/logger.js';
 
 const app = express();
 const httpServer = createServer(app);
-const corsOriginsForSocket = process.env.CORS_ORIGIN 
-  ? process.env.CORS_ORIGIN.split(',').map(o => o.trim())
+const corsOriginsForSocket = process.env.CORS_ORIGIN
+  ? process.env.CORS_ORIGIN.split(',').map((o) => o.trim())
   : ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175'];
 
 const io = new Server(httpServer, {
@@ -50,20 +50,20 @@ const PORT = process.env.PORT || 3000;
 
 // Security
 app.use(helmet({
-  crossOriginResourcePolicy: { policy: "cross-origin" }
+  crossOriginResourcePolicy: { policy: 'cross-origin' }
 }));
 
 // CORS configuration
-const corsOrigins = process.env.CORS_ORIGIN 
-  ? process.env.CORS_ORIGIN.split(',').map(o => o.trim())
-  : ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175', 'http://10.0.2.2:3000', 'http://localhost:3000'];
+const corsOrigins = process.env.CORS_ORIGIN
+  ? process.env.CORS_ORIGIN.split(',').map((o) => o.trim())
+  : ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175'];
 
 app.use(cors({
   origin: function (origin, callback) {
     // Allow requests with no origin (like mobile apps or Postman)
     if (!origin) return callback(null, true);
-    
-    if (corsOrigins.indexOf(origin) !== -1 || origin.includes('localhost') || origin.includes('10.0.2.2')) {
+
+    if (corsOrigins.indexOf(origin) !== -1 || origin.includes('localhost')) {
       callback(null, true);
     } else {
       callback(null, true); // Allow all for development
@@ -104,22 +104,6 @@ const __dirname = dirname(__filename);
 // Serve static files (uploads)
 app.use('/uploads', express.static(join(__dirname, '../uploads')));
 
-// Get local IP address for network access (needed for routes)
-const getLocalIP = () => {
-  const interfaces = networkInterfaces();
-  for (const name of Object.keys(interfaces)) {
-    for (const iface of interfaces[name] || []) {
-      // Skip internal (loopback) and non-IPv4 addresses
-      if (iface.family === 'IPv4' && !iface.internal) {
-        return iface.address;
-      }
-    }
-  }
-  return 'localhost';
-};
-
-const localIP = getLocalIP();
-
 // ============================================
 // Routes
 // ============================================
@@ -136,14 +120,14 @@ app.get('/health', (req, res) => {
   });
 });
 
-// Connection test endpoint for mobile
+// Connection test endpoint for clients
 app.get('/api/test-connection', (req, res) => {
   logger.info(`Connection test from: ${req.ip}, Origin: ${req.get('origin') || 'No origin'}`);
   res.json({
     success: true,
     message: 'Backend is reachable!',
     timestamp: new Date().toISOString(),
-    serverIP: localIP || 'unknown',
+    serverHost: req.get('host') || 'unknown',
     clientIP: req.ip
   });
 });
@@ -195,15 +179,10 @@ app.use(errorHandler);
 // Start Server
 // ============================================
 
-const HOST = process.env.HOST || '0.0.0.0'; // Listen on all interfaces (accessible from network)
-
-httpServer.listen(PORT, HOST, () => {
-  logger.info(`🚀 Server running on port ${PORT}`);
-  logger.info(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
-  logger.info(`🔗 Local API: http://localhost:${PORT}/api`);
-  logger.info(`🌐 Network API: http://${localIP}:${PORT}/api`);
-  logger.info(`📱 Mobile App IP: ${localIP} (Update app_config.dart with this IP)`);
-  logger.info(`✅ Server accessible from local network!`);
+httpServer.listen(PORT, () => {
+  logger.info(`Server running on port ${PORT}`);
+  logger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);
+  logger.info('API Docs: /api/docs');
 });
 
 // Graceful shutdown
@@ -216,4 +195,3 @@ process.on('SIGTERM', () => {
 });
 
 export default app;
-

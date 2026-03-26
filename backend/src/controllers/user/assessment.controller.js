@@ -8,17 +8,18 @@ export const getTests = async (req, res, next) => {
   try {
     const { category, testType } = req.query;
     const where = {};
-    if (category) where.category = category;
+    if (category) where.category = { name: category };
     if (testType) where.testType = testType;
 
     const tests = await prisma.test.findMany({
       where,
       include: {
+        category: true,
         _count: {
           select: { questions: true }
         }
       },
-      orderBy: [{ category: 'asc' }, { testType: 'asc' }, { createdAt: 'desc' }]
+      orderBy: [{ category: { name: 'asc' } }, { testType: 'asc' }, { createdAt: 'desc' }]
     });
 
     res.json({

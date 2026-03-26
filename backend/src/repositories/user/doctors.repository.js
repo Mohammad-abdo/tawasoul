@@ -25,7 +25,7 @@ export const findById = (id) =>
       education: { orderBy: { startDate: 'desc' }, select: { id: true, degree: true, institution: true, startDate: true, endDate: true } },
       sessionPrices: { select: { duration: true, price: true } },
       availability: { where: { isActive: true }, select: { dayOfWeek: true, timeSlots: true } },
-      _count: { select: { bookings: true, tips: true, articles: true } }
+      _count: { select: { bookings: true, articles: true } }
     }
   });
 
