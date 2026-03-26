@@ -1,162 +1,77 @@
-import { prisma } from '../../config/database.js';
 import { logger } from '../../utils/logger.js';
+import * as maharaCategoriesService from '../../services/admin/mahara-categories.service.js';
 
-/**
- * Get All Activity Categories
- */
+const handleServiceError = (res, error) => {
+  if (!error.status) {
+    return false;
+  }
+
+  res.status(error.status).json({
+    success: false,
+    error: {
+      code: error.code,
+      message: error.message
+    }
+  });
+  return true;
+};
+
 export const getAllActivityCategories = async (req, res, next) => {
   try {
-    const categories = await prisma.activityCategory.findMany({
-      orderBy: { createdAt: 'asc' }
-    });
-
-    res.json({
-      success: true,
-      data: categories
-    });
+    const data = await maharaCategoriesService.getAllActivityCategories();
+    res.json({ success: true, data });
   } catch (error) {
+    if (handleServiceError(res, error)) return;
     logger.error('Get activity categories error:', error);
     next(error);
   }
 };
 
-/**
- * Get Activity Category by ID
- */
 export const getActivityCategoryById = async (req, res, next) => {
   try {
-    const { id } = req.params;
-
-    const category = await prisma.activityCategory.findUnique({
-      where: { id }
-    });
-
-    if (!category) {
-      return res.status(404).json({
-        success: false,
-        error: {
-          code: 'ACTIVITY_CATEGORY_NOT_FOUND',
-          message: 'Activity category not found'
-        }
-      });
-    }
-
-    res.json({
-      success: true,
-      data: category
-    });
+    const data = await maharaCategoriesService.getActivityCategoryById(req.params.id);
+    res.json({ success: true, data });
   } catch (error) {
+    if (handleServiceError(res, error)) return;
     logger.error('Get activity category error:', error);
     next(error);
   }
 };
 
-/**
- * Create Activity Category
- */
 export const createActivityCategory = async (req, res, next) => {
   try {
-    const { name } = req.body;
-
-    if (!name) {
-      return res.status(400).json({
-        success: false,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Category name is required'
-        }
-      });
-    }
-
-    const category = await prisma.activityCategory.create({
-      data: { name }
-    });
-
-    logger.info(`Activity category created: ${category.id} by admin ${req.admin.id}`);
-
-    res.status(201).json({
-      success: true,
-      data: category
-    });
+    const data = await maharaCategoriesService.createActivityCategory(req.body);
+    logger.info(`Activity category created: ${data.id} by admin ${req.admin.id}`);
+    res.status(201).json({ success: true, data });
   } catch (error) {
+    if (handleServiceError(res, error)) return;
     logger.error('Create activity category error:', error);
     next(error);
   }
 };
 
-/**
- * Update Activity Category
- */
 export const updateActivityCategory = async (req, res, next) => {
   try {
-    const { id } = req.params;
-    const { name } = req.body;
-
-    const category = await prisma.activityCategory.findUnique({
-      where: { id }
-    });
-
-    if (!category) {
-      return res.status(404).json({
-        success: false,
-        error: {
-          code: 'ACTIVITY_CATEGORY_NOT_FOUND',
-          message: 'Activity category not found'
-        }
-      });
-    }
-
-    const updatedCategory = await prisma.activityCategory.update({
-      where: { id },
-      data: {
-        ...(name !== undefined && { name })
-      }
-    });
-
-    logger.info(`Activity category updated: ${id} by admin ${req.admin.id}`);
-
-    res.json({
-      success: true,
-      data: updatedCategory
-    });
+    const data = await maharaCategoriesService.updateActivityCategory(req.params.id, req.body);
+    logger.info(`Activity category updated: ${req.params.id} by admin ${req.admin.id}`);
+    res.json({ success: true, data });
   } catch (error) {
+    if (handleServiceError(res, error)) return;
     logger.error('Update activity category error:', error);
     next(error);
   }
 };
 
-/**
- * Delete Activity Category
- */
 export const deleteActivityCategory = async (req, res, next) => {
   try {
-    const { id } = req.params;
-
-    const category = await prisma.activityCategory.findUnique({
-      where: { id }
-    });
-
-    if (!category) {
-      return res.status(404).json({
-        success: false,
-        error: {
-          code: 'ACTIVITY_CATEGORY_NOT_FOUND',
-          message: 'Activity category not found'
-        }
-      });
-    }
-
-    await prisma.activityCategory.delete({
-      where: { id }
-    });
-
-    logger.info(`Activity category deleted: ${id} by admin ${req.admin.id}`);
-
+    await maharaCategoriesService.deleteActivityCategory(req.params.id);
+    logger.info(`Activity category deleted: ${req.params.id} by admin ${req.admin.id}`);
     res.json({
       success: true,
       message: 'Activity category deleted successfully'
     });
   } catch (error) {
+    if (handleServiceError(res, error)) return;
     logger.error('Delete activity category error:', error);
     next(error);
   }

@@ -1,0 +1,12 @@
+import express from 'express';
+import { authenticateUser } from '../../middleware/auth.middleware.js';
+import { moderateTextMiddleware } from '../../middleware/moderateText.middleware.js';
+import * as messagesController from '../../controllers/user/messages.controller.js';
+
+const router = express.Router();
+
+router.get('/', authenticateUser, messagesController.getUserMessages);
+router.get('/conversation/:userId', authenticateUser, messagesController.getConversation);
+router.post('/', authenticateUser, moderateTextMiddleware, messagesController.sendMessage);
+
+export default router;
