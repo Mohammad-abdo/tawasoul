@@ -2,6 +2,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import * as authRepo from '../../repositories/doctor/auth.repository.js';
 import { createHttpError } from '../../utils/httpError.js';
+import { ONE_HOUR_SESSION_DURATION } from '../../utils/availability.js';
 
 const signToken = (doctorId) =>
   jwt.sign(
@@ -9,6 +10,40 @@ const signToken = (doctorId) =>
     process.env.JWT_SECRET || 'your-secret-key',
     { expiresIn: '30d' }
   );
+
+const getSingleSessionPriceInput = (sessionPrices) => {
+  if (!Array.isArray(sessionPrices) || sessionPrices.length === 0) {
+    return null;
+  }
+
+  const matchingEntry = sessionPrices.find((item) => parseInt(item?.duration, 10) === ONE_HOUR_SESSION_DURATION);
+  const selectedEntry = matchingEntry || sessionPrices[0];
+  const price = parseFloat(selectedEntry?.price);
+
+  if (Number.isNaN(price) || price <= 0) {
+    throw createHttpError(400, 'VALIDATION_ERROR', 'A valid 60-minute session price is required');
+  }
+
+  return price;
+};
+
+const normalizeSessionPrices = (sessionPrices) => {
+  if (!Array.isArray(sessionPrices) || sessionPrices.length === 0) {
+    return [];
+  }
+
+  const preferredEntry = sessionPrices.find((item) => item.duration === ONE_HOUR_SESSION_DURATION)
+    || sessionPrices[0];
+
+  return preferredEntry
+    ? [{ ...preferredEntry, duration: ONE_HOUR_SESSION_DURATION }]
+    : [];
+};
+
+const normalizeDoctorSessionPrices = (doctor) => ({
+  ...doctor,
+  sessionPrices: normalizeSessionPrices(doctor.sessionPrices)
+});
 
 export const register = async ({ name, email, phone, password, specialization }) => {
   if (!name || !email || !phone || !password) {
@@ -71,7 +106,7 @@ export const getMe = async (doctorId) => {
     throw createHttpError(404, 'DOCTOR_NOT_FOUND', 'Doctor not found');
   }
 
-  const { password: _password, ...doctorWithoutPassword } = doctor;
+  const { password: _password, ...doctorWithoutPassword } = normalizeDoctorSessionPrices(doctor);
   return doctorWithoutPassword;
 };
 
@@ -100,16 +135,9 @@ export const updateProfile = async (doctorId, body) => {
   }
 
   if (sessionPrices && Array.isArray(sessionPrices)) {
-    await Promise.all(
-      sessionPrices.map((sessionPrice) =>
-        authRepo.upsertSessionPrice(
-          doctorId,
-          parseInt(sessionPrice.duration),
-          parseFloat(sessionPrice.price)
-        )
-      )
-    );
+    const singlePrice = getSingleSessionPriceInput(sessionPrices);
+    await authRepo.replaceSessionPrices(doctorId, singlePrice);
   }
 
-  return updatedDoctor;
+  return normalizeDoctorSessionPrices(updatedDoctor);
 };

@@ -1,4 +1,6 @@
 import * as bookingsRepo from '../../repositories/user/bookings.repository.js';
+import { ONE_HOUR_SESSION_DURATION, formatDateKey } from '../../utils/availability.js';
+import { getAvailableSlots } from './doctors.service.js';
 
 const parseScheduledDate = (scheduledAt, scheduledMonth, scheduledDay, scheduledTime) => {
   if (scheduledAt) {
@@ -26,6 +28,14 @@ const parseScheduledDate = (scheduledAt, scheduledMonth, scheduledDay, scheduled
 
   const d = new Date(new Date().getFullYear(), parseInt(scheduledMonth) - 1, parseInt(scheduledDay), hour24, parseInt(minutes));
   return { scheduledDate: d, month: parseInt(scheduledMonth), day: parseInt(scheduledDay), time: scheduledTime };
+};
+
+const getEffectiveSessionPrice = (sessionPrices) => {
+  if (!Array.isArray(sessionPrices) || sessionPrices.length === 0) {
+    return null;
+  }
+
+  return sessionPrices.find((item) => item.duration === ONE_HOUR_SESSION_DURATION) || sessionPrices[0];
 };
 
 export const getUserBookings = async (userId, { status, page = 1, limit = 20 }) => {
@@ -64,6 +74,7 @@ export const getUserBookings = async (userId, { status, page = 1, limit = 20 }) 
 
 export const createBooking = async (userId, body) => {
   const { doctorId, childId, sessionType, duration, scheduledAt, scheduledMonth, scheduledDay, scheduledTime, notes } = body;
+  const parsedDuration = parseInt(duration);
 
   if (!doctorId || !sessionType || !duration) {
     const err = new Error('Doctor ID, session type, and duration are required');
@@ -80,8 +91,8 @@ export const createBooking = async (userId, body) => {
     err.code = 'VALIDATION_ERROR'; err.status = 400; throw err;
   }
 
-  if (![30, 45, 60].includes(parseInt(duration))) {
-    const err = new Error('Invalid duration. Must be 30, 45, or 60 minutes');
+  if (parsedDuration !== ONE_HOUR_SESSION_DURATION) {
+    const err = new Error('Invalid duration. Only 60-minute sessions are allowed');
     err.code = 'VALIDATION_ERROR'; err.status = 400; throw err;
   }
 
@@ -94,9 +105,9 @@ export const createBooking = async (userId, body) => {
     const err = new Error('Doctor is not available for bookings'); err.code = 'DOCTOR_UNAVAILABLE'; err.status = 403; throw err;
   }
 
-  const sessionPrice = doctor.sessionPrices.find(sp => sp.duration === parseInt(duration));
+  const sessionPrice = getEffectiveSessionPrice(doctor.sessionPrices);
   if (!sessionPrice) {
-    const err = new Error('Doctor does not offer sessions of this duration'); err.code = 'INVALID_DURATION'; err.status = 400; throw err;
+    const err = new Error('Doctor does not have a 60-minute session price configured'); err.code = 'INVALID_DURATION'; err.status = 400; throw err;
   }
 
   const { scheduledDate, month, day, time } = parseScheduledDate(scheduledAt, scheduledMonth, scheduledDay, scheduledTime);
@@ -113,6 +124,12 @@ export const createBooking = async (userId, body) => {
     const err = new Error('Day must be between 1 and 31'); err.code = 'INVALID_DAY'; err.status = 400; throw err;
   }
 
+  const availableSlots = await getAvailableSlots(doctorId, formatDateKey(scheduledDate));
+  const isSelectedSlotAvailable = availableSlots.slots.some((slot) => slot.time === scheduledDate.toTimeString().slice(0, 5));
+  if (!isSelectedSlotAvailable) {
+    const err = new Error('Selected slot is not available'); err.code = 'SLOT_UNAVAILABLE'; err.status = 400; throw err;
+  }
+
   if (childId) {
     const child = await bookingsRepo.findChild(childId);
     if (!child || child.userId !== userId) {
@@ -122,7 +139,7 @@ export const createBooking = async (userId, body) => {
 
   const booking = await bookingsRepo.createBooking({
     userId, doctorId, childId: childId || null, sessionType,
-    duration: parseInt(duration), price: sessionPrice.price,
+    duration: ONE_HOUR_SESSION_DURATION, price: sessionPrice.price,
     scheduledAt: scheduledDate, scheduledMonth: month, scheduledDay: day,
     scheduledTime: time, notes: notes || null, status: 'PENDING'
   });
@@ -201,6 +218,12 @@ export const rescheduleBooking = async (userId, id, body) => {
 
   if (scheduledDate < new Date()) {
     const err = new Error('Scheduled time must be in the future'); err.code = 'INVALID_TIME'; err.status = 400; throw err;
+  }
+
+  const availableSlots = await getAvailableSlots(booking.doctorId, formatDateKey(scheduledDate), { excludeBookingId: id });
+  const isSelectedSlotAvailable = availableSlots.slots.some((slot) => slot.time === scheduledDate.toTimeString().slice(0, 5));
+  if (!isSelectedSlotAvailable) {
+    const err = new Error('Selected slot is not available'); err.code = 'SLOT_UNAVAILABLE'; err.status = 400; throw err;
   }
 
   const updated = await bookingsRepo.rescheduleBooking(id, {

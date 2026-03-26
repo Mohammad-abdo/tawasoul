@@ -31,3 +31,22 @@ export const findById = (id) =>
 
 export const findAvailability = (doctorId, dayOfWeek) =>
   prisma.availability.findFirst({ where: { doctorId, dayOfWeek, isActive: true } });
+
+export const findBookingsForDate = (doctorId, dayStart, dayEnd, excludeBookingId) =>
+  prisma.booking.findMany({
+    where: {
+      doctorId,
+      status: { not: 'CANCELLED' },
+      scheduledAt: {
+        gte: dayStart,
+        lte: dayEnd
+      },
+      ...(excludeBookingId ? { id: { not: excludeBookingId } } : {})
+    },
+    select: {
+      id: true,
+      scheduledAt: true,
+      duration: true,
+      status: true
+    }
+  });

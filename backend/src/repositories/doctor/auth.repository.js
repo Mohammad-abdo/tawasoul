@@ -83,3 +83,17 @@ export const upsertSessionPrice = (doctorId, duration, price) =>
       price
     }
   });
+
+export const replaceSessionPrices = async (doctorId, price) => {
+  await prisma.sessionPrice.deleteMany({
+    where: { doctorId }
+  });
+
+  return prisma.sessionPrice.create({
+    data: {
+      doctorId,
+      duration: 60,
+      price
+    }
+  });
+};
