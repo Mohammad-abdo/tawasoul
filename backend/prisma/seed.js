@@ -46,14 +46,14 @@ async function clearDb() {
     'q_Analogy_Answer', 'q_Analogy',
     'q_CARS_Answer', 'q_CARS',
     'helpEvaluation', 'helpAssessment', 'helpSkill',
-    'assessmentResult', 'question', 'test', 'testCategory',
-    'orderItem', 'order', 'cartItem', 'productReview', 'product', 'userPackage', 'package', 'address', 'otpCode',
+    'assessmentResult', 'question', 'test',
+    'orderItem', 'order', 'cartItem', 'productReview', 'product', 'productCategory', 'userPackage', 'package', 'address', 'otpCode',
     'fAQ', 'homeArticle', 'homeService', 'homeSlider', 'staticPage', 'onboarding', 'appSettings',
-    'notificationTemplate', 'activityLog', 'emailTemplate', 'userCoupon', 'coupon',
+    'notificationTemplate', 'emailTemplate', 'userCoupon', 'coupon',
     'report', 'pageContent', 'supportReply', 'supportTicket', 'notification', 'message',
     'payment', 'withdrawal', 'booking', 'article',
-    'availability', 'sessionPrice', 'education', 'certificate',
-    'experience', 'doctorSpecialty', 'child', 'doctor', 'user', 'admin', 'section'
+    'availability', 'education', 'certificate',
+    'experience', 'doctorSpecialty', 'child', 'doctor', 'user', 'admin'
   ];
   for (const table of tables) await prisma[table].deleteMany();
 }
@@ -104,16 +104,6 @@ async function main() {
     secondaryColor: '#0f172a', allowedFileTypes: j(['jpg', 'png', 'pdf', 'mp3', 'mp4']), paymentGateway: 'Manual', emailService: 'SMTP'
   } });
 
-  for (const [nameAr, nameEn, type] of [
-    ['اضطرابات الكلام واللغة', 'Speech and Language Disorders', 'SPECIALTY'],
-    ['تعديل السلوك', 'Behavior Modification', 'SPECIALTY'],
-    ['صعوبات التعلم', 'Learning Difficulties', 'SPECIALTY'],
-    ['تنمية المهارات', 'Skills Development', 'SPECIALTY'],
-    ['اختبارات نفسية', 'Psychological Tests', 'SPECIALTY'],
-    ['التقييم', 'Evaluation', 'WORK_AREA'],
-    ['الجلسات الفردية', 'Individual Sessions', 'WORK_AREA'],
-    ['الجلسات الجماعية', 'Group Sessions', 'WORK_AREA']
-  ]) await prisma.section.create({ data: { nameAr, nameEn, type, image: `/uploads/sections/${nameEn.toLowerCase().replace(/\s+/g, '-')}.png` } });
 
 
   for (const type of ['WELCOME', 'VERIFICATION', 'BOOKING_CONFIRMED', 'BOOKING_CANCELLED', 'PASSWORD_RESET', 'PAYMENT_RECEIVED', 'WITHDRAWAL_APPROVED', 'WITHDRAWAL_REJECTED', 'DOCTOR_APPROVED', 'DOCTOR_REJECTED', 'SUPPORT_REPLY', 'ANNOUNCEMENT']) {
@@ -175,9 +165,9 @@ async function main() {
   for (let i = 0; i < doctorSeeds.length; i += 1) {
     const [name, email, phone, specialization, bio, isFeatured, isVerified] = doctorSeeds[i];
     const doctor = await prisma.doctor.create({ data: {
-      name, email, phone, password: doctorPass, specialization, bio, avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=doctor-${i + 1}`,
+      name, email, phone, password: doctorPass, bio, avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=doctor-${i + 1}`,
       rating: 4.4 + i * 0.1, totalSessions: 30 + i * 15, totalRatings: 14 + i * 3, isVerified, isActive: true,
-      isApproved: true, isFeatured, featuredOrder: isFeatured ? i + 1 : null, approvalNotes: 'Approved during seed setup.'
+      isApproved: true, isFeatured, featuredOrder: isFeatured ? i + 1 : 10 + i, approvalNotes: 'Approved during seed setup.'
     } });
     doctors.push(doctor);
     await prisma.doctorSpecialty.createMany({ data: [
@@ -185,13 +175,8 @@ async function main() {
       { doctorId: doctor.id, specialty: i % 2 === 0 ? 'Online Sessions' : 'Parent Coaching' }
     ] });
     await prisma.education.create({ data: { doctorId: doctor.id, degree: i % 2 === 0 ? 'Master of Special Education' : 'Bachelor of Psychology', institution: i % 2 === 0 ? 'Cairo University' : 'Ain Shams University', startDate: new Date('2012-09-01'), endDate: new Date('2016-06-01') } });
-    await prisma.experience.create({ data: { doctorId: doctor.id, title: 'Senior Therapist', workplace: i % 2 === 0 ? 'Tawasoul Center' : 'Hope Clinic', startDate: new Date('2018-01-01'), endDate: null, proofFile: `/uploads/doctors/experience-${i + 1}.pdf` } });
-    await prisma.certificate.create({ data: { doctorId: doctor.id, title: 'Child Therapy Certification', issuer: 'Arab Board of Child Development', startDate: new Date('2019-03-01'), endDate: new Date('2024-03-01'), certificateLink: `https://example.com/certificates/${i + 1}` } });
-    await prisma.sessionPrice.create({ data: {
-      doctorId: doctor.id,
-      duration: 60,
-      price: 300 + i * 10
-    } });
+    await prisma.experience.create({ data: { doctorId: doctor.id, title: 'Senior Therapist', workplace: i % 2 === 0 ? 'Tawasoul Center' : 'Hope Clinic', startDate: new Date('2018-01-01'), endDate: new Date(`202${2 + i}-12-31`), proofFile: `/uploads/doctors/experience-${i + 1}.pdf` } });
+    await prisma.certificate.create({ data: { doctorId: doctor.id, title: 'Child Therapy Certification', issuer: 'Arab Board of Child Development', startDate: new Date('2019-03-01'), endDate: new Date('2024-03-01'), certificateLink: `https://media.tawasoul.app/certificates/doctor-${i + 1}.pdf` } });
     for (let day = 0; day < 5; day += 1) await prisma.availability.create({ data: { doctorId: doctor.id, dayOfWeek: day, timeSlots: j(seedAvailabilitySlots), isActive: true } });
   }
 
@@ -261,16 +246,23 @@ async function main() {
   };
   await prisma.userCoupon.createMany({ data: [{ couponId: coupons.user.id, userId: users[0].id }, { couponId: coupons.user.id, userId: users[2].id }, { couponId: coupons.all.id, userId: users[1].id }] });
 
+  const productCategories = {
+    learning: await prisma.productCategory.create({ data: { name: 'learning', nameAr: 'Learning' } }),
+    speech: await prisma.productCategory.create({ data: { name: 'speech', nameAr: 'Speech' } }),
+    behavior: await prisma.productCategory.create({ data: { name: 'behavior', nameAr: 'Behavior' } }),
+    skills: await prisma.productCategory.create({ data: { name: 'skills', nameAr: 'Skills' } })
+  };
+
   const products = [];
   for (const data of [
     ['Sensory Flash Cards', 'بطاقات حسية', 'learning', 180, 220, 18, 40, true],
     ['Speech Practice Mirror', 'مرآة التخاطب', 'speech', 260, 320, 18, 25, true],
     ['Routine Planner Board', 'لوحة الروتين اليومي', 'behavior', 310, 360, 14, 15, false],
-    ['Fine Motor Kit', 'حقيبة المهارات الدقيقة', 'skills', 420, null, null, 20, true]
+    ['Fine Motor Kit', 'حقيبة المهارات الدقيقة', 'skills', 420, 495, 15, 20, true]
   ]) {
     const [name, nameAr, category, price, before, discount, stock, featured] = data;
     products.push(await prisma.product.create({ data: {
-      name, nameAr, category, price, priceBeforeDiscount: before, discount, stock, isFeatured: featured,
+      name, nameAr, categoryId: productCategories[category].id, price, priceBeforeDiscount: before, discount, stock, isFeatured: featured,
       description: `${name} helps children practice at home.`, descriptionAr: `${nameAr} يساعد الطفل على التدريب في المنزل.`,
       images: j([`/uploads/products/${name.toLowerCase().replace(/\s+/g, '-')}-1.png`, `/uploads/products/${name.toLowerCase().replace(/\s+/g, '-')}-2.png`]),
       rating: 4.5, totalRatings: 8
@@ -297,7 +289,7 @@ async function main() {
     const order = await prisma.order.create({ data: {
       userId: users[i].id, addressId: addresses[i].id, orderNumber: `ORD-2026-00${i + 1}`, subtotal, total: subtotal - 50,
       status: i === 0 ? 'DELIVERED' : i === 1 ? 'PROCESSING' : 'PENDING', paymentMethod: i === 2 ? 'FAWRY' : 'INSTAPAY',
-      paymentStatus: i === 0 ? 'COMPLETED' : 'PENDING', transactionId: i === 0 ? `txn-order-${i + 1}` : null
+      paymentStatus: i === 0 ? 'COMPLETED' : 'PENDING', transactionId: i === 0 ? `txn-order-${i + 1}` : `txn-order-init-${i + 1}`
     } });
     await prisma.orderItem.createMany({ data: [
       { orderId: order.id, productId: productA.id, quantity: 1, price: productA.price },
@@ -305,29 +297,23 @@ async function main() {
     ] });
   }
 
-  const testCategories = {
-    auditory: await prisma.testCategory.create({ data: { name: 'Auditory Assessments', nameAr: 'اختبارات سمعية' } }),
-    visual: await prisma.testCategory.create({ data: { name: 'Visual Assessments', nameAr: 'اختبارات بصرية' } }),
-    speech: await prisma.testCategory.create({ data: { name: 'Speech Practice', nameAr: 'اختبارات النطق' } }),
-    developmental: await prisma.testCategory.create({ data: { name: 'Developmental Assessments', nameAr: 'التقييمات النمائية' } })
-  };
   const tests = [
-    await prisma.test.create({ data: { title: 'Sound Discrimination', titleAr: 'تمييز الأصوات', testCategoryId: testCategories.auditory.id, type: 'AUDITORY', testType: 'SOUND_DISCRIMINATION', description: 'Evaluate sound recognition.', questions: { create: [
+    await prisma.test.create({ data: { title: 'Sound Discrimination', titleAr: 'تمييز الأصوات', type: 'AUDITORY', testType: 'SOUND_DISCRIMINATION', description: 'Evaluate sound recognition.', questions: { create: [
       { orderIndex: 1, audioAssetPath: 'assets/audio/tests/bird.mp3', imageAssetPath: 'assets/images/tests/bird.png', choices: [{ text: 'Bird', isCorrect: true }, { text: 'Car', isCorrect: false }], scoringGuide: 'Score for correct sound match.', maxScore: 10 },
       { orderIndex: 2, audioAssetPath: 'assets/audio/tests/doorbell.mp3', imageAssetPath: 'assets/images/tests/doorbell.png', choices: [{ text: 'Doorbell', isCorrect: true }, { text: 'Drum', isCorrect: false }], scoringGuide: 'Score for speed and accuracy.', maxScore: 10 }
     ] } }, include: { questions: true } }),
-    await prisma.test.create({ data: { title: 'Pronunciation and Repetition', titleAr: 'النطق والتكرار', testCategoryId: testCategories.speech.id, type: 'AUDITORY', testType: 'PRONUNCIATION_REPETITION', description: 'Observe pronunciation.', questions: { create: [
+    await prisma.test.create({ data: { title: 'Pronunciation and Repetition', titleAr: 'النطق والتكرار', type: 'AUDITORY', testType: 'PRONUNCIATION_REPETITION', description: 'Observe pronunciation.', questions: { create: [
       { orderIndex: 1, audioAssetPath: 'assets/audio/tests/banana.mp3', scoringGuide: 'Assess articulation.', maxScore: 10 },
       { orderIndex: 2, audioAssetPath: 'assets/audio/tests/sentence.mp3', scoringGuide: 'Assess clarity.', maxScore: 10 }
     ] } }, include: { questions: true } }),
-    await prisma.test.create({ data: { title: 'Sound and Image Linking', titleAr: 'ربط الصوت بالصورة', testCategoryId: testCategories.auditory.id, type: 'AUDITORY', testType: 'SOUND_IMAGE_LINKING', description: 'Match sounds to images.', questions: { create: [
+    await prisma.test.create({ data: { title: 'Sound and Image Linking', titleAr: 'ربط الصوت بالصورة', type: 'AUDITORY', testType: 'SOUND_IMAGE_LINKING', description: 'Match sounds to images.', questions: { create: [
       { orderIndex: 1, audioAssetPath: 'assets/audio/tests/cat.mp3', imageAssetPath: 'assets/images/tests/cat.png', choices: [{ text: 'Cat', imagePath: 'assets/images/tests/cat.png', isCorrect: true }, { text: 'Dog', imagePath: 'assets/images/tests/dog.png', isCorrect: false }], scoringGuide: 'Choose the matching image.', maxScore: 10 }
     ] } }, include: { questions: true } }),
-    await prisma.test.create({ data: { title: 'Visual Sequence Ordering', titleAr: 'التسلسل والترتيب', testCategoryId: testCategories.visual.id, type: 'VISUAL', testType: 'SEQUENCE_ORDER', description: 'Arrange story cards.', questions: { create: [
+    await prisma.test.create({ data: { title: 'Visual Sequence Ordering', titleAr: 'التسلسل والترتيب', type: 'VISUAL', testType: 'SEQUENCE_ORDER', description: 'Arrange story cards.', questions: { create: [
       { orderIndex: 1, imageAssetPath: 'assets/images/tests/sequence-1.png', scoringGuide: 'Score sequence correctness.', maxScore: 10 },
       { orderIndex: 2, imageAssetPath: 'assets/images/tests/sequence-2.png', scoringGuide: 'Observe attention and ordering.', maxScore: 10 }
     ] } }, include: { questions: true } }),
-    await prisma.test.create({ data: { title: 'HELP Developmental Assessment', titleAr: 'تقييم HELP النمائي', testCategoryId: testCategories.developmental.id, type: 'VISUAL', testType: 'HELP', description: 'Doctor-led developmental assessment using HELP skills.' } })
+    await prisma.test.create({ data: { title: 'HELP Developmental Assessment', titleAr: 'تقييم HELP النمائي', type: 'VISUAL', testType: 'HELP', description: 'Doctor-led developmental assessment using HELP skills.' } })
   ];
   for (let i = 0; i < children.length; i += 1) {
     for (let t = 0; t < tests.length; t += 1) {
@@ -370,16 +356,16 @@ async function main() {
     });
     bookings.push(await prisma.booking.create({ data: {
       userId: users[i % users.length].id, doctorId: doctors[i % doctors.length].id, childId: children[i % children.length].id,
-      sessionType: i % 3 === 0 ? 'VIDEO' : i % 3 === 1 ? 'AUDIO' : 'TEXT', category: i % 4 === 0 ? 'EVALUATION' : 'INDIVIDUAL',
+      category: i % 4 === 0 ? 'EVALUATION' : 'INDIVIDUAL',
       duration: 60, price: 300 + (i % doctors.length) * 10, status, scheduledAt, scheduledMonth: scheduledAt.getMonth() + 1,
       scheduledDay: scheduledAt.getDate(), scheduledTime: formatSeedTime(slotTime), notes: 'Seeded booking for testing.',
       completedAt: status === 'COMPLETED' ? new Date(scheduledAt.getTime() + 60 * 60000) : null, cancelledAt: status === 'CANCELLED' ? plusDays(-1) : null,
       cancellationReason: status === 'CANCELLED' ? 'Family requested a new schedule.' : null, rating: status === 'COMPLETED' ? 4 + (i % 2) : null,
-      review: status === 'COMPLETED' ? 'Supportive session with clear guidance.' : null, videoLink: i % 3 !== 2 ? `https://meet.google.com/room-${i + 1}` : null
+      review: status === 'COMPLETED' ? 'Supportive session with clear guidance.' : null, videoLink: i % 3 !== 2 ? `https://meet.google.com/room-${i + 1}` : `https://meet.google.com/followup-room-${i + 1}`
     } }));
   }
   for (const booking of bookings.slice(0, 8).filter((b) => b.status !== 'CANCELLED')) {
-    await prisma.payment.create({ data: { bookingId: booking.id, doctorId: booking.doctorId, amount: booking.price, method: booking.status === 'COMPLETED' ? 'INSTAPAY' : 'FAWRY', status: booking.status === 'COMPLETED' ? 'COMPLETED' : 'PENDING', transactionId: booking.status === 'COMPLETED' ? `txn-booking-${booking.id.slice(0, 8)}` : null } });
+    await prisma.payment.create({ data: { bookingId: booking.id, doctorId: booking.doctorId, amount: booking.price, method: booking.status === 'COMPLETED' ? 'INSTAPAY' : 'FAWRY', status: booking.status === 'COMPLETED' ? 'COMPLETED' : 'PENDING', transactionId: booking.status === 'COMPLETED' ? `txn-booking-${booking.id.slice(0, 8)}` : `txn-booking-init-${booking.id.slice(0, 8)}` } });
   }
   for (let i = 0; i < doctors.length; i += 1) {
     await prisma.withdrawal.create({ data: {
@@ -390,15 +376,15 @@ async function main() {
     } });
     await prisma.article.create({ data: {
       title: `Practical advice article ${i + 1}`, content: 'This seeded article helps test listings and details.', excerpt: 'Short article summary.', authorId: doctors[i].id,
-      views: 120 + i * 40, likes: 18 + i * 5, comments: 6 + i, isRecommended: i % 2 === 0, isFeatured: i < 2, featuredOrder: i < 2 ? i + 1 : null
+      views: 120 + i * 40, likes: 18 + i * 5, comments: 6 + i, isRecommended: i % 2 === 0, isFeatured: i < 2, featuredOrder: i < 2 ? i + 1 : 10 + i
     } });
   }
 
   await prisma.message.createMany({ data: [
     { senderId: users[0].id, receiverId: users[1].id, content: 'Have you tried the new sensory cards yet?', messageType: 'TEXT', isRead: true },
     { senderId: users[1].id, receiverId: users[0].id, content: 'Yes, they worked well during practice time.', messageType: 'TEXT', isRead: true },
-    { senderId: users[2].id, receiverId: users[3].id, imageUrl: '/uploads/messages/example-image.png', messageType: 'IMAGE', isRead: false },
-    { senderId: users[4].id, receiverId: users[5].id, voiceUrl: '/uploads/messages/example-voice.mp3', voiceDuration: 22, messageType: 'VOICE', isRead: false }
+    { senderId: users[2].id, receiverId: users[3].id, imageUrl: '/uploads/messages/therapy-tools-share.png', messageType: 'IMAGE', isRead: false },
+    { senderId: users[4].id, receiverId: users[5].id, voiceUrl: '/uploads/messages/progress-update-voice.mp3', voiceDuration: 22, messageType: 'VOICE', isRead: false }
   ] });
   for (const [i, user] of users.entries()) {
     await prisma.notification.createMany({ data: [
@@ -418,15 +404,9 @@ async function main() {
     { ticketId: supportTickets[2].id, adminId: admins.support.id, message: 'Sessions have been recalculated and corrected.', isInternal: true }
   ] });
   await prisma.report.createMany({ data: [
-    { type: 'BOOKINGS', name: 'Weekly bookings overview', description: 'Snapshot of booking performance.', format: 'JSON', filters: j({ from: plusDays(-7), to: now }), generatedBy: admins.super.id, filePath: '/reports/bookings-weekly.json', fileUrl: 'https://example.com/reports/bookings-weekly.json', status: 'COMPLETED', startedAt: plusDays(-1), completedAt: now },
-    { type: 'REVENUE', name: 'Revenue export', description: 'Monthly revenue report.', format: 'CSV', filters: j({ month: '2026-03' }), generatedBy: admins.super.id, filePath: '/reports/revenue-march.csv', fileUrl: 'https://example.com/reports/revenue-march.csv', status: 'PROCESSING', startedAt: plusDays(-2) },
+    { type: 'BOOKINGS', name: 'Weekly bookings overview', description: 'Snapshot of booking performance.', format: 'JSON', filters: j({ from: plusDays(-7), to: now }), generatedBy: admins.super.id, filePath: '/reports/bookings-weekly.json', fileUrl: 'https://media.tawasoul.app/reports/bookings-weekly.json', status: 'COMPLETED', startedAt: plusDays(-1), completedAt: now },
+    { type: 'REVENUE', name: 'Revenue export', description: 'Monthly revenue report.', format: 'CSV', filters: j({ month: '2026-03' }), generatedBy: admins.super.id, filePath: '/reports/revenue-march.csv', fileUrl: 'https://media.tawasoul.app/reports/revenue-march.csv', status: 'PROCESSING', startedAt: plusDays(-2) },
     { type: 'SUPPORT_TICKETS', name: 'Support queue audit', description: 'Support response time review.', format: 'PDF', filters: j({ priority: 'HIGH' }), generatedBy: admins.content.id, status: 'FAILED', startedAt: plusDays(-3), error: 'Source export was interrupted.' }
-  ] });
-  await prisma.activityLog.createMany({ data: [
-    { adminId: admins.super.id, action: 'CREATE', entityType: 'Doctor', entityId: doctors[0].id, description: 'Created initial featured doctor profile.', changes: j({ created: true }), ipAddress: '127.0.0.1', userAgent: 'seed-script' },
-    { adminId: admins.content.id, action: 'UPDATE', entityType: 'PageContent', entityId: null, description: 'Updated onboarding and FAQ content.', changes: j({ sections: ['onboarding', 'faq'] }), ipAddress: '127.0.0.1', userAgent: 'seed-script' },
-    { adminId: admins.support.id, action: 'ASSIGN', entityType: 'SupportTicket', entityId: supportTickets[0].id, description: 'Assigned support ticket to support queue.', changes: j({ assignedTo: admins.support.id }), ipAddress: '127.0.0.1', userAgent: 'seed-script' },
-    { adminId: admins.super.id, action: 'GENERATE', entityType: 'Report', entityId: null, description: 'Triggered revenue report generation.', changes: j({ report: 'Revenue export' }), ipAddress: '127.0.0.1', userAgent: 'seed-script' }
   ] });
 
   console.log('Seed completed.');
@@ -441,3 +421,4 @@ main().catch((error) => {
 }).finally(async () => {
   await prisma.$disconnect();
 });
+
