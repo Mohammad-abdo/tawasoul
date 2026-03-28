@@ -28,130 +28,18 @@ model User {
   bookings         Booking[]
   cartItems        CartItem[]
   children         Child[]
-  comments         Comment[]
-  likes            Like[]
   receivedMessages Message[]       @relation("ReceiverMessages")
   sentMessages     Message[]       @relation("SenderMessages")
   notifications    Notification[]
   orders           Order[]
   otpCodes         OtpCode[]
-  posts            Post[]
   productReviews   ProductReview[]
   supportReplies   SupportReply[]
   supportTickets   SupportTicket[]
   coupons          UserCoupon[]
-  interests        UserInterest[]
   userPackages     UserPackage[]
 
   @@map("users")
-}
-
-model Interest {
-  id        String         @id @default(uuid())
-  name      String         @unique
-  nameAr    String
-  createdAt DateTime       @default(now())
-  posts     PostInterest[]
-  users     UserInterest[]
-
-  @@map("interests")
-}
-
-model UserInterest {
-  id         String   @id @default(uuid())
-  userId     String
-  interestId String
-  createdAt  DateTime @default(now())
-  interest   Interest @relation(fields: [interestId], references: [id], onDelete: Cascade)
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, interestId])
-  @@index([interestId], map: "user_interests_interestId_fkey")
-  @@map("user_interests")
-}
-
-model Post {
-  id              String         @id @default(uuid())
-  title           String?
-  content         String         @db.Text
-  feeling         Feeling        @default(NORMAL)
-  allowPrivateMsg Boolean        @default(false)
-  isSensitive     Boolean        @default(false)
-  isFeatured      Boolean        @default(false)
-  featuredOrder   Int?
-  authorId        String
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
-  comments        Comment[]
-  likes           Like[]
-  interests       PostInterest[]
-  tags            PostTag[]
-  author          User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
-
-  @@index([authorId], map: "posts_authorId_fkey")
-  @@map("posts")
-}
-
-model Tag {
-  id        String    @id @default(uuid())
-  name      String    @unique
-  createdAt DateTime  @default(now())
-  posts     PostTag[]
-
-  @@map("tags")
-}
-
-model PostTag {
-  id     String @id @default(uuid())
-  postId String
-  tagId  String
-  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
-  tag    Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
-
-  @@unique([postId, tagId])
-  @@index([tagId], map: "post_tags_tagId_fkey")
-  @@map("post_tags")
-}
-
-model PostInterest {
-  id         String   @id @default(uuid())
-  postId     String
-  interestId String
-  interest   Interest @relation(fields: [interestId], references: [id], onDelete: Cascade)
-  post       Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
-
-  @@unique([postId, interestId])
-  @@index([interestId], map: "post_interests_interestId_fkey")
-  @@map("post_interests")
-}
-
-model Comment {
-  id          String   @id @default(uuid())
-  content     String   @db.Text
-  isSensitive Boolean  @default(false)
-  postId      String
-  authorId    String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  author      User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  post        Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
-
-  @@index([authorId], map: "comments_authorId_fkey")
-  @@index([postId], map: "comments_postId_fkey")
-  @@map("comments")
-}
-
-model Like {
-  id        String   @id @default(uuid())
-  postId    String
-  userId    String
-  createdAt DateTime @default(now())
-  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([postId, userId])
-  @@index([userId], map: "likes_userId_fkey")
-  @@map("likes")
 }
 
 model Article {
@@ -180,7 +68,6 @@ model Doctor {
   email          String            @unique
   phone          String
   password       String
-  specialization String?
   bio            String?           @db.Text
   avatar         String?
   rating         Float             @default(0)
@@ -198,12 +85,11 @@ model Doctor {
   availability   Availability[]
   bookings       Booking[]
   certificates   Certificate[]
-  coupons        DoctorCoupon[]
   specialties    DoctorSpecialty[]
   education      Education[]
   experiences    Experience[]
+  helpAssessments HelpAssessment[]
   payments       Payment[]
-  sessionPrices  SessionPrice[]
   supportReplies SupportReply[]
   supportTickets SupportTicket[]
   withdrawals    Withdrawal[]
@@ -269,19 +155,6 @@ model Education {
   @@map("education")
 }
 
-model SessionPrice {
-  id        String   @id @default(uuid())
-  doctorId  String
-  duration  Int
-  price     Float
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  doctor    Doctor   @relation(fields: [doctorId], references: [id], onDelete: Cascade)
-
-  @@unique([doctorId, duration])
-  @@map("session_prices")
-}
-
 model Availability {
   id        String   @id @default(uuid())
   doctorId  String
@@ -313,6 +186,7 @@ model Child {
   assessmentResults AssessmentResult[]
   activityProgress  ChildActivityProgress[]
   bookings          Booking[]
+  helpAssessments   HelpAssessment[]
   user              User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId], map: "children_userId_fkey")
@@ -324,7 +198,6 @@ model Booking {
   userId             String
   doctorId           String
   childId            String?
-  sessionType        SessionType
   category           SessionCategory @default(INDIVIDUAL)
   duration           Int
   price              Float
@@ -433,7 +306,6 @@ model Admin {
   isActive       Boolean         @default(true)
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
-  activityLogs   ActivityLog[]
   pageContents   PageContent[]
   reports        Report[]
   supportReplies SupportReply[]
@@ -534,26 +406,12 @@ model Coupon {
   usedCount         Int                @default(0)
   validFrom         DateTime
   validUntil        DateTime
-  applicableTo      CouponApplicableTo @default(ALL)
   isActive          Boolean            @default(true)
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
-  doctorCoupons     DoctorCoupon[]
   userCoupons       UserCoupon[]
 
   @@map("coupons")
-}
-
-model DoctorCoupon {
-  id       String @id @default(uuid())
-  couponId String
-  doctorId String
-  coupon   Coupon @relation(fields: [couponId], references: [id], onDelete: Cascade)
-  doctor   Doctor @relation(fields: [doctorId], references: [id], onDelete: Cascade)
-
-  @@unique([couponId, doctorId])
-  @@index([doctorId], map: "doctor_coupons_doctorId_fkey")
-  @@map("doctor_coupons")
 }
 
 model UserCoupon {
@@ -582,25 +440,6 @@ model EmailTemplate {
   updatedAt DateTime          @updatedAt
 
   @@map("email_templates")
-}
-
-model ActivityLog {
-  id          String   @id @default(uuid())
-  adminId     String?
-  action      String
-  entityType  String
-  entityId    String?
-  description String?  @db.Text
-  changes     String?  @db.LongText
-  ipAddress   String?
-  userAgent   String?
-  createdAt   DateTime @default(now())
-  admin       Admin?   @relation(fields: [adminId], references: [id])
-
-  @@index([adminId])
-  @@index([entityType, entityId])
-  @@index([createdAt])
-  @@map("activity_logs")
 }
 
 model NotificationTemplate {
@@ -793,28 +632,42 @@ model UserPackage {
   @@map("user_packages")
 }
 
+model ProductCategory {
+  id        String    @id @default(uuid())
+  name      String
+  nameAr    String
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  products  Product[]
+
+  @@map("product_categories")
+}
+
 model Product {
-  id                  String          @id @default(uuid())
+  id                  String           @id @default(uuid())
   name                String
   nameAr              String
-  description         String?         @db.Text
-  descriptionAr       String?         @db.Text
-  images              String          @db.LongText
+  description         String?          @db.Text
+  descriptionAr       String?          @db.Text
+  images              String           @db.LongText
   price               Float
   priceBeforeDiscount Float?
   discount            Float?
-  rating              Float           @default(0)
-  totalRatings        Int             @default(0)
-  stock               Int             @default(0)
-  isActive            Boolean         @default(true)
-  isFeatured          Boolean         @default(false)
-  category            String?
-  createdAt           DateTime        @default(now())
-  updatedAt           DateTime        @updatedAt
+  rating              Float            @default(0)
+  totalRatings        Int              @default(0)
+  stock               Int              @default(0)
+  isActive            Boolean          @default(true)
+  isFeatured          Boolean          @default(false)
+  categoryId          String?
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
   cartItems           CartItem[]
+  category            ProductCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   orderItems          OrderItem[]
   reviews             ProductReview[]
 
+  @@index([categoryId], map: "products_categoryId_fkey")
   @@map("products")
 }
 
@@ -905,42 +758,21 @@ model OrderItem {
   @@map("order_items")
 }
 
-model Section {
-  id        String      @id @default(uuid())
-  nameAr    String      @unique
-  nameEn    String?
-  type      SectionType @default(SPECIALTY)
-  image     String?
-  isActive  Boolean     @default(true)
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
-
-  @@map("sections")
-}
-
-model AssessmentCategory {
-  id        String   @id @default(uuid())
-  name      String
-  nameAr    String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  tests     Test[]
-
-  @@map("assessment_categories")
-}
-
 model Test {
   id          String              @id @default(uuid())
   title       String
   titleAr     String? // عنوان بالعربية (مثل: تمييز الأصوات، النطق والتكرار)
-  categoryId  String?
-  category    AssessmentCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  type        TestCategory        @default(AUDITORY) // Keep for backward compatibility/sub-type
-  testType    TestType            @default(SOUND_DISCRIMINATION) // نوع الاختبار داخل الفئة
+  type        TestModality        @default(AUDITORY) // Keep for backward compatibility/sub-type
+  testType    TestType            @default(CARS) // نوع الاختبار داخل الفئة
   description String?             @db.Text
   createdAt   DateTime            @default(now())
   updatedAt   DateTime            @updatedAt
+  assessmentResults AssessmentResult[]
   questions   Question[]
+  qCarsQuestions Q_CARS[]
+  qAnalogyQuestions Q_Analogy[]
+  qVisualMemoryBatches Q_VisualMemory_Batch[]
+  qAuditoryMemoryQuestions Q_AuditoryMemory[]
 
   @@map("tests")
 }
@@ -964,18 +796,74 @@ model Question {
 }
 
 model AssessmentResult {
-  id         String   @id @default(uuid())
-  childId    String
-  questionId String
-  scoreGiven Int
-  sessionId  String?
-  timestamp  DateTime @default(now())
-  child      Child    @relation(fields: [childId], references: [id], onDelete: Cascade)
-  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  id                     String                    @id @default(uuid())
+  childId                String
+  testId                 String?
+  questionId             String?
+  scoreGiven             Int?
+  totalScore             Int?
+  maxScore               Int?
+  sessionId              String?
+  timestamp              DateTime                  @default(now())
+  child                  Child                     @relation(fields: [childId], references: [id], onDelete: Cascade)
+  test                   Test?                     @relation(fields: [testId], references: [id], onDelete: Cascade)
+  question               Question?                 @relation(fields: [questionId], references: [id], onDelete: SetNull)
+  helpAssessment         HelpAssessment?
+  qCarsAnswers           Q_CARS_Answer[]
+  qAnalogyAnswers        Q_Analogy_Answer[]
+  qVisualMemoryAnswers   Q_VisualMemory_Answer[]
+  qAuditoryMemoryAnswers Q_AuditoryMemory_Answer[]
 
   @@index([childId], map: "assessment_results_childId_fkey")
+  @@index([testId], map: "assessment_results_testId_fkey")
   @@index([questionId], map: "assessment_results_questionId_fkey")
+  @@index([sessionId], map: "assessment_results_sessionId_idx")
   @@map("assessment_results")
+}
+
+model HelpSkill {
+  id          String           @id @default(uuid())
+  domain      HelpDomain
+  skillNumber String
+  description String
+  ageRange    String
+  evaluations HelpEvaluation[]
+
+  @@map("help_skills")
+}
+
+model HelpAssessment {
+  id                 String            @id @default(uuid())
+  childId            String
+  doctorId           String
+  assessmentResultId String?           @unique
+  sessionId          String
+  developmentalAge   String
+  createdAt          DateTime          @default(now())
+  child              Child             @relation(fields: [childId], references: [id], onDelete: Cascade)
+  doctor             Doctor            @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  assessmentResult   AssessmentResult? @relation(fields: [assessmentResultId], references: [id], onDelete: SetNull)
+  evaluations        HelpEvaluation[]
+
+  @@index([childId], map: "help_assessments_childId_fkey")
+  @@index([doctorId], map: "help_assessments_doctorId_fkey")
+  @@index([sessionId], map: "help_assessments_sessionId_idx")
+  @@map("help_assessments")
+}
+
+model HelpEvaluation {
+  id           String         @id @default(uuid())
+  assessmentId String
+  skillId      String
+  score        HelpScore
+  doctorNotes  String?        @db.Text
+  assessment   HelpAssessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  skill        HelpSkill      @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  @@unique([assessmentId, skillId])
+  @@index([assessmentId], map: "help_evaluations_assessmentId_fkey")
+  @@index([skillId], map: "help_evaluations_skillId_fkey")
+  @@map("help_evaluations")
 }
 
 model ActivityCategory {
@@ -1096,6 +984,134 @@ model ChildActivityProgress {
   @@map("child_activity_progress")
 }
 
+model Q_CARS {
+  id           String          @id @default(cuid())
+  testId       String
+  order        Int
+  questionText Json
+  choices      Json
+  test         Test            @relation(fields: [testId], references: [id], onDelete: Cascade)
+  answers      Q_CARS_Answer[]
+
+  @@index([testId], map: "q_cars_testId_fkey")
+}
+
+model Q_CARS_Answer {
+  id           String            @id @default(cuid())
+  resultId     String
+  questionId   String
+  chosenIndex  Int
+  score        Int
+  result       AssessmentResult  @relation(fields: [resultId], references: [id], onDelete: Cascade)
+  question     Q_CARS            @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@unique([resultId, questionId])
+  @@index([resultId], map: "q_cars_answers_resultId_fkey")
+  @@index([questionId], map: "q_cars_answers_questionId_fkey")
+}
+
+model Q_Analogy {
+  id               String             @id @default(cuid())
+  testId           String
+  order            Int
+  questionImageUrl String
+  choices          Json
+  correctIndex     Int
+  test             Test               @relation(fields: [testId], references: [id], onDelete: Cascade)
+  answers          Q_Analogy_Answer[]
+
+  @@index([testId], map: "q_analogy_testId_fkey")
+}
+
+model Q_Analogy_Answer {
+  id           String             @id @default(cuid())
+  resultId     String
+  questionId   String
+  chosenIndex  Int
+  score        Int
+  result       AssessmentResult   @relation(fields: [resultId], references: [id], onDelete: Cascade)
+  question     Q_Analogy          @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@unique([resultId, questionId])
+  @@index([resultId], map: "q_analogy_answers_resultId_fkey")
+  @@index([questionId], map: "q_analogy_answers_questionId_fkey")
+}
+
+model Q_VisualMemory_Batch {
+  id             String            @id @default(cuid())
+  testId         String
+  order          Int
+  imageUrl       String
+  displaySeconds Int
+  test           Test              @relation(fields: [testId], references: [id], onDelete: Cascade)
+  questions      Q_VisualMemory[]
+
+  @@index([testId], map: "q_visual_memory_batches_testId_fkey")
+}
+
+model Q_VisualMemory {
+  id           String                 @id @default(cuid())
+  batchId      String
+  order        Int
+  questionText Json
+  questionType VisualMemoryQType
+  correctBool  Boolean?
+  choices      Json?
+  correctIndex Int?
+  batch        Q_VisualMemory_Batch   @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  answers      Q_VisualMemory_Answer[]
+
+  @@index([batchId], map: "q_visual_memory_batchId_fkey")
+}
+
+model Q_VisualMemory_Answer {
+  id          String                  @id @default(cuid())
+  resultId    String
+  questionId  String
+  answerBool  Boolean?
+  chosenIndex Int?
+  score       Int
+  result      AssessmentResult        @relation(fields: [resultId], references: [id], onDelete: Cascade)
+  question    Q_VisualMemory          @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@unique([resultId, questionId])
+  @@index([resultId], map: "q_visual_memory_answers_resultId_fkey")
+  @@index([questionId], map: "q_visual_memory_answers_questionId_fkey")
+}
+
+model Q_AuditoryMemory {
+  id           String                    @id @default(cuid())
+  testId       String
+  order        Int
+  audioClipUrl String
+  questionText Json
+  modelAnswer  Json
+  test         Test                      @relation(fields: [testId], references: [id], onDelete: Cascade)
+  answers      Q_AuditoryMemory_Answer[]
+
+  @@index([testId], map: "q_auditory_memory_testId_fkey")
+}
+
+model Q_AuditoryMemory_Answer {
+  id            String                    @id @default(cuid())
+  resultId      String
+  questionId    String
+  recalledItems Json
+  itemScores    Json
+  score         Int
+  result        AssessmentResult          @relation(fields: [resultId], references: [id], onDelete: Cascade)
+  question      Q_AuditoryMemory          @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@unique([resultId, questionId])
+  @@index([resultId], map: "q_auditory_memory_answers_resultId_fkey")
+  @@index([questionId], map: "q_auditory_memory_answers_questionId_fkey")
+}
+
+enum VisualMemoryQType {
+  YES_NO
+  MCQ
+}
+
 enum RelationType {
   BROTHER
   SISTER
@@ -1103,14 +1119,6 @@ enum RelationType {
   AUNT
   FATHER
   MOTHER
-}
-
-enum Feeling {
-  ANGRY
-  SAD
-  NORMAL
-  GOOD
-  HAPPY
 }
 
 enum Gender {
@@ -1134,12 +1142,6 @@ enum ChildAgeGroup {
   UNDER_4
   BETWEEN_5_15
   OVER_15
-}
-
-enum SessionType {
-  VIDEO
-  AUDIO
-  TEXT
 }
 
 enum SessionCategory {
@@ -1267,12 +1269,6 @@ enum CouponType {
   FIXED_AMOUNT
 }
 
-enum CouponApplicableTo {
-  ALL
-  SPECIFIC_DOCTORS
-  SPECIFIC_USERS
-}
-
 enum EmailTemplateType {
   WELCOME
   VERIFICATION
@@ -1313,22 +1309,37 @@ enum OrderStatus {
   CANCELLED
 }
 
-enum SectionType {
-  SPECIALTY
-  WORK_AREA
-}
-
-enum TestCategory {
+enum TestModality {
   AUDITORY // السمعي
   VISUAL // البصري
 }
 
 // نوع الاختبار داخل الفئة (سمعي/بصري)
 enum TestType {
-  SOUND_DISCRIMINATION // تمييز الأصوات
-  PRONUNCIATION_REPETITION // النطق والتكرار
-  SOUND_IMAGE_LINKING // ربط الصوت بالصورة
-  SEQUENCE_ORDER // التسلسل والترتيب
+  CARS
+  ANALOGY
+  VISUAL_MEMORY
+  AUDITORY_MEMORY
+  HELP
+  SOUND_DISCRIMINATION
+  PRONUNCIATION_REPETITION
+  SOUND_IMAGE_LINKING
+  SEQUENCE_ORDER
+}
+
+enum HelpScore {
+  NOT_SUITABLE
+  NOT_PRESENT
+  INITIAL_ATTEMPTS
+  PARTIAL_LEVEL
+  SUCCESSFUL
+}
+
+enum HelpDomain {
+  COGNITIVE
+  FINE_MOTOR
+  GROSS_MOTOR
+  SOCIAL
 }
 
 enum ActivityType {

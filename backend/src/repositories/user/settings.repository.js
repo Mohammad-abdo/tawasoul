@@ -5,8 +5,7 @@ export const findById = (id) =>
     where: { id },
     select: {
       id: true, username: true, email: true, phone: true, avatar: true,
-      allowPrivateMsg: true, isAnonymous: true,
-      interests: { include: { interest: true } }
+      allowPrivateMsg: true, isAnonymous: true
     }
   });
 
@@ -16,22 +15,13 @@ export const findByIdWithPassword = (id) =>
 export const findByEmail = (email) =>
   prisma.user.findUnique({ where: { email } });
 
-export const deleteInterests = (userId) =>
-  prisma.userInterest.deleteMany({ where: { userId } });
-
-export const createInterests = (userId, interests) =>
-  prisma.userInterest.createMany({
-    data: interests.map(interestId => ({ userId, interestId }))
-  });
-
 export const updateUser = (id, data) =>
   prisma.user.update({
     where: { id },
     data,
     select: {
       id: true, username: true, email: true, phone: true, avatar: true,
-      allowPrivateMsg: true, isAnonymous: true,
-      interests: { include: { interest: true } }
+      allowPrivateMsg: true, isAnonymous: true
     }
   });
 

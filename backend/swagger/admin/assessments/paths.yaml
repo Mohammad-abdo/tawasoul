@@ -1,8 +1,8 @@
-/admin/assessment-categories:
+/admin/assessments/test-categories:
   get:
     tags: [Admin Assessments]
-    summary: Get all assessment categories
-    operationId: adminGetAssessmentCategories
+    summary: Get all test categories
+    operationId: adminGetTestCategories
     security:
       - BearerAuth: []
     parameters:
@@ -18,7 +18,7 @@
           default: 20
     responses:
       "200":
-        description: Assessment categories list
+        description: Test categories list
         content:
           application/json:
             schema:
@@ -29,16 +29,16 @@
                 data:
                   type: object
                   properties:
-                    categories:
+                    testCategories:
                       type: array
                       items:
-                        $ref: "#/components/schemas/AdminAssessmentCategory"
+                        $ref: "#/components/schemas/AdminTestCategory"
                     pagination:
                       $ref: "#/components/schemas/PaginationMeta"
   post:
     tags: [Admin Assessments]
-    summary: Create assessment category
-    operationId: adminCreateAssessmentCategory
+    summary: Create test category
+    operationId: adminCreateTestCategory
     security:
       - BearerAuth: []
     requestBody:
@@ -64,13 +64,13 @@
                 success:
                   type: boolean
                 data:
-                  $ref: "#/components/schemas/AdminAssessmentCategory"
+                  $ref: "#/components/schemas/AdminTestCategory"
 
-/admin/assessment-categories/{id}:
+/admin/assessments/test-categories/{id}:
   get:
     tags: [Admin Assessments]
-    summary: Get assessment category by ID
-    operationId: adminGetAssessmentCategoryById
+    summary: Get test category by ID
+    operationId: adminGetTestCategoryById
     security:
       - BearerAuth: []
     parameters:
@@ -86,11 +86,11 @@
                 success:
                   type: boolean
                 data:
-                  $ref: "#/components/schemas/AdminAssessmentCategory"
+                  $ref: "#/components/schemas/AdminTestCategory"
   put:
     tags: [Admin Assessments]
-    summary: Update assessment category
-    operationId: adminUpdateAssessmentCategory
+    summary: Update test category
+    operationId: adminUpdateTestCategory
     security:
       - BearerAuth: []
     parameters:
@@ -117,11 +117,11 @@
                 success:
                   type: boolean
                 data:
-                  $ref: "#/components/schemas/AdminAssessmentCategory"
+                  $ref: "#/components/schemas/AdminTestCategory"
   delete:
     tags: [Admin Assessments]
-    summary: Delete assessment category
-    operationId: adminDeleteAssessmentCategory
+    summary: Delete test category
+    operationId: adminDeleteTestCategory
     security:
       - BearerAuth: []
     parameters:
@@ -152,7 +152,7 @@
         schema:
           type: integer
           default: 20
-      - name: categoryId
+      - name: testCategoryId
         in: query
         schema:
           type: string
@@ -160,6 +160,7 @@
         in: query
         schema:
           type: string
+          enum: [CARS, ANALOGY, VISUAL_MEMORY, AUDITORY_MEMORY, HELP]
     responses:
       "200":
         description: Tests list
@@ -215,7 +216,7 @@
       - $ref: "#/components/schemas/IdPathParam"
     responses:
       "200":
-        description: Test with questions
+        description: Test with specialized question payloads
         content:
           application/json:
             schema:
@@ -270,7 +271,7 @@
 /admin/assessments/tests/{testId}/questions:
   get:
     tags: [Admin Assessments]
-    summary: Get questions for a test
+    summary: Get question payloads for a test
     operationId: adminGetTestQuestions
     security:
       - BearerAuth: []
@@ -282,7 +283,7 @@
           type: string
     responses:
       "200":
-        description: Test questions
+        description: Test metadata and specialized question payloads
         content:
           application/json:
             schema:
@@ -291,17 +292,23 @@
                 success:
                   type: boolean
                 data:
-                  type: array
-                  items:
-                    $ref: "#/components/schemas/AdminQuestion"
+                  type: object
+                  properties:
+                    test:
+                      $ref: "#/components/schemas/AdminTest"
+                    questionModel:
+                      type: string
+                      enum: [Q_CARS, Q_Analogy, Q_VisualMemory_Batch, Q_AuditoryMemory, HelpSkill]
+                    questions:
+                      type: array
+                      items:
+                        $ref: "#/components/schemas/AdminQuestion"
   post:
     tags: [Admin Assessments]
-    summary: Create question for a test
+    summary: Create a question payload for a test
     operationId: adminCreateQuestion
     security:
       - BearerAuth: []
-    description: |
-      Accepts multipart/form-data. At least one media file (audio or image) is required.
     parameters:
       - name: testId
         in: path
@@ -311,28 +318,15 @@
     requestBody:
       required: true
       content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/AdminCreateQuestionRequest"
         multipart/form-data:
           schema:
-            type: object
-            properties:
-              scoringGuide:
-                type: string
-              orderIndex:
-                type: integer
-              maxScore:
-                type: integer
-              choices:
-                type: string
-                description: JSON-encoded choices array
-              audio:
-                type: string
-                format: binary
-              image:
-                type: string
-                format: binary
+            $ref: "#/components/schemas/AdminCreateQuestionRequest"
     responses:
       "201":
-        description: Question created
+        description: Question payload created
         content:
           application/json:
             schema:
@@ -346,7 +340,7 @@
 /admin/assessments/questions/{id}:
   get:
     tags: [Admin Assessments]
-    summary: Get question by ID
+    summary: Get one question payload by ID
     operationId: adminGetQuestionById
     security:
       - BearerAuth: []
@@ -354,7 +348,7 @@
       - $ref: "#/components/schemas/IdPathParam"
     responses:
       "200":
-        description: Question details
+        description: Specialized question payload
         content:
           application/json:
             schema:
@@ -366,7 +360,7 @@
                   $ref: "#/components/schemas/AdminQuestion"
   put:
     tags: [Admin Assessments]
-    summary: Update question
+    summary: Update one question payload by ID
     operationId: adminUpdateQuestion
     security:
       - BearerAuth: []
@@ -375,28 +369,15 @@
     requestBody:
       required: true
       content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/AdminCreateQuestionRequest"
         multipart/form-data:
           schema:
-            type: object
-            properties:
-              scoringGuide:
-                type: string
-              orderIndex:
-                type: integer
-              maxScore:
-                type: integer
-              choices:
-                type: string
-                description: JSON-encoded choices array
-              audio:
-                type: string
-                format: binary
-              image:
-                type: string
-                format: binary
+            $ref: "#/components/schemas/AdminCreateQuestionRequest"
     responses:
       "200":
-        description: Question updated
+        description: Question payload updated
         content:
           application/json:
             schema:
@@ -408,7 +389,7 @@
                   $ref: "#/components/schemas/AdminQuestion"
   delete:
     tags: [Admin Assessments]
-    summary: Delete question
+    summary: Delete a question payload by ID
     operationId: adminDeleteQuestion
     security:
       - BearerAuth: []

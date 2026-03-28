@@ -1,4 +1,4 @@
-AssessmentCategory:
+TestCategory:
   type: object
   properties:
     id:
@@ -20,19 +20,23 @@ AssessmentTest:
     titleAr:
       type: string
       nullable: true
-    categoryId:
+    testCategoryId:
       type: string
       format: uuid
       nullable: true
-    category:
-      $ref: "#/components/schemas/AssessmentCategory"
+    testCategory:
+      $ref: "#/components/schemas/TestCategory"
     type:
       type: string
       enum: [AUDITORY, VISUAL]
-      description: Test category (legacy)
     testType:
       type: string
-      enum: [SOUND_DISCRIMINATION, PRONUNCIATION_REPETITION, SOUND_IMAGE_LINKING, SEQUENCE_ORDER]
+      enum: [CARS, ANALOGY, VISUAL_MEMORY, AUDITORY_MEMORY, HELP]
+    questionModel:
+      type: string
+      enum: [Q_CARS, Q_Analogy, Q_VisualMemory_Batch, Q_AuditoryMemory, HelpSkill]
+    questionCount:
+      type: integer
     description:
       type: string
       nullable: true
@@ -40,49 +44,249 @@ AssessmentTest:
       type: string
       format: date-time
 
-AssessmentQuestion:
+LocalizedText:
+  type: object
+  properties:
+    ar:
+      type: string
+      nullable: true
+    en:
+      type: string
+      nullable: true
+
+LocalizedChoice:
+  type: object
+  properties:
+    ar:
+      type: string
+      nullable: true
+    en:
+      type: string
+      nullable: true
+    imageUrl:
+      type: string
+      nullable: true
+    audioUrl:
+      type: string
+      nullable: true
+    imagePath:
+      type: string
+      nullable: true
+    audioPath:
+      type: string
+      nullable: true
+
+AssessmentQuestionCars:
+  type: object
+  properties:
+    id:
+      type: string
+    testId:
+      type: string
+    order:
+      type: integer
+    questionText:
+      $ref: "#/components/schemas/LocalizedText"
+    choices:
+      type: array
+      items:
+        $ref: "#/components/schemas/LocalizedChoice"
+
+AssessmentQuestionAnalogy:
+  type: object
+  properties:
+    id:
+      type: string
+    testId:
+      type: string
+    order:
+      type: integer
+    questionImageUrl:
+      type: string
+    choices:
+      type: array
+      items:
+        $ref: "#/components/schemas/LocalizedChoice"
+
+AssessmentVisualMemoryQuestion:
+  type: object
+  properties:
+    id:
+      type: string
+    batchId:
+      type: string
+    order:
+      type: integer
+    questionText:
+      $ref: "#/components/schemas/LocalizedText"
+    questionType:
+      type: string
+      enum: [YES_NO, MCQ]
+    choices:
+      type: array
+      nullable: true
+      items:
+        $ref: "#/components/schemas/LocalizedChoice"
+
+AssessmentQuestionVisualMemoryBatch:
+  type: object
+  properties:
+    id:
+      type: string
+    testId:
+      type: string
+    order:
+      type: integer
+    imageUrl:
+      type: string
+    displaySeconds:
+      type: integer
+    questions:
+      type: array
+      items:
+        $ref: "#/components/schemas/AssessmentVisualMemoryQuestion"
+
+AssessmentQuestionAuditoryMemory:
+  type: object
+  properties:
+    id:
+      type: string
+    testId:
+      type: string
+    order:
+      type: integer
+    audioClipUrl:
+      type: string
+    questionText:
+      $ref: "#/components/schemas/LocalizedText"
+
+AssessmentQuestionHelpSkill:
   type: object
   properties:
     id:
       type: string
       format: uuid
-    testId:
+    domain:
+      type: string
+      enum: [COGNITIVE, FINE_MOTOR, GROSS_MOTOR, SOCIAL]
+    skillNumber:
+      type: string
+    description:
+      type: string
+    ageRange:
+      type: string
+
+AssessmentQuestion:
+  oneOf:
+    - $ref: "#/components/schemas/AssessmentQuestionCars"
+    - $ref: "#/components/schemas/AssessmentQuestionAnalogy"
+    - $ref: "#/components/schemas/AssessmentQuestionVisualMemoryBatch"
+    - $ref: "#/components/schemas/AssessmentQuestionAuditoryMemory"
+    - $ref: "#/components/schemas/AssessmentQuestionHelpSkill"
+
+AssessmentAnswerCars:
+  type: object
+  properties:
+    id:
+      type: string
+    questionId:
+      type: string
+    chosenIndex:
+      type: integer
+    score:
+      type: integer
+
+AssessmentAnswerAnalogy:
+  type: object
+  properties:
+    id:
+      type: string
+    questionId:
+      type: string
+    chosenIndex:
+      type: integer
+    score:
+      type: integer
+
+AssessmentAnswerVisualMemory:
+  type: object
+  properties:
+    id:
+      type: string
+    questionId:
+      type: string
+    answerBool:
+      type: boolean
+      nullable: true
+    chosenIndex:
+      type: integer
+      nullable: true
+    score:
+      type: integer
+
+AssessmentAnswerAuditoryMemory:
+  type: object
+  properties:
+    id:
+      type: string
+    questionId:
+      type: string
+    recalledItems:
+      type: array
+      items:
+        type: string
+    itemScores:
+      type: array
+      items:
+        type: boolean
+    score:
+      type: integer
+
+HelpEvaluation:
+  type: object
+  properties:
+    id:
       type: string
       format: uuid
-    orderIndex:
-      type: integer
-    audioAssetPath:
+    skillId:
+      type: string
+      format: uuid
+    score:
+      type: string
+      enum: [NOT_SUITABLE, NOT_PRESENT, INITIAL_ATTEMPTS, PARTIAL_LEVEL, SUCCESSFUL]
+    doctorNotes:
       type: string
       nullable: true
-      description: URL to audio instruction file
-    imageAssetPath:
+    skill:
+      $ref: "#/components/schemas/AssessmentQuestionHelpSkill"
+
+HelpAssessment:
+  type: object
+  properties:
+    id:
       type: string
+      format: uuid
+    childId:
+      type: string
+      format: uuid
+    doctorId:
+      type: string
+      format: uuid
+    assessmentResultId:
+      type: string
+      format: uuid
       nullable: true
-      description: URL to question image
-    choices:
+    sessionId:
+      type: string
+    developmentalAge:
+      type: string
+    createdAt:
+      type: string
+      format: date-time
+    evaluations:
       type: array
-      nullable: true
-      description: Answer choices (structure varies by test type)
       items:
-        type: object
-        properties:
-          text:
-            type: string
-            nullable: true
-          imagePath:
-            type: string
-            nullable: true
-          audioPath:
-            type: string
-            nullable: true
-          isCorrect:
-            type: boolean
-    scoringGuide:
-      type: string
-      nullable: true
-    maxScore:
-      type: integer
-      default: 10
+        $ref: "#/components/schemas/HelpEvaluation"
 
 AssessmentResult:
   type: object
@@ -93,32 +297,146 @@ AssessmentResult:
     childId:
       type: string
       format: uuid
-    questionId:
+    testId:
       type: string
       format: uuid
+      nullable: true
+    totalScore:
+      type: integer
+      nullable: true
+    maxScore:
+      type: integer
+      nullable: true
     scoreGiven:
       type: integer
+      nullable: true
     sessionId:
       type: string
       nullable: true
     timestamp:
       type: string
       format: date-time
+    test:
+      $ref: "#/components/schemas/AssessmentTest"
+    helpAssessment:
+      allOf:
+        - $ref: "#/components/schemas/HelpAssessment"
+      nullable: true
+    qCarsAnswers:
+      type: array
+      items:
+        $ref: "#/components/schemas/AssessmentAnswerCars"
+    qAnalogyAnswers:
+      type: array
+      items:
+        $ref: "#/components/schemas/AssessmentAnswerAnalogy"
+    qVisualMemoryAnswers:
+      type: array
+      items:
+        $ref: "#/components/schemas/AssessmentAnswerVisualMemory"
+    qAuditoryMemoryAnswers:
+      type: array
+      items:
+        $ref: "#/components/schemas/AssessmentAnswerAuditoryMemory"
+
+AssessmentRecommendation:
+  type: object
+  nullable: true
+  properties:
+    type:
+      type: string
+    message:
+      type: string
+    specialtyAr:
+      type: string
+    testType:
+      type: string
+
+SubmitCarsAnswerRequest:
+  type: object
+  required: [questionId, chosenIndex]
+  properties:
+    questionId:
+      type: string
+    chosenIndex:
+      type: integer
+
+SubmitAnalogyAnswerRequest:
+  type: object
+  required: [questionId, chosenIndex]
+  properties:
+    questionId:
+      type: string
+    chosenIndex:
+      type: integer
+
+SubmitVisualMemoryAnswerRequest:
+  type: object
+  required: [questionId]
+  properties:
+    questionId:
+      type: string
+    answerBool:
+      type: boolean
+      nullable: true
+    chosenIndex:
+      type: integer
+      nullable: true
+
+SubmitAuditoryMemoryAnswerRequest:
+  type: object
+  required: [questionId, recalledItems]
+  properties:
+    questionId:
+      type: string
+    recalledItems:
+      type: array
+      items:
+        type: string
+
+SubmitHelpAnswerRequest:
+  type: object
+  required: [skillId, score]
+  properties:
+    skillId:
+      type: string
+      format: uuid
+    score:
+      type: string
+      enum: [NOT_SUITABLE, NOT_PRESENT, INITIAL_ATTEMPTS, PARTIAL_LEVEL, SUCCESSFUL]
+    doctorNotes:
+      type: string
+      nullable: true
 
 SubmitAssessmentResultRequest:
   type: object
-  required: [childId, questionId, scoreGiven]
+  required: [childId, testId, answers]
   properties:
     childId:
       type: string
       format: uuid
-    questionId:
+    testId:
       type: string
       format: uuid
-    scoreGiven:
-      type: integer
-      minimum: 0
     sessionId:
       type: string
       nullable: true
-      description: Optional session grouping identifier
+      description: Optional client-provided session identifier
+    doctorId:
+      type: string
+      format: uuid
+      nullable: true
+      description: Required for HELP submissions when using the user route instead of the authenticated doctor route
+    developmentalAge:
+      type: string
+      nullable: true
+      description: Required for HELP submissions
+    answers:
+      type: array
+      items:
+        oneOf:
+          - $ref: "#/components/schemas/SubmitCarsAnswerRequest"
+          - $ref: "#/components/schemas/SubmitAnalogyAnswerRequest"
+          - $ref: "#/components/schemas/SubmitVisualMemoryAnswerRequest"
+          - $ref: "#/components/schemas/SubmitAuditoryMemoryAnswerRequest"
+          - $ref: "#/components/schemas/SubmitHelpAnswerRequest"

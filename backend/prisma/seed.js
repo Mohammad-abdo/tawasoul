@@ -10,17 +10,49 @@ const plusMonths = (n) => {
   return d;
 };
 const j = JSON.stringify;
+const seedAvailabilitySlots = ['09:00', '10:00', '11:00', '14:00', '15:00'];
+
+const formatSeedTime = (time) => {
+  const [hours, minutes] = time.split(':').map(Number);
+  const date = new Date(now);
+  date.setHours(hours, minutes, 0, 0);
+  return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+};
+
+const buildSeedSlotDate = ({ dayOfWeek, time, direction = 'future', extraWeeks = 0 }) => {
+  const [hours, minutes] = time.split(':').map(Number);
+  const date = new Date(now);
+  date.setHours(hours, minutes, 0, 0);
+
+  let diff = dayOfWeek - date.getDay();
+  if (direction === 'future') {
+    if (diff < 0 || (diff === 0 && date <= now)) diff += 7;
+    diff += extraWeeks * 7;
+  } else {
+    if (diff >= 0) diff -= 7;
+    diff -= extraWeeks * 7;
+  }
+
+  date.setDate(date.getDate() + diff);
+  return date;
+};
 
 async function clearDb() {
   const tables = [
     'childActivityProgress', 'activitySequenceItem', 'activityMatchPair', 'activityAudio', 'activityImage', 'activity',
-    'skillGroup', 'activityCategory', 'assessmentResult', 'question', 'test', 'assessmentCategory',
+    'skillGroup', 'activityCategory',
+    'q_VisualMemory_Answer', 'q_VisualMemory', 'q_VisualMemory_Batch',
+    'q_AuditoryMemory_Answer', 'q_AuditoryMemory',
+    'q_Analogy_Answer', 'q_Analogy',
+    'q_CARS_Answer', 'q_CARS',
+    'helpEvaluation', 'helpAssessment', 'helpSkill',
+    'assessmentResult', 'question', 'test', 'testCategory',
     'orderItem', 'order', 'cartItem', 'productReview', 'product', 'userPackage', 'package', 'address', 'otpCode',
     'fAQ', 'homeArticle', 'homeService', 'homeSlider', 'staticPage', 'onboarding', 'appSettings',
-    'notificationTemplate', 'activityLog', 'emailTemplate', 'userCoupon', 'doctorCoupon', 'coupon',
+    'notificationTemplate', 'activityLog', 'emailTemplate', 'userCoupon', 'coupon',
     'report', 'pageContent', 'supportReply', 'supportTicket', 'notification', 'message',
-    'payment', 'withdrawal', 'booking', 'article', 'like', 'comment', 'postInterest', 'postTag', 'post',
-    'userInterest', 'tag', 'interest', 'availability', 'sessionPrice', 'education', 'certificate',
+    'payment', 'withdrawal', 'booking', 'article',
+    'availability', 'sessionPrice', 'education', 'certificate',
     'experience', 'doctorSpecialty', 'child', 'doctor', 'user', 'admin', 'section'
   ];
   for (const table of tables) await prisma[table].deleteMany();
@@ -83,16 +115,6 @@ async function main() {
     ['الجلسات الجماعية', 'Group Sessions', 'WORK_AREA']
   ]) await prisma.section.create({ data: { nameAr, nameEn, type, image: `/uploads/sections/${nameEn.toLowerCase().replace(/\s+/g, '-')}.png` } });
 
-  const interests = [];
-  for (const data of [
-    { name: 'speech-therapy', nameAr: 'التخاطب' },
-    { name: 'autism-support', nameAr: 'دعم التوحد' },
-    { name: 'sensory-play', nameAr: 'اللعب الحسي' },
-    { name: 'parent-guidance', nameAr: 'إرشاد الأسرة' }
-  ]) interests.push(await prisma.interest.create({ data }));
-
-  const tags = [];
-  for (const name of ['support', 'speech', 'autism', 'routine', 'nutrition', 'play']) tags.push(await prisma.tag.create({ data: { name } }));
 
   for (const type of ['WELCOME', 'VERIFICATION', 'BOOKING_CONFIRMED', 'BOOKING_CANCELLED', 'PASSWORD_RESET', 'PAYMENT_RECEIVED', 'WITHDRAWAL_APPROVED', 'WITHDRAWAL_REJECTED', 'DOCTOR_APPROVED', 'DOCTOR_REJECTED', 'SUPPORT_REPLY', 'ANNOUNCEMENT']) {
     await prisma.emailTemplate.create({ data: {
@@ -100,6 +122,15 @@ async function main() {
       body: `Hello {{name}} from ${type}.`, bodyAr: `مرحباً {{name}} من ${type}.`, variables: j(['name', 'email', 'link'])
     } });
   }
+
+  await prisma.helpSkill.createMany({
+    data: [
+      { domain: 'COGNITIVE', skillNumber: '1', description: 'Matches two identical objects.', ageRange: '3.0-3.6' },
+      { domain: 'FINE_MOTOR', skillNumber: '2', description: 'Uses pincer grasp to pick up small items.', ageRange: '3.0-3.6' },
+      { domain: 'GROSS_MOTOR', skillNumber: '3', description: 'Jumps forward with both feet together.', ageRange: '3.6-4.0' },
+      { domain: 'SOCIAL', skillNumber: '4', description: 'Initiates simple social interaction with peers.', ageRange: '4.0-4.6' }
+    ]
+  });
 
   for (const data of [
     { name: 'booking-confirmed', type: 'BOOKING_CONFIRMED', title: 'Booking confirmed', message: 'Your session is confirmed.' },
@@ -132,10 +163,6 @@ async function main() {
       { userId: user.id, phone, code: '12345', isUsed: true, expiresAt: plusDays(1) },
       { userId: user.id, phone, code: `90${i + 10}`, isUsed: false, expiresAt: plusDays(2) }
     ] });
-    await prisma.userInterest.createMany({ data: [
-      { userId: user.id, interestId: interests[i % interests.length].id },
-      { userId: user.id, interestId: interests[(i + 1) % interests.length].id }
-    ] });
   }
 
   const doctors = [];
@@ -160,12 +187,12 @@ async function main() {
     await prisma.education.create({ data: { doctorId: doctor.id, degree: i % 2 === 0 ? 'Master of Special Education' : 'Bachelor of Psychology', institution: i % 2 === 0 ? 'Cairo University' : 'Ain Shams University', startDate: new Date('2012-09-01'), endDate: new Date('2016-06-01') } });
     await prisma.experience.create({ data: { doctorId: doctor.id, title: 'Senior Therapist', workplace: i % 2 === 0 ? 'Tawasoul Center' : 'Hope Clinic', startDate: new Date('2018-01-01'), endDate: null, proofFile: `/uploads/doctors/experience-${i + 1}.pdf` } });
     await prisma.certificate.create({ data: { doctorId: doctor.id, title: 'Child Therapy Certification', issuer: 'Arab Board of Child Development', startDate: new Date('2019-03-01'), endDate: new Date('2024-03-01'), certificateLink: `https://example.com/certificates/${i + 1}` } });
-    await prisma.sessionPrice.createMany({ data: [
-      { doctorId: doctor.id, duration: 30, price: 180 + i * 10 },
-      { doctorId: doctor.id, duration: 45, price: 240 + i * 10 },
-      { doctorId: doctor.id, duration: 60, price: 300 + i * 10 }
-    ] });
-    for (let day = 0; day < 5; day += 1) await prisma.availability.create({ data: { doctorId: doctor.id, dayOfWeek: day, timeSlots: j(['09:00', '10:00', '11:00', '14:00', '15:00']), isActive: true } });
+    await prisma.sessionPrice.create({ data: {
+      doctorId: doctor.id,
+      duration: 60,
+      price: 300 + i * 10
+    } });
+    for (let day = 0; day < 5; day += 1) await prisma.availability.create({ data: { doctorId: doctor.id, dayOfWeek: day, timeSlots: j(seedAvailabilitySlots), isActive: true } });
   }
 
   const children = [];
@@ -228,11 +255,10 @@ async function main() {
   ] });
 
   const coupons = {
-    all: await prisma.coupon.create({ data: { code: 'WELCOME10', type: 'PERCENTAGE', value: 10, minAmount: 500, maxDiscount: 150, usageLimit: 200, usageLimitPerUser: 1, validFrom: plusDays(-7), validUntil: plusDays(60), applicableTo: 'ALL' } }),
-    doctor: await prisma.coupon.create({ data: { code: 'DRMONA20', type: 'PERCENTAGE', value: 20, minAmount: 300, maxDiscount: 200, usageLimit: 100, usageLimitPerUser: 2, validFrom: plusDays(-5), validUntil: plusDays(45), applicableTo: 'SPECIFIC_DOCTORS' } }),
-    user: await prisma.coupon.create({ data: { code: 'VIP200', type: 'FIXED_AMOUNT', value: 200, minAmount: 800, usageLimit: 20, usageLimitPerUser: 1, validFrom: plusDays(-1), validUntil: plusDays(20), applicableTo: 'SPECIFIC_USERS' } })
+    all: await prisma.coupon.create({ data: { code: 'WELCOME10', type: 'PERCENTAGE', value: 10, minAmount: 500, maxDiscount: 150, usageLimit: 200, usageLimitPerUser: 1, validFrom: plusDays(-7), validUntil: plusDays(60) } }),
+    doctor: await prisma.coupon.create({ data: { code: 'DRMONA20', type: 'PERCENTAGE', value: 20, minAmount: 300, maxDiscount: 200, usageLimit: 100, usageLimitPerUser: 2, validFrom: plusDays(-5), validUntil: plusDays(45) } }),
+    user: await prisma.coupon.create({ data: { code: 'VIP200', type: 'FIXED_AMOUNT', value: 200, minAmount: 800, usageLimit: 20, usageLimitPerUser: 1, validFrom: plusDays(-1), validUntil: plusDays(20) } })
   };
-  await prisma.doctorCoupon.createMany({ data: [{ couponId: coupons.doctor.id, doctorId: doctors[0].id }, { couponId: coupons.doctor.id, doctorId: doctors[1].id }] });
   await prisma.userCoupon.createMany({ data: [{ couponId: coupons.user.id, userId: users[0].id }, { couponId: coupons.user.id, userId: users[2].id }, { couponId: coupons.all.id, userId: users[1].id }] });
 
   const products = [];
@@ -279,30 +305,33 @@ async function main() {
     ] });
   }
 
-  const assessmentCategories = {
-    auditory: await prisma.assessmentCategory.create({ data: { name: 'Auditory Assessments', nameAr: 'اختبارات سمعية' } }),
-    visual: await prisma.assessmentCategory.create({ data: { name: 'Visual Assessments', nameAr: 'اختبارات بصرية' } }),
-    speech: await prisma.assessmentCategory.create({ data: { name: 'Speech Practice', nameAr: 'اختبارات النطق' } })
+  const testCategories = {
+    auditory: await prisma.testCategory.create({ data: { name: 'Auditory Assessments', nameAr: 'اختبارات سمعية' } }),
+    visual: await prisma.testCategory.create({ data: { name: 'Visual Assessments', nameAr: 'اختبارات بصرية' } }),
+    speech: await prisma.testCategory.create({ data: { name: 'Speech Practice', nameAr: 'اختبارات النطق' } }),
+    developmental: await prisma.testCategory.create({ data: { name: 'Developmental Assessments', nameAr: 'التقييمات النمائية' } })
   };
   const tests = [
-    await prisma.test.create({ data: { title: 'Sound Discrimination', titleAr: 'تمييز الأصوات', categoryId: assessmentCategories.auditory.id, type: 'AUDITORY', testType: 'SOUND_DISCRIMINATION', description: 'Evaluate sound recognition.', questions: { create: [
+    await prisma.test.create({ data: { title: 'Sound Discrimination', titleAr: 'تمييز الأصوات', testCategoryId: testCategories.auditory.id, type: 'AUDITORY', testType: 'SOUND_DISCRIMINATION', description: 'Evaluate sound recognition.', questions: { create: [
       { orderIndex: 1, audioAssetPath: 'assets/audio/tests/bird.mp3', imageAssetPath: 'assets/images/tests/bird.png', choices: [{ text: 'Bird', isCorrect: true }, { text: 'Car', isCorrect: false }], scoringGuide: 'Score for correct sound match.', maxScore: 10 },
       { orderIndex: 2, audioAssetPath: 'assets/audio/tests/doorbell.mp3', imageAssetPath: 'assets/images/tests/doorbell.png', choices: [{ text: 'Doorbell', isCorrect: true }, { text: 'Drum', isCorrect: false }], scoringGuide: 'Score for speed and accuracy.', maxScore: 10 }
     ] } }, include: { questions: true } }),
-    await prisma.test.create({ data: { title: 'Pronunciation and Repetition', titleAr: 'النطق والتكرار', categoryId: assessmentCategories.speech.id, type: 'AUDITORY', testType: 'PRONUNCIATION_REPETITION', description: 'Observe pronunciation.', questions: { create: [
+    await prisma.test.create({ data: { title: 'Pronunciation and Repetition', titleAr: 'النطق والتكرار', testCategoryId: testCategories.speech.id, type: 'AUDITORY', testType: 'PRONUNCIATION_REPETITION', description: 'Observe pronunciation.', questions: { create: [
       { orderIndex: 1, audioAssetPath: 'assets/audio/tests/banana.mp3', scoringGuide: 'Assess articulation.', maxScore: 10 },
       { orderIndex: 2, audioAssetPath: 'assets/audio/tests/sentence.mp3', scoringGuide: 'Assess clarity.', maxScore: 10 }
     ] } }, include: { questions: true } }),
-    await prisma.test.create({ data: { title: 'Sound and Image Linking', titleAr: 'ربط الصوت بالصورة', categoryId: assessmentCategories.auditory.id, type: 'AUDITORY', testType: 'SOUND_IMAGE_LINKING', description: 'Match sounds to images.', questions: { create: [
+    await prisma.test.create({ data: { title: 'Sound and Image Linking', titleAr: 'ربط الصوت بالصورة', testCategoryId: testCategories.auditory.id, type: 'AUDITORY', testType: 'SOUND_IMAGE_LINKING', description: 'Match sounds to images.', questions: { create: [
       { orderIndex: 1, audioAssetPath: 'assets/audio/tests/cat.mp3', imageAssetPath: 'assets/images/tests/cat.png', choices: [{ text: 'Cat', imagePath: 'assets/images/tests/cat.png', isCorrect: true }, { text: 'Dog', imagePath: 'assets/images/tests/dog.png', isCorrect: false }], scoringGuide: 'Choose the matching image.', maxScore: 10 }
     ] } }, include: { questions: true } }),
-    await prisma.test.create({ data: { title: 'Visual Sequence Ordering', titleAr: 'التسلسل والترتيب', categoryId: assessmentCategories.visual.id, type: 'VISUAL', testType: 'SEQUENCE_ORDER', description: 'Arrange story cards.', questions: { create: [
+    await prisma.test.create({ data: { title: 'Visual Sequence Ordering', titleAr: 'التسلسل والترتيب', testCategoryId: testCategories.visual.id, type: 'VISUAL', testType: 'SEQUENCE_ORDER', description: 'Arrange story cards.', questions: { create: [
       { orderIndex: 1, imageAssetPath: 'assets/images/tests/sequence-1.png', scoringGuide: 'Score sequence correctness.', maxScore: 10 },
       { orderIndex: 2, imageAssetPath: 'assets/images/tests/sequence-2.png', scoringGuide: 'Observe attention and ordering.', maxScore: 10 }
-    ] } }, include: { questions: true } })
+    ] } }, include: { questions: true } }),
+    await prisma.test.create({ data: { title: 'HELP Developmental Assessment', titleAr: 'تقييم HELP النمائي', testCategoryId: testCategories.developmental.id, type: 'VISUAL', testType: 'HELP', description: 'Doctor-led developmental assessment using HELP skills.' } })
   ];
   for (let i = 0; i < children.length; i += 1) {
     for (let t = 0; t < tests.length; t += 1) {
+      if (!tests[t].questions?.length) continue;
       await prisma.assessmentResult.create({ data: { childId: children[i].id, questionId: tests[t].questions[0].id, scoreGiven: 6 + ((i + t) % 5), sessionId: `assessment-${i + 1}-${t + 1}`, timestamp: plusDays(-(3 + i + t)) } });
     }
   }
@@ -332,13 +361,19 @@ async function main() {
   const bookings = [];
   for (let i = 0; i < 12; i += 1) {
     const status = i < 4 ? 'COMPLETED' : i < 8 ? 'CONFIRMED' : i < 10 ? 'PENDING' : 'CANCELLED';
-    const scheduledAt = status === 'COMPLETED' ? plusDays(-(10 - i)) : plusDays(i + 1);
+    const slotTime = seedAvailabilitySlots[i % seedAvailabilitySlots.length];
+    const scheduledAt = buildSeedSlotDate({
+      dayOfWeek: i % 5,
+      time: slotTime,
+      direction: status === 'COMPLETED' ? 'past' : 'future',
+      extraWeeks: Math.floor(i / 5)
+    });
     bookings.push(await prisma.booking.create({ data: {
       userId: users[i % users.length].id, doctorId: doctors[i % doctors.length].id, childId: children[i % children.length].id,
       sessionType: i % 3 === 0 ? 'VIDEO' : i % 3 === 1 ? 'AUDIO' : 'TEXT', category: i % 4 === 0 ? 'EVALUATION' : 'INDIVIDUAL',
-      duration: i % 2 === 0 ? 45 : 60, price: 220 + (i % doctors.length) * 25, status, scheduledAt, scheduledMonth: scheduledAt.getMonth() + 1,
-      scheduledDay: scheduledAt.getDate(), scheduledTime: i % 2 === 0 ? '10:00 AM' : '02:30 PM', notes: 'Seeded booking for testing.',
-      completedAt: status === 'COMPLETED' ? plusDays(-(9 - i)) : null, cancelledAt: status === 'CANCELLED' ? plusDays(-1) : null,
+      duration: 60, price: 300 + (i % doctors.length) * 10, status, scheduledAt, scheduledMonth: scheduledAt.getMonth() + 1,
+      scheduledDay: scheduledAt.getDate(), scheduledTime: formatSeedTime(slotTime), notes: 'Seeded booking for testing.',
+      completedAt: status === 'COMPLETED' ? new Date(scheduledAt.getTime() + 60 * 60000) : null, cancelledAt: status === 'CANCELLED' ? plusDays(-1) : null,
       cancellationReason: status === 'CANCELLED' ? 'Family requested a new schedule.' : null, rating: status === 'COMPLETED' ? 4 + (i % 2) : null,
       review: status === 'COMPLETED' ? 'Supportive session with clear guidance.' : null, videoLink: i % 3 !== 2 ? `https://meet.google.com/room-${i + 1}` : null
     } }));
@@ -392,26 +427,6 @@ async function main() {
     { adminId: admins.content.id, action: 'UPDATE', entityType: 'PageContent', entityId: null, description: 'Updated onboarding and FAQ content.', changes: j({ sections: ['onboarding', 'faq'] }), ipAddress: '127.0.0.1', userAgent: 'seed-script' },
     { adminId: admins.support.id, action: 'ASSIGN', entityType: 'SupportTicket', entityId: supportTickets[0].id, description: 'Assigned support ticket to support queue.', changes: j({ assignedTo: admins.support.id }), ipAddress: '127.0.0.1', userAgent: 'seed-script' },
     { adminId: admins.super.id, action: 'GENERATE', entityType: 'Report', entityId: null, description: 'Triggered revenue report generation.', changes: j({ report: 'Revenue export' }), ipAddress: '127.0.0.1', userAgent: 'seed-script' }
-  ] });
-
-  const posts = [];
-  const feelings = ['HAPPY', 'GOOD', 'NORMAL', 'SAD'];
-  for (let i = 0; i < 4; i += 1) {
-    const post = await prisma.post.create({ data: { title: `Community post ${i + 1}`, content: 'Sharing a small parenting win and looking for tips from other families.', feeling: feelings[i], allowPrivateMsg: i % 2 === 0, isSensitive: i === 3, isFeatured: i < 2, featuredOrder: i < 2 ? i + 1 : null, authorId: users[i].id } });
-    posts.push(post);
-    await prisma.postTag.createMany({ data: [{ postId: post.id, tagId: tags[i % tags.length].id }, { postId: post.id, tagId: tags[(i + 1) % tags.length].id }] });
-    await prisma.postInterest.createMany({ data: [{ postId: post.id, interestId: interests[i % interests.length].id }, { postId: post.id, interestId: interests[(i + 1) % interests.length].id }] });
-  }
-  await prisma.comment.createMany({ data: [
-    { postId: posts[0].id, authorId: users[1].id, content: 'This is encouraging, thank you for sharing.' },
-    { postId: posts[0].id, authorId: users[2].id, content: 'We had a similar experience last month.' },
-    { postId: posts[1].id, authorId: users[0].id, content: 'The routine board helped us a lot.' },
-    { postId: posts[2].id, authorId: users[4].id, content: 'Try shorter exercises with visual prompts.' },
-    { postId: posts[3].id, authorId: users[5].id, content: 'Sending support and hoping things get easier soon.' }
-  ] });
-  await prisma.like.createMany({ data: [
-    { postId: posts[0].id, userId: users[0].id }, { postId: posts[0].id, userId: users[2].id }, { postId: posts[1].id, userId: users[1].id },
-    { postId: posts[1].id, userId: users[3].id }, { postId: posts[2].id, userId: users[4].id }, { postId: posts[3].id, userId: users[5].id }
   ] });
 
   console.log('Seed completed.');

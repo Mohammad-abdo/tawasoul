@@ -10,7 +10,7 @@ export const getUserSettings = async (userId) => {
 };
 
 export const updateUserSettings = async (userId, body) => {
-  const { email, phone, avatar, allowPrivateMsg, isAnonymous, interests } = body;
+  const { email, phone, avatar, allowPrivateMsg, isAnonymous } = body;
   const updateData = {};
 
   if (email !== undefined) {
@@ -25,13 +25,6 @@ export const updateUserSettings = async (userId, body) => {
   if (avatar !== undefined) updateData.avatar = avatar;
   if (allowPrivateMsg !== undefined) updateData.allowPrivateMsg = allowPrivateMsg;
   if (isAnonymous !== undefined) updateData.isAnonymous = isAnonymous;
-
-  if (interests) {
-    await settingsRepo.deleteInterests(userId);
-    if (interests.length > 0) {
-      await settingsRepo.createInterests(userId, interests);
-    }
-  }
 
   return settingsRepo.updateUser(userId, updateData);
 };

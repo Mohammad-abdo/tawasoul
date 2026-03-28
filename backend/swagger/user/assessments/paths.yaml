@@ -4,9 +4,19 @@
     summary: Get all assessment tests
     operationId: getAssessmentTests
     security: []
+    parameters:
+      - name: testCategory
+        in: query
+        schema:
+          type: string
+      - name: testType
+        in: query
+        schema:
+          type: string
+          enum: [CARS, ANALOGY, VISUAL_MEMORY, AUDITORY_MEMORY, HELP]
     responses:
       "200":
-        description: List of tests grouped by category
+        description: List of tests
         content:
           application/json:
             schema:
@@ -34,7 +44,7 @@
           format: uuid
     responses:
       "200":
-        description: Test with its questions
+        description: Test metadata and specialized question payloads
         content:
           application/json:
             schema:
@@ -47,6 +57,9 @@
                   properties:
                     test:
                       $ref: "#/components/schemas/AssessmentTest"
+                    questionModel:
+                      type: string
+                      enum: [Q_CARS, Q_Analogy, Q_VisualMemory_Batch, Q_AuditoryMemory, HelpSkill]
                     questions:
                       type: array
                       items:
@@ -61,7 +74,7 @@
 /user/assessments/submit-result:
   post:
     tags: [User Assessments]
-    summary: Submit assessment result for a child
+    summary: Submit one completed assessment session
     operationId: submitAssessmentResult
     security:
       - BearerAuth: []
@@ -73,7 +86,7 @@
             $ref: "#/components/schemas/SubmitAssessmentResultRequest"
     responses:
       "201":
-        description: Result submitted
+        description: Session result submitted
         content:
           application/json:
             schema:
@@ -82,7 +95,16 @@
                 success:
                   type: boolean
                 data:
-                  $ref: "#/components/schemas/AssessmentResult"
+                  type: object
+                  properties:
+                    result:
+                      $ref: "#/components/schemas/AssessmentResult"
+                    helpAssessment:
+                      allOf:
+                        - $ref: "#/components/schemas/HelpAssessment"
+                      nullable: true
+                    recommendation:
+                      $ref: "#/components/schemas/AssessmentRecommendation"
       "400":
         description: Validation error
         content:

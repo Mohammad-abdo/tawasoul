@@ -39,13 +39,49 @@ export const findChildDetails = (doctorId, childId) =>
       },
       assessmentResults: {
         include: {
+          test: true,
+          helpAssessment: {
+            include: {
+              evaluations: {
+                include: {
+                  skill: true
+                }
+              }
+            }
+          },
           question: {
             include: {
               test: true
             }
-          }
+          },
+          qCarsAnswers: true,
+          qAnalogyAnswers: true,
+          qVisualMemoryAnswers: true,
+          qAuditoryMemoryAnswers: true
         },
         orderBy: { timestamp: 'desc' }
+      },
+      helpAssessments: {
+        include: {
+          doctor: {
+            select: {
+              id: true,
+              name: true,
+              email: true
+            }
+          },
+          assessmentResult: {
+            include: {
+              test: true
+            }
+          },
+          evaluations: {
+            include: {
+              skill: true
+            }
+          }
+        },
+        orderBy: { createdAt: 'desc' }
       },
       bookings: {
         where: { doctorId },

@@ -111,6 +111,9 @@
                   properties:
                     test:
                       $ref: "#/components/schemas/AssessmentTest"
+                    questionModel:
+                      type: string
+                      enum: [Q_CARS, Q_Analogy, Q_VisualMemory_Batch, Q_AuditoryMemory, HelpSkill]
                     questions:
                       type: array
                       items:
@@ -140,4 +143,13 @@
                 success:
                   type: boolean
                 data:
-                  $ref: "#/components/schemas/AssessmentResult"
+                  type: object
+                  properties:
+                    result:
+                      $ref: "#/components/schemas/AssessmentResult"
+                    helpAssessment:
+                      allOf:
+                        - $ref: "#/components/schemas/HelpAssessment"
+                      nullable: true
+                    recommendation:
+                      $ref: "#/components/schemas/AssessmentRecommendation"

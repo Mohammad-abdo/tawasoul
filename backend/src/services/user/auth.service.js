@@ -9,7 +9,7 @@ const signToken = (userId) =>
     { expiresIn: '30d' }
   );
 
-export const register = async ({ username, email, phone, password, interests }) => {
+export const register = async ({ username, email, phone, password }) => {
   if (!username || !password) {
     const err = new Error('Username and password are required');
     err.code = 'VALIDATION_ERROR';
@@ -50,12 +50,7 @@ export const register = async ({ username, email, phone, password, interests }) 
     phone: phone || null,
     password: hashedPassword,
     isActive: true,
-    isApproved: true,
-    interests: interests ? {
-      create: interests.map(interestId => ({
-        interest: { connect: { id: interestId } }
-      }))
-    } : undefined
+    isApproved: true
   });
 
   const token = signToken(user.id);
@@ -70,7 +65,7 @@ export const login = async ({ username, password }) => {
     throw err;
   }
 
-  const user = await authRepo.findByUsernameWithInterests(username);
+  const user = await authRepo.findByUsername(username);
 
   if (!user) {
     const err = new Error('Invalid username or password');

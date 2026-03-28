@@ -18,13 +18,6 @@ UserRegisterRequest:
       type: string
       minLength: 6
       example: secret123
-    interests:
-      type: array
-      items:
-        type: string
-        format: uuid
-      description: Array of Interest IDs
-
 UserLoginRequest:
   type: object
   required: [username, password]
@@ -153,20 +146,6 @@ UserProfile:
       type: boolean
     isPhoneVerified:
       type: boolean
-    interests:
-      type: array
-      items:
-        type: object
-        properties:
-          interest:
-            type: object
-            properties:
-              id:
-                type: string
-              name:
-                type: string
-              nameAr:
-                type: string
     createdAt:
       type: string
       format: date-time

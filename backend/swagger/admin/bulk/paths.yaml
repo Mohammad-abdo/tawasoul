@@ -112,65 +112,6 @@
             schema:
               $ref: "#/components/schemas/BulkOperationResult"
 
-/admin/bulk/posts/moderate:
-  post:
-    tags: [Admin Bulk Operations]
-    summary: Bulk moderate posts
-    operationId: adminBulkModeratePosts
-    security:
-      - BearerAuth: []
-    requestBody:
-      required: true
-      content:
-        application/json:
-          schema:
-            type: object
-            required: [postIds, action]
-            properties:
-              postIds:
-                type: array
-                items:
-                  type: string
-              action:
-                type: string
-                enum: [APPROVE, REJECT, HIDE, DELETE]
-              reason:
-                type: string
-    responses:
-      "200":
-        description: Posts moderated
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/BulkOperationResult"
-
-/admin/bulk/comments/delete:
-  post:
-    tags: [Admin Bulk Operations]
-    summary: Bulk delete comments
-    operationId: adminBulkDeleteComments
-    security:
-      - BearerAuth: []
-    requestBody:
-      required: true
-      content:
-        application/json:
-          schema:
-            type: object
-            required: [commentIds]
-            properties:
-              commentIds:
-                type: array
-                items:
-                  type: string
-    responses:
-      "200":
-        description: Comments deleted
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/BulkOperationResult"
-
 /admin/bulk/bookings/cancel:
   post:
     tags: [Admin Bulk Operations]

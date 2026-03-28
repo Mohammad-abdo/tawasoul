@@ -34,9 +34,6 @@ Coupon:
     validUntil:
       type: string
       format: date-time
-    applicableTo:
-      type: string
-      enum: [ALL, SPECIFIC_DOCTORS, SPECIFIC_USERS]
     isActive:
       type: boolean
     createdAt:
@@ -74,19 +71,9 @@ CreateCouponRequest:
     validUntil:
       type: string
       format: date-time
-    applicableTo:
-      type: string
-      enum: [ALL, SPECIFIC_DOCTORS, SPECIFIC_USERS]
-      default: ALL
-    doctorIds:
-      type: array
-      items:
-        type: string
-        format: uuid
-      description: Required when applicableTo is SPECIFIC_DOCTORS
     userIds:
       type: array
       items:
         type: string
         format: uuid
-      description: Required when applicableTo is SPECIFIC_USERS
+      description: Optional list of specific users to pre-assign the coupon to
