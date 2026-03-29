@@ -1,333 +1,568 @@
+import { validationResult } from 'express-validator';
 import { prisma } from '../../config/database.js';
 import { logger } from '../../utils/logger.js';
 import {
-  buildAssessmentRecommendation,
-  buildAssessmentSubmission,
-  buildHelpAssessmentSubmission,
-  countAssessmentQuestions,
-  fetchAssessmentQuestions,
-  getQuestionModelForTestType
-} from '../../utils/assessment.utils.js';
+  buildTestDetail,
+  buildTestSummary,
+  ensureTestForType,
+  ensureUniqueAnswerQuestionIds,
+  ensureUserOwnsChild,
+  fetchAssessmentSessionResults,
+  groupAssessmentResultSummaries,
+  serializeAssessmentResultDetail
+} from '../../utils/assessment-api.utils.js';
+import { createHttpError } from '../../utils/httpError.js';
 
-const formatTest = (test, questionCount) => ({
-  ...test,
-  questionModel: getQuestionModelForTestType(test.testType),
-  questionCount
-});
+const handleValidationErrors = (req, res) => {
+  const errors = validationResult(req);
 
-/**
- * Get Available Tests (filter by test category and/or testType)
- */
+  if (errors.isEmpty()) {
+    return false;
+  }
+
+  res.status(400).json({
+    success: false,
+    error: {
+      code: 'VALIDATION_ERROR',
+      message: errors.array()[0].msg
+    }
+  });
+
+  return true;
+};
+
+const handleKnownError = (res, error) => {
+  if (!error.status) {
+    return false;
+  }
+
+  res.status(error.status).json({
+    success: false,
+    error: {
+      code: error.code,
+      message: error.message
+    }
+  });
+
+  return true;
+};
+
+const normalizeAuditoryModelItems = (modelAnswer) => {
+  if (Array.isArray(modelAnswer?.items)) {
+    return modelAnswer.items;
+  }
+
+  if (Array.isArray(modelAnswer)) {
+    return modelAnswer;
+  }
+
+  return [];
+};
+
 export const getTests = async (req, res, next) => {
   try {
-    const { testType } = req.query;
+    if (handleValidationErrors(req, res)) return;
+
     const where = {};
-    if (testType) where.testType = testType;
+    if (req.query.testType) {
+      where.testType = req.query.testType;
+    }
 
     const tests = await prisma.test.findMany({
       where,
       orderBy: [{ testType: 'asc' }, { createdAt: 'desc' }]
     });
 
-    const data = await Promise.all(
-      tests.map(async (test) => formatTest(test, await countAssessmentQuestions({ prisma, test })))
-    );
+    res.json({
+      success: true,
+      data: tests.map((test) => buildTestSummary({ test }))
+    });
+  } catch (error) {
+    logger.error('Get user assessment tests error:', error);
+    next(error);
+  }
+};
+
+export const getTestById = async (req, res, next) => {
+  try {
+    if (handleValidationErrors(req, res)) return;
+
+    const test = await prisma.test.findUnique({
+      where: { id: req.params.testId }
+    });
+
+    if (!test) {
+      return res.status(404).json({
+        success: false,
+        error: {
+          code: 'TEST_NOT_FOUND',
+          message: 'Test not found'
+        }
+      });
+    }
+
+    const data = await buildTestDetail({
+      prisma,
+      req,
+      test,
+      includeCorrect: false
+    });
 
     res.json({
       success: true,
       data
     });
   } catch (error) {
-    logger.error('Get tests error:', error);
+    logger.error('Get user assessment test detail error:', error);
     next(error);
   }
 };
 
-/**
- * Get Test Questions
- */
-export const getTestQuestions = async (req, res, next) => {
+export const submitCarsAssessment = async (req, res, next) => {
   try {
-    const { testId } = req.params;
-
-    const test = await prisma.test.findUnique({
-      where: { id: testId }
-    });
-
-    if (!test) {
-      return res.status(404).json({
-        success: false,
-        error: {
-          code: 'TEST_NOT_FOUND',
-          message: 'Test not found'
-        }
-      });
-    }
-
-    const [questionCount, questions] = await Promise.all([
-      countAssessmentQuestions({ prisma, test }),
-      fetchAssessmentQuestions({ prisma, test, req, includeCorrect: false })
-    ]);
-
-    res.json({
-      success: true,
-      data: {
-        test: formatTest(test, questionCount),
-        questionModel: getQuestionModelForTestType(test.testType),
-        questions
-      }
-    });
-  } catch (error) {
-    logger.error('Get test questions error:', error);
-    next(error);
-  }
-};
-
-const submitLegacyAssessmentResult = async (req, res) => {
-  const { childId, questionId, scoreGiven, sessionId } = req.body;
-
-  const result = await prisma.assessmentResult.create({
-    data: {
-      childId,
-      questionId,
-      scoreGiven: Number.parseInt(scoreGiven, 10),
-      totalScore: Number.parseInt(scoreGiven, 10),
-      maxScore: null,
-      sessionId
-    },
-    include: {
-      question: {
-        include: {
-          test: true
-        }
-      }
-    }
-  });
-
-  const test = result.question?.test;
-  const recommendation = test
-    ? buildAssessmentRecommendation({
-        test,
-        totalScore: result.scoreGiven ?? 0,
-        maxScore: result.question?.maxScore ?? 10
-      })
-    : null;
-
-  return res.status(201).json({
-    success: true,
-    data: {
-      result,
-      recommendation
-    }
-  });
-};
-
-const submitHelpAssessmentResult = async (req, res, test) => {
-  const { childId, sessionId, answers, developmentalAge, doctorId: bodyDoctorId } = req.body;
-  const doctorId = req.doctor?.id || bodyDoctorId;
-
-  if (!developmentalAge || !doctorId) {
-    return res.status(400).json({
-      success: false,
-      error: {
-        code: 'VALIDATION_ERROR',
-        message: 'HELP assessments require developmentalAge and doctorId'
-      }
-    });
-  }
-
-  const resolvedSessionId = sessionId || `help-${Date.now()}`;
-
-  const data = await prisma.$transaction(async (tx) => {
-    const createdResult = await tx.assessmentResult.create({
-      data: {
-        childId,
-        testId: test.id,
-        sessionId: resolvedSessionId,
-        scoreGiven: 0,
-        totalScore: 0,
-        maxScore: 0
-      }
-    });
-
-    const submission = await buildHelpAssessmentSubmission({
-      prisma: tx,
-      answers
-    });
-
-    const helpAssessment = await tx.helpAssessment.create({
-      data: {
-        childId,
-        doctorId,
-        assessmentResultId: createdResult.id,
-        sessionId: resolvedSessionId,
-        developmentalAge,
-        evaluations: {
-          create: submission.evaluations
-        }
-      },
-      include: {
-        evaluations: {
-          include: {
-            skill: true
-          }
-        }
-      }
-    });
-
-    const result = await tx.assessmentResult.update({
-      where: { id: createdResult.id },
-      data: {
-        scoreGiven: submission.totalScore,
-        totalScore: submission.totalScore,
-        maxScore: submission.maxScore
-      },
-      include: {
-        test: true,
-        helpAssessment: {
-          include: {
-            evaluations: {
-              include: {
-                skill: true
-              }
-            }
-          }
-        },
-        qCarsAnswers: true,
-        qAnalogyAnswers: true,
-        qVisualMemoryAnswers: true,
-        qAuditoryMemoryAnswers: true
-      }
-    });
-
-    return {
-      result,
-      helpAssessment
-    };
-  });
-
-  return res.status(201).json({
-    success: true,
-    data: {
-      result: data.result,
-      helpAssessment: data.helpAssessment,
-      recommendation: null
-    }
-  });
-};
-
-/**
- * Submit Assessment Result
- */
-export const submitAssessmentResult = async (req, res, next) => {
-  try {
-    if (req.body.questionId && req.body.scoreGiven !== undefined && !req.body.testId) {
-      return submitLegacyAssessmentResult(req, res);
-    }
+    if (handleValidationErrors(req, res)) return;
 
     const { childId, testId, sessionId, answers } = req.body;
 
-    if (!childId || !testId || !Array.isArray(answers) || answers.length === 0) {
-      return res.status(400).json({
-        success: false,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'childId, testId, and a non-empty answers array are required'
+    await ensureUserOwnsChild({ prisma, userId: req.user.id, childId });
+    const test = await ensureTestForType({ prisma, testId, expectedType: 'CARS' });
+    ensureUniqueAnswerQuestionIds(answers);
+
+    const data = await prisma.$transaction(async (tx) => {
+      const questions = await tx.q_CARS.findMany({
+        where: {
+          id: { in: answers.map((answer) => answer.questionId) },
+          testId: test.id
         }
       });
-    }
 
-    const test = await prisma.test.findUnique({
-      where: { id: testId }
-    });
+      if (questions.length !== answers.length) {
+        throw createHttpError(422, 'INVALID_QUESTION', 'One or more questions do not belong to this test');
+      }
 
-    if (!test) {
-      return res.status(404).json({
-        success: false,
-        error: {
-          code: 'TEST_NOT_FOUND',
-          message: 'Test not found'
+      const questionMap = new Map(questions.map((question) => [question.id, question]));
+      let totalScore = 0;
+      const answerRows = [];
+
+      for (const answer of answers) {
+        const question = questionMap.get(answer.questionId);
+        const choices = Array.isArray(question?.choices) ? question.choices : [];
+
+        if (!question) {
+          throw createHttpError(422, 'INVALID_QUESTION', `Question ${answer.questionId} does not belong to this test`);
         }
-      });
-    }
 
-    if (test.testType === 'HELP') {
-      return submitHelpAssessmentResult(req, res, test);
-    }
+        if (answer.chosenIndex < 0 || answer.chosenIndex >= choices.length) {
+          throw createHttpError(422, 'ANSWER_OUT_OF_BOUNDS', `chosenIndex is out of bounds for question ${answer.questionId}`);
+        }
 
-    const result = await prisma.$transaction(async (tx) => {
-      const createdResult = await tx.assessmentResult.create({
+        const score = Number.parseInt(choices[answer.chosenIndex]?.score, 10);
+        if (!Number.isInteger(score)) {
+          throw createHttpError(422, 'INVALID_QUESTION_DATA', `Question ${answer.questionId} is missing a valid score definition`);
+        }
+
+        totalScore += score;
+        answerRows.push({
+          questionId: question.id,
+          chosenIndex: answer.chosenIndex,
+          score
+        });
+      }
+
+      const maxScore = answers.length * 4;
+      const result = await tx.assessmentResult.create({
         data: {
           childId,
-          testId,
-          sessionId: sessionId || null,
-          scoreGiven: 0,
-          totalScore: 0,
-          maxScore: 0
+          testId: test.id,
+          sessionId,
+          totalScore,
+          maxScore,
+          scoreGiven: totalScore
         }
       });
 
-      const submission = await buildAssessmentSubmission({
-        prisma: tx,
-        test,
-        answers,
-        resultId: createdResult.id
+      await tx.q_CARS_Answer.createMany({
+        data: answerRows.map((answer) => ({
+          resultId: result.id,
+          questionId: answer.questionId,
+          chosenIndex: answer.chosenIndex,
+          score: answer.score
+        }))
       });
 
-      await Promise.all(submission.operations);
-
-      return tx.assessmentResult.update({
-        where: { id: createdResult.id },
-        data: {
-          scoreGiven: submission.totalScore,
-          totalScore: submission.totalScore,
-          maxScore: submission.maxScore
-        },
-        include: {
-          test: true,
-          helpAssessment: {
-            include: {
-              evaluations: {
-                include: {
-                  skill: true
-                }
-              }
-            }
-          },
-          qCarsAnswers: true,
-          qAnalogyAnswers: true,
-          qVisualMemoryAnswers: true,
-          qAuditoryMemoryAnswers: true
-        }
-      });
-    });
-
-    const recommendation = buildAssessmentRecommendation({
-      test,
-      totalScore: result.totalScore ?? 0,
-      maxScore: result.maxScore ?? 0
+      return {
+        assessmentResultId: result.id,
+        totalScore,
+        maxScore,
+        answers: answerRows
+      };
     });
 
     res.status(201).json({
       success: true,
-      data: {
-        result,
-        recommendation
-      }
+      data
     });
   } catch (error) {
-    logger.error('Submit assessment result error:', error);
+    if (handleKnownError(res, error)) return;
+    logger.error('Submit CARS assessment error:', error);
+    next(error);
+  }
+};
 
-    if (error.name === 'AssessmentValidationError') {
-      return res.status(400).json({
+export const submitAnalogyAssessment = async (req, res, next) => {
+  try {
+    if (handleValidationErrors(req, res)) return;
+
+    const { childId, testId, sessionId, answers } = req.body;
+
+    await ensureUserOwnsChild({ prisma, userId: req.user.id, childId });
+    const test = await ensureTestForType({ prisma, testId, expectedType: 'ANALOGY' });
+    ensureUniqueAnswerQuestionIds(answers);
+
+    const data = await prisma.$transaction(async (tx) => {
+      const questions = await tx.q_Analogy.findMany({
+        where: {
+          id: { in: answers.map((answer) => answer.questionId) },
+          testId: test.id
+        }
+      });
+
+      if (questions.length !== answers.length) {
+        throw createHttpError(422, 'INVALID_QUESTION', 'One or more questions do not belong to this test');
+      }
+
+      const questionMap = new Map(questions.map((question) => [question.id, question]));
+      let totalScore = 0;
+      const answerRows = [];
+
+      for (const answer of answers) {
+        const question = questionMap.get(answer.questionId);
+        const choices = Array.isArray(question?.choices) ? question.choices : [];
+
+        if (!question) {
+          throw createHttpError(422, 'INVALID_QUESTION', `Question ${answer.questionId} does not belong to this test`);
+        }
+
+        if (answer.chosenIndex < 0 || answer.chosenIndex >= choices.length) {
+          throw createHttpError(422, 'ANSWER_OUT_OF_BOUNDS', `chosenIndex is out of bounds for question ${answer.questionId}`);
+        }
+
+        const score = answer.chosenIndex === question.correctIndex ? 1 : 0;
+        totalScore += score;
+        answerRows.push({
+          questionId: question.id,
+          chosenIndex: answer.chosenIndex,
+          score
+        });
+      }
+
+      const maxScore = answers.length;
+      const result = await tx.assessmentResult.create({
+        data: {
+          childId,
+          testId: test.id,
+          sessionId,
+          totalScore,
+          maxScore,
+          scoreGiven: totalScore
+        }
+      });
+
+      await tx.q_Analogy_Answer.createMany({
+        data: answerRows.map((answer) => ({
+          resultId: result.id,
+          questionId: answer.questionId,
+          chosenIndex: answer.chosenIndex,
+          score: answer.score
+        }))
+      });
+
+      return {
+        assessmentResultId: result.id,
+        totalScore,
+        maxScore,
+        answers: answerRows
+      };
+    });
+
+    res.status(201).json({
+      success: true,
+      data
+    });
+  } catch (error) {
+    if (handleKnownError(res, error)) return;
+    logger.error('Submit analogy assessment error:', error);
+    next(error);
+  }
+};
+
+export const submitVisualMemoryAssessment = async (req, res, next) => {
+  try {
+    if (handleValidationErrors(req, res)) return;
+
+    const { childId, testId, sessionId, answers } = req.body;
+
+    await ensureUserOwnsChild({ prisma, userId: req.user.id, childId });
+    const test = await ensureTestForType({ prisma, testId, expectedType: 'VISUAL_MEMORY' });
+    ensureUniqueAnswerQuestionIds(answers);
+
+    const data = await prisma.$transaction(async (tx) => {
+      const questions = await tx.q_VisualMemory.findMany({
+        where: {
+          id: { in: answers.map((answer) => answer.questionId) },
+          batch: { testId: test.id }
+        }
+      });
+
+      if (questions.length !== answers.length) {
+        throw createHttpError(422, 'INVALID_QUESTION', 'One or more questions do not belong to this test');
+      }
+
+      const questionMap = new Map(questions.map((question) => [question.id, question]));
+      let totalScore = 0;
+      const answerRows = [];
+
+      for (const answer of answers) {
+        const question = questionMap.get(answer.questionId);
+
+        if (!question) {
+          throw createHttpError(422, 'INVALID_QUESTION', `Question ${answer.questionId} does not belong to this test`);
+        }
+
+        let score = 0;
+        let answerBool = null;
+        let chosenIndex = null;
+
+        if (question.questionType === 'YES_NO') {
+          if (typeof answer.answerBool !== 'boolean') {
+            throw createHttpError(422, 'INVALID_ANSWER', `Question ${answer.questionId} requires answerBool`);
+          }
+          answerBool = answer.answerBool;
+          score = answerBool === question.correctBool ? 1 : 0;
+        } else {
+          const choices = Array.isArray(question.choices) ? question.choices : [];
+          chosenIndex = answer.chosenIndex;
+
+          if (!Number.isInteger(chosenIndex) || chosenIndex < 0 || chosenIndex >= choices.length) {
+            throw createHttpError(422, 'ANSWER_OUT_OF_BOUNDS', `chosenIndex is out of bounds for question ${answer.questionId}`);
+          }
+
+          score = chosenIndex === question.correctIndex ? 1 : 0;
+        }
+
+        totalScore += score;
+        answerRows.push({
+          questionId: question.id,
+          answerBool,
+          chosenIndex,
+          score
+        });
+      }
+
+      const maxScore = answers.length;
+      const result = await tx.assessmentResult.create({
+        data: {
+          childId,
+          testId: test.id,
+          sessionId,
+          totalScore,
+          maxScore,
+          scoreGiven: totalScore
+        }
+      });
+
+      await tx.q_VisualMemory_Answer.createMany({
+        data: answerRows.map((answer) => ({
+          resultId: result.id,
+          questionId: answer.questionId,
+          answerBool: answer.answerBool,
+          chosenIndex: answer.chosenIndex,
+          score: answer.score
+        }))
+      });
+
+      return {
+        assessmentResultId: result.id,
+        totalScore,
+        maxScore,
+        answers: answerRows
+      };
+    });
+
+    res.status(201).json({
+      success: true,
+      data
+    });
+  } catch (error) {
+    if (handleKnownError(res, error)) return;
+    logger.error('Submit visual memory assessment error:', error);
+    next(error);
+  }
+};
+
+export const submitAuditoryMemoryAssessment = async (req, res, next) => {
+  try {
+    if (handleValidationErrors(req, res)) return;
+
+    const { childId, testId, sessionId, answers } = req.body;
+
+    await ensureUserOwnsChild({ prisma, userId: req.user.id, childId });
+    const test = await ensureTestForType({ prisma, testId, expectedType: 'AUDITORY_MEMORY' });
+    ensureUniqueAnswerQuestionIds(answers);
+
+    const data = await prisma.$transaction(async (tx) => {
+      const questions = await tx.q_AuditoryMemory.findMany({
+        where: {
+          id: { in: answers.map((answer) => answer.questionId) },
+          testId: test.id
+        }
+      });
+
+      if (questions.length !== answers.length) {
+        throw createHttpError(422, 'INVALID_QUESTION', 'One or more questions do not belong to this test');
+      }
+
+      const questionMap = new Map(questions.map((question) => [question.id, question]));
+      let totalScore = 0;
+      const answerRows = [];
+
+      for (const answer of answers) {
+        const question = questionMap.get(answer.questionId);
+
+        if (!question) {
+          throw createHttpError(422, 'INVALID_QUESTION', `Question ${answer.questionId} does not belong to this test`);
+        }
+
+        const modelItems = normalizeAuditoryModelItems(question.modelAnswer);
+        const recalledItems = Array.isArray(answer.recalledItems) ? answer.recalledItems : [];
+        const itemScores = modelItems.map((item) => ({
+          item,
+          recalled: recalledItems.includes(item),
+          score: recalledItems.includes(item) ? 1 : 0
+        }));
+        const score = itemScores.reduce((sum, itemScore) => sum + itemScore.score, 0);
+
+        totalScore += score;
+        answerRows.push({
+          questionId: question.id,
+          recalledItems,
+          itemScores,
+          score
+        });
+      }
+
+      const maxScore = answerRows.reduce((sum, answer) => sum + answer.itemScores.length, 0);
+      const result = await tx.assessmentResult.create({
+        data: {
+          childId,
+          testId: test.id,
+          sessionId,
+          totalScore,
+          maxScore,
+          scoreGiven: totalScore
+        }
+      });
+
+      await tx.q_AuditoryMemory_Answer.createMany({
+        data: answerRows.map((answer) => ({
+          resultId: result.id,
+          questionId: answer.questionId,
+          recalledItems: answer.recalledItems,
+          itemScores: answer.itemScores,
+          score: answer.score
+        }))
+      });
+
+      return {
+        assessmentResultId: result.id,
+        totalScore,
+        maxScore,
+        answers: answerRows
+      };
+    });
+
+    res.status(201).json({
+      success: true,
+      data
+    });
+  } catch (error) {
+    if (handleKnownError(res, error)) return;
+    logger.error('Submit auditory memory assessment error:', error);
+    next(error);
+  }
+};
+
+export const getAssessmentResultsByChild = async (req, res, next) => {
+  try {
+    if (handleValidationErrors(req, res)) return;
+
+    await ensureUserOwnsChild({
+      prisma,
+      userId: req.user.id,
+      childId: req.params.childId
+    });
+
+    const results = await prisma.assessmentResult.findMany({
+      where: { childId: req.params.childId },
+      include: {
+        test: true,
+        question: {
+          include: {
+            test: true
+          }
+        }
+      },
+      orderBy: [{ timestamp: 'desc' }, { id: 'desc' }]
+    });
+
+    res.json({
+      success: true,
+      data: groupAssessmentResultSummaries(results)
+    });
+  } catch (error) {
+    if (handleKnownError(res, error)) return;
+    logger.error('Get user assessment results error:', error);
+    next(error);
+  }
+};
+
+export const getAssessmentSessionDetail = async (req, res, next) => {
+  try {
+    if (handleValidationErrors(req, res)) return;
+
+    await ensureUserOwnsChild({
+      prisma,
+      userId: req.user.id,
+      childId: req.params.childId
+    });
+
+    const results = await fetchAssessmentSessionResults({
+      prisma,
+      childId: req.params.childId,
+      sessionId: req.params.sessionId
+    });
+
+    if (results.length === 0) {
+      return res.status(404).json({
         success: false,
         error: {
-          code: 'VALIDATION_ERROR',
-          message: error.message
+          code: 'ASSESSMENT_RESULT_NOT_FOUND',
+          message: 'Assessment session not found'
         }
       });
     }
 
+    res.json({
+      success: true,
+      data: {
+        childId: req.params.childId,
+        sessionId: req.params.sessionId,
+        results: results.map(serializeAssessmentResultDetail)
+      }
+    });
+  } catch (error) {
+    if (handleKnownError(res, error)) return;
+    logger.error('Get user assessment session detail error:', error);
     next(error);
   }
 };

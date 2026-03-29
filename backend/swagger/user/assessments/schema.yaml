@@ -1,15 +1,47 @@
-TestCategory:
+LocalizedText:
   type: object
   properties:
-    id:
+    ar:
       type: string
-      format: uuid
-    name:
-      type: string
-    nameAr:
+    en:
       type: string
 
-AssessmentTest:
+CARSChoiceSchema:
+  type: object
+  properties:
+    score:
+      type: integer
+      minimum: 1
+      maximum: 4
+    ar:
+      type: string
+    en:
+      type: string
+
+AnalogyChoiceSchema:
+  type: object
+  properties:
+    imagePath:
+      type: string
+
+VisualMemoryChoiceSchema:
+  type: object
+  properties:
+    text:
+      type: string
+
+AuditoryModelAnswerSchema:
+  type: object
+  properties:
+    items:
+      type: array
+      minItems: 1
+      items:
+        type: string
+    order:
+      type: boolean
+
+TestSummary:
   type: object
   properties:
     id:
@@ -20,63 +52,20 @@ AssessmentTest:
     titleAr:
       type: string
       nullable: true
-    testCategoryId:
+    testType:
       type: string
-      format: uuid
-      nullable: true
-    testCategory:
-      $ref: "#/components/schemas/TestCategory"
+      enum: [CARS, ANALOGY, VISUAL_MEMORY, AUDITORY_MEMORY, HELP, SOUND_DISCRIMINATION, PRONUNCIATION_REPETITION, SOUND_IMAGE_LINKING, SEQUENCE_ORDER]
     type:
       type: string
       enum: [AUDITORY, VISUAL]
-    testType:
-      type: string
-      enum: [CARS, ANALOGY, VISUAL_MEMORY, AUDITORY_MEMORY, HELP]
-    questionModel:
-      type: string
-      enum: [Q_CARS, Q_Analogy, Q_VisualMemory_Batch, Q_AuditoryMemory, HelpSkill]
-    questionCount:
-      type: integer
     description:
       type: string
       nullable: true
-    createdAt:
-      type: string
-      format: date-time
-
-LocalizedText:
-  type: object
-  properties:
-    ar:
-      type: string
-      nullable: true
-    en:
-      type: string
+    questionCount:
+      type: integer
       nullable: true
 
-LocalizedChoice:
-  type: object
-  properties:
-    ar:
-      type: string
-      nullable: true
-    en:
-      type: string
-      nullable: true
-    imageUrl:
-      type: string
-      nullable: true
-    audioUrl:
-      type: string
-      nullable: true
-    imagePath:
-      type: string
-      nullable: true
-    audioPath:
-      type: string
-      nullable: true
-
-AssessmentQuestionCars:
+CARSQuestionSchema:
   type: object
   properties:
     id:
@@ -90,9 +79,9 @@ AssessmentQuestionCars:
     choices:
       type: array
       items:
-        $ref: "#/components/schemas/LocalizedChoice"
+        $ref: "#/components/schemas/CARSChoiceSchema"
 
-AssessmentQuestionAnalogy:
+AnalogyQuestionSchema:
   type: object
   properties:
     id:
@@ -106,9 +95,12 @@ AssessmentQuestionAnalogy:
     choices:
       type: array
       items:
-        $ref: "#/components/schemas/LocalizedChoice"
+        $ref: "#/components/schemas/AnalogyChoiceSchema"
+    correctIndex:
+      type: integer
+      nullable: true
 
-AssessmentVisualMemoryQuestion:
+VisualMemoryQuestionSchema:
   type: object
   properties:
     id:
@@ -122,13 +114,19 @@ AssessmentVisualMemoryQuestion:
     questionType:
       type: string
       enum: [YES_NO, MCQ]
+    correctBool:
+      type: boolean
+      nullable: true
     choices:
       type: array
       nullable: true
       items:
-        $ref: "#/components/schemas/LocalizedChoice"
+        $ref: "#/components/schemas/VisualMemoryChoiceSchema"
+    correctIndex:
+      type: integer
+      nullable: true
 
-AssessmentQuestionVisualMemoryBatch:
+VisualMemoryBatchSchema:
   type: object
   properties:
     id:
@@ -144,9 +142,9 @@ AssessmentQuestionVisualMemoryBatch:
     questions:
       type: array
       items:
-        $ref: "#/components/schemas/AssessmentVisualMemoryQuestion"
+        $ref: "#/components/schemas/VisualMemoryQuestionSchema"
 
-AssessmentQuestionAuditoryMemory:
+AuditoryMemoryQuestionSchema:
   type: object
   properties:
     id:
@@ -159,8 +157,10 @@ AssessmentQuestionAuditoryMemory:
       type: string
     questionText:
       $ref: "#/components/schemas/LocalizedText"
+    modelAnswer:
+      $ref: "#/components/schemas/AuditoryModelAnswerSchema"
 
-AssessmentQuestionHelpSkill:
+HelpSkillSchema:
   type: object
   properties:
     id:
@@ -176,76 +176,62 @@ AssessmentQuestionHelpSkill:
     ageRange:
       type: string
 
-AssessmentQuestion:
+GenericQuestionSchema:
+  type: object
+  properties:
+    id:
+      type: string
+    testId:
+      type: string
+    orderIndex:
+      type: integer
+    audioAssetPath:
+      type: string
+      nullable: true
+    imageAssetPath:
+      type: string
+      nullable: true
+    choices:
+      type: array
+      nullable: true
+      items:
+        type: object
+        additionalProperties: true
+    scoringGuide:
+      type: string
+      nullable: true
+    maxScore:
+      type: integer
+      nullable: true
+
+AssessmentQuestionSchema:
   oneOf:
-    - $ref: "#/components/schemas/AssessmentQuestionCars"
-    - $ref: "#/components/schemas/AssessmentQuestionAnalogy"
-    - $ref: "#/components/schemas/AssessmentQuestionVisualMemoryBatch"
-    - $ref: "#/components/schemas/AssessmentQuestionAuditoryMemory"
-    - $ref: "#/components/schemas/AssessmentQuestionHelpSkill"
+    - $ref: "#/components/schemas/CARSQuestionSchema"
+    - $ref: "#/components/schemas/AnalogyQuestionSchema"
+    - $ref: "#/components/schemas/VisualMemoryBatchSchema"
+    - $ref: "#/components/schemas/AuditoryMemoryQuestionSchema"
+    - $ref: "#/components/schemas/HelpSkillSchema"
+    - $ref: "#/components/schemas/GenericQuestionSchema"
 
-AssessmentAnswerCars:
+TestDetail:
+  allOf:
+    - $ref: "#/components/schemas/TestSummary"
+    - type: object
+      properties:
+        questionModel:
+          type: string
+        questions:
+          type: array
+          items:
+            $ref: "#/components/schemas/AssessmentQuestionSchema"
+
+HelpEvaluationSchema:
   type: object
   properties:
     id:
       type: string
-    questionId:
-      type: string
-    chosenIndex:
-      type: integer
-    score:
-      type: integer
-
-AssessmentAnswerAnalogy:
-  type: object
-  properties:
-    id:
-      type: string
-    questionId:
-      type: string
-    chosenIndex:
-      type: integer
-    score:
-      type: integer
-
-AssessmentAnswerVisualMemory:
-  type: object
-  properties:
-    id:
-      type: string
-    questionId:
-      type: string
-    answerBool:
-      type: boolean
-      nullable: true
-    chosenIndex:
-      type: integer
-      nullable: true
-    score:
-      type: integer
-
-AssessmentAnswerAuditoryMemory:
-  type: object
-  properties:
-    id:
-      type: string
-    questionId:
-      type: string
-    recalledItems:
-      type: array
-      items:
-        type: string
-    itemScores:
-      type: array
-      items:
-        type: boolean
-    score:
-      type: integer
-
-HelpEvaluation:
-  type: object
-  properties:
-    id:
+      format: uuid
+    assessmentId:
       type: string
       format: uuid
     skillId:
@@ -258,9 +244,9 @@ HelpEvaluation:
       type: string
       nullable: true
     skill:
-      $ref: "#/components/schemas/AssessmentQuestionHelpSkill"
+      $ref: "#/components/schemas/HelpSkillSchema"
 
-HelpAssessment:
+HelpAssessmentSchema:
   type: object
   properties:
     id:
@@ -286,21 +272,118 @@ HelpAssessment:
     evaluations:
       type: array
       items:
-        $ref: "#/components/schemas/HelpEvaluation"
+        $ref: "#/components/schemas/HelpEvaluationSchema"
 
-AssessmentResult:
+CARSAnswerDetailSchema:
   type: object
   properties:
     id:
       type: string
-      format: uuid
-    childId:
+    questionId:
+      type: string
+    chosenIndex:
+      type: integer
+    score:
+      type: integer
+    question:
+      $ref: "#/components/schemas/CARSQuestionSchema"
+
+AnalogyAnswerDetailSchema:
+  type: object
+  properties:
+    id:
+      type: string
+    questionId:
+      type: string
+    chosenIndex:
+      type: integer
+    score:
+      type: integer
+    question:
+      $ref: "#/components/schemas/AnalogyQuestionSchema"
+
+VisualMemoryAnswerDetailSchema:
+  type: object
+  properties:
+    id:
+      type: string
+    questionId:
+      type: string
+    answerBool:
+      type: boolean
+      nullable: true
+    chosenIndex:
+      type: integer
+      nullable: true
+    score:
+      type: integer
+    question:
+      type: object
+      properties:
+        id:
+          type: string
+        batch:
+          $ref: "#/components/schemas/VisualMemoryBatchSchema"
+        order:
+          type: integer
+        questionText:
+          $ref: "#/components/schemas/LocalizedText"
+        questionType:
+          type: string
+          enum: [YES_NO, MCQ]
+        correctBool:
+          type: boolean
+          nullable: true
+        choices:
+          type: array
+          nullable: true
+          items:
+            $ref: "#/components/schemas/VisualMemoryChoiceSchema"
+        correctIndex:
+          type: integer
+          nullable: true
+
+AuditoryMemoryAnswerDetailSchema:
+  type: object
+  properties:
+    id:
+      type: string
+    questionId:
+      type: string
+    recalledItems:
+      type: array
+      items:
+        type: string
+    itemScores:
+      type: array
+      items:
+        type: object
+        properties:
+          item:
+            type: string
+          recalled:
+            type: boolean
+          score:
+            type: integer
+    score:
+      type: integer
+    question:
+      $ref: "#/components/schemas/AuditoryMemoryQuestionSchema"
+
+AssessmentResultSummary:
+  type: object
+  properties:
+    id:
       type: string
       format: uuid
     testId:
       type: string
       format: uuid
       nullable: true
+    testType:
+      type: string
+      nullable: true
+      enum: [CARS, ANALOGY, VISUAL_MEMORY, AUDITORY_MEMORY, HELP, SOUND_DISCRIMINATION, PRONUNCIATION_REPETITION, SOUND_IMAGE_LINKING, SEQUENCE_ORDER]
     totalScore:
       type: integer
       nullable: true
@@ -316,127 +399,175 @@ AssessmentResult:
     timestamp:
       type: string
       format: date-time
-    test:
-      $ref: "#/components/schemas/AssessmentTest"
-    helpAssessment:
-      allOf:
-        - $ref: "#/components/schemas/HelpAssessment"
-      nullable: true
-    qCarsAnswers:
-      type: array
-      items:
-        $ref: "#/components/schemas/AssessmentAnswerCars"
-    qAnalogyAnswers:
-      type: array
-      items:
-        $ref: "#/components/schemas/AssessmentAnswerAnalogy"
-    qVisualMemoryAnswers:
-      type: array
-      items:
-        $ref: "#/components/schemas/AssessmentAnswerVisualMemory"
-    qAuditoryMemoryAnswers:
-      type: array
-      items:
-        $ref: "#/components/schemas/AssessmentAnswerAuditoryMemory"
 
-AssessmentRecommendation:
-  type: object
-  nullable: true
-  properties:
-    type:
-      type: string
-    message:
-      type: string
-    specialtyAr:
-      type: string
-    testType:
-      type: string
+AssessmentResultDetail:
+  allOf:
+    - $ref: "#/components/schemas/AssessmentResultSummary"
+    - type: object
+      properties:
+        childId:
+          type: string
+          format: uuid
+        test:
+          allOf:
+            - $ref: "#/components/schemas/TestSummary"
+          nullable: true
+        question:
+          allOf:
+            - $ref: "#/components/schemas/GenericQuestionSchema"
+          nullable: true
+        helpAssessment:
+          allOf:
+            - $ref: "#/components/schemas/HelpAssessmentSchema"
+          nullable: true
+        qCarsAnswers:
+          type: array
+          items:
+            $ref: "#/components/schemas/CARSAnswerDetailSchema"
+        qAnalogyAnswers:
+          type: array
+          items:
+            $ref: "#/components/schemas/AnalogyAnswerDetailSchema"
+        qVisualMemoryAnswers:
+          type: array
+          items:
+            $ref: "#/components/schemas/VisualMemoryAnswerDetailSchema"
+        qAuditoryMemoryAnswers:
+          type: array
+          items:
+            $ref: "#/components/schemas/AuditoryMemoryAnswerDetailSchema"
 
-SubmitCarsAnswerRequest:
+SubmitCARSBody:
   type: object
-  required: [questionId, chosenIndex]
+  required: [childId, testId, sessionId, answers]
   properties:
+    childId:
+      type: string
+    testId:
+      type: string
+    sessionId:
+      type: string
+    answers:
+      type: array
+      minItems: 1
+      items:
+        type: object
+        required: [questionId, chosenIndex]
+        properties:
+          questionId:
+            type: string
+          chosenIndex:
+            type: integer
+            minimum: 0
+
+SubmitAnalogyBody:
+  type: object
+  required: [childId, testId, sessionId, answers]
+  properties:
+    childId:
+      type: string
+    testId:
+      type: string
+    sessionId:
+      type: string
+    answers:
+      type: array
+      minItems: 1
+      items:
+        type: object
+        required: [questionId, chosenIndex]
+        properties:
+          questionId:
+            type: string
+          chosenIndex:
+            type: integer
+            minimum: 0
+
+SubmitVisualMemoryBody:
+  type: object
+  required: [childId, testId, sessionId, answers]
+  properties:
+    childId:
+      type: string
+    testId:
+      type: string
+    sessionId:
+      type: string
+    answers:
+      type: array
+      minItems: 1
+      items:
+        type: object
+        required: [questionId]
+        properties:
+          questionId:
+            type: string
+          answerBool:
+            type: boolean
+          chosenIndex:
+            type: integer
+            minimum: 0
+
+SubmitAuditoryMemoryBody:
+  type: object
+  required: [childId, testId, sessionId, answers]
+  properties:
+    childId:
+      type: string
+    testId:
+      type: string
+    sessionId:
+      type: string
+    answers:
+      type: array
+      minItems: 1
+      items:
+        type: object
+        required: [questionId, recalledItems]
+        properties:
+          questionId:
+            type: string
+          recalledItems:
+            type: array
+            items:
+              type: string
+
+GenericScoreBody:
+  type: object
+  required: [childId, testId, questionId, sessionId, scoreGiven]
+  properties:
+    childId:
+      type: string
+    testId:
+      type: string
     questionId:
       type: string
-    chosenIndex:
+    sessionId:
+      type: string
+    scoreGiven:
       type: integer
+      minimum: 0
 
-SubmitAnalogyAnswerRequest:
+HelpStartBody:
   type: object
-  required: [questionId, chosenIndex]
+  required: [childId, sessionId, developmentalAge]
   properties:
-    questionId:
+    childId:
       type: string
-    chosenIndex:
-      type: integer
-
-SubmitVisualMemoryAnswerRequest:
-  type: object
-  required: [questionId]
-  properties:
-    questionId:
+    sessionId:
       type: string
-    answerBool:
-      type: boolean
-      nullable: true
-    chosenIndex:
-      type: integer
-      nullable: true
-
-SubmitAuditoryMemoryAnswerRequest:
-  type: object
-  required: [questionId, recalledItems]
-  properties:
-    questionId:
+    developmentalAge:
       type: string
-    recalledItems:
-      type: array
-      items:
-        type: string
 
-SubmitHelpAnswerRequest:
+HelpEvaluateBody:
   type: object
   required: [skillId, score]
   properties:
     skillId:
       type: string
-      format: uuid
     score:
       type: string
       enum: [NOT_SUITABLE, NOT_PRESENT, INITIAL_ATTEMPTS, PARTIAL_LEVEL, SUCCESSFUL]
     doctorNotes:
       type: string
       nullable: true
-
-SubmitAssessmentResultRequest:
-  type: object
-  required: [childId, testId, answers]
-  properties:
-    childId:
-      type: string
-      format: uuid
-    testId:
-      type: string
-      format: uuid
-    sessionId:
-      type: string
-      nullable: true
-      description: Optional client-provided session identifier
-    doctorId:
-      type: string
-      format: uuid
-      nullable: true
-      description: Required for HELP submissions when using the user route instead of the authenticated doctor route
-    developmentalAge:
-      type: string
-      nullable: true
-      description: Required for HELP submissions
-    answers:
-      type: array
-      items:
-        oneOf:
-          - $ref: "#/components/schemas/SubmitCarsAnswerRequest"
-          - $ref: "#/components/schemas/SubmitAnalogyAnswerRequest"
-          - $ref: "#/components/schemas/SubmitVisualMemoryAnswerRequest"
-          - $ref: "#/components/schemas/SubmitAuditoryMemoryAnswerRequest"
-          - $ref: "#/components/schemas/SubmitHelpAnswerRequest"

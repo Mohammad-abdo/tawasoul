@@ -63,6 +63,8 @@ tags:
     description: Withdrawal requests management
   - name: Doctor Children
     description: Children profiles and assessment access for doctors
+  - name: Doctor Assessments
+    description: Doctor-facing assessment scoring, HELP flows, and child result access
   - name: Admin Auth
     description: Admin panel authentication
   - name: Admin Dashboard
@@ -94,7 +96,7 @@ tags:
   - name: Admin Management
     description: Admin account management (SUPER_ADMIN only)
   - name: Admin Assessments
-    description: Assessment categories, tests, and questions management
+    description: Assessment tests, question banks, and HELP skill management
   - name: Admin Mahara
     description: Mahara Kids categories, skill groups, and activities management
 

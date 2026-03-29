@@ -1,169 +1,20 @@
-/admin/assessments/test-categories:
-  get:
-    tags: [Admin Assessments]
-    summary: Get all test categories
-    operationId: adminGetTestCategories
-    security:
-      - BearerAuth: []
-    parameters:
-      - name: page
-        in: query
-        schema:
-          type: integer
-          default: 1
-      - name: limit
-        in: query
-        schema:
-          type: integer
-          default: 20
-    responses:
-      "200":
-        description: Test categories list
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                success:
-                  type: boolean
-                data:
-                  type: object
-                  properties:
-                    testCategories:
-                      type: array
-                      items:
-                        $ref: "#/components/schemas/AdminTestCategory"
-                    pagination:
-                      $ref: "#/components/schemas/PaginationMeta"
-  post:
-    tags: [Admin Assessments]
-    summary: Create test category
-    operationId: adminCreateTestCategory
-    security:
-      - BearerAuth: []
-    requestBody:
-      required: true
-      content:
-        application/json:
-          schema:
-            type: object
-            required: [name, nameAr]
-            properties:
-              name:
-                type: string
-              nameAr:
-                type: string
-    responses:
-      "201":
-        description: Category created
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                success:
-                  type: boolean
-                data:
-                  $ref: "#/components/schemas/AdminTestCategory"
-
-/admin/assessments/test-categories/{id}:
-  get:
-    tags: [Admin Assessments]
-    summary: Get test category by ID
-    operationId: adminGetTestCategoryById
-    security:
-      - BearerAuth: []
-    parameters:
-      - $ref: "#/components/schemas/IdPathParam"
-    responses:
-      "200":
-        description: Category details with tests
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                success:
-                  type: boolean
-                data:
-                  $ref: "#/components/schemas/AdminTestCategory"
-  put:
-    tags: [Admin Assessments]
-    summary: Update test category
-    operationId: adminUpdateTestCategory
-    security:
-      - BearerAuth: []
-    parameters:
-      - $ref: "#/components/schemas/IdPathParam"
-    requestBody:
-      required: true
-      content:
-        application/json:
-          schema:
-            type: object
-            properties:
-              name:
-                type: string
-              nameAr:
-                type: string
-    responses:
-      "200":
-        description: Category updated
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                success:
-                  type: boolean
-                data:
-                  $ref: "#/components/schemas/AdminTestCategory"
-  delete:
-    tags: [Admin Assessments]
-    summary: Delete test category
-    operationId: adminDeleteTestCategory
-    security:
-      - BearerAuth: []
-    parameters:
-      - $ref: "#/components/schemas/IdPathParam"
-    responses:
-      "200":
-        description: Category deleted
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/MessageResponse"
-
 /admin/assessments/tests:
   get:
     tags: [Admin Assessments]
-    summary: Get all tests
-    operationId: adminGetAllTests
+    summary: List tests
+    description: Returns admin assessment tests with question counts.
     security:
       - BearerAuth: []
     parameters:
-      - name: page
-        in: query
-        schema:
-          type: integer
-          default: 1
-      - name: limit
-        in: query
-        schema:
-          type: integer
-          default: 20
-      - name: testCategoryId
-        in: query
-        schema:
-          type: string
       - name: testType
         in: query
+        required: false
         schema:
           type: string
-          enum: [CARS, ANALOGY, VISUAL_MEMORY, AUDITORY_MEMORY, HELP]
+          enum: [CARS, ANALOGY, VISUAL_MEMORY, AUDITORY_MEMORY, HELP, SOUND_DISCRIMINATION, PRONUNCIATION_REPETITION, SOUND_IMAGE_LINKING, SEQUENCE_ORDER]
     responses:
       "200":
-        description: Tests list
+        description: Tests
         content:
           application/json:
             schema:
@@ -172,18 +23,37 @@
                 success:
                   type: boolean
                 data:
-                  type: object
-                  properties:
-                    tests:
-                      type: array
-                      items:
-                        $ref: "#/components/schemas/AdminTest"
-                    pagination:
-                      $ref: "#/components/schemas/PaginationMeta"
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/TestSummary"
+      "400":
+        description: Bad request
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "401":
+        description: Missing or invalid token
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "403":
+        description: Forbidden
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "500":
+        description: Internal server error
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
   post:
     tags: [Admin Assessments]
     summary: Create test
-    operationId: adminCreateTest
+    description: Creates a new assessment test record.
     security:
       - BearerAuth: []
     requestBody:
@@ -191,7 +61,22 @@
       content:
         application/json:
           schema:
-            $ref: "#/components/schemas/CreateTestRequest"
+            type: object
+            required: [title, titleAr, type, testType]
+            properties:
+              title:
+                type: string
+              titleAr:
+                type: string
+              type:
+                type: string
+                enum: [AUDITORY, VISUAL]
+              testType:
+                type: string
+                enum: [CARS, ANALOGY, VISUAL_MEMORY, AUDITORY_MEMORY, HELP, SOUND_DISCRIMINATION, PRONUNCIATION_REPETITION, SOUND_IMAGE_LINKING, SEQUENCE_ORDER]
+              description:
+                type: string
+                nullable: true
     responses:
       "201":
         description: Test created
@@ -203,20 +88,48 @@
                 success:
                   type: boolean
                 data:
-                  $ref: "#/components/schemas/AdminTest"
+                  $ref: "#/components/schemas/TestSummary"
+      "400":
+        description: Bad request
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "401":
+        description: Missing or invalid token
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "403":
+        description: Forbidden
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "500":
+        description: Internal server error
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
 
-/admin/assessments/tests/{id}:
+/admin/assessments/tests/{testId}:
   get:
     tags: [Admin Assessments]
-    summary: Get test by ID
-    operationId: adminGetTestById
+    summary: Get test detail
+    description: Returns the full test record and all question payloads for the matching test type.
     security:
       - BearerAuth: []
     parameters:
-      - $ref: "#/components/schemas/IdPathParam"
+      - name: testId
+        in: path
+        required: true
+        schema:
+          type: string
     responses:
       "200":
-        description: Test with specialized question payloads
+        description: Test detail
         content:
           application/json:
             schema:
@@ -225,21 +138,69 @@
                 success:
                   type: boolean
                 data:
-                  $ref: "#/components/schemas/AdminTest"
-  put:
+                  $ref: "#/components/schemas/TestDetail"
+      "400":
+        description: Bad request
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "401":
+        description: Missing or invalid token
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "403":
+        description: Forbidden
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "404":
+        description: Test not found
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "500":
+        description: Internal server error
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+  patch:
     tags: [Admin Assessments]
     summary: Update test
-    operationId: adminUpdateTest
+    description: Updates one assessment test. All body fields are optional.
     security:
       - BearerAuth: []
     parameters:
-      - $ref: "#/components/schemas/IdPathParam"
+      - name: testId
+        in: path
+        required: true
+        schema:
+          type: string
     requestBody:
       required: true
       content:
         application/json:
           schema:
-            $ref: "#/components/schemas/CreateTestRequest"
+            type: object
+            properties:
+              title:
+                type: string
+              titleAr:
+                type: string
+              type:
+                type: string
+                enum: [AUDITORY, VISUAL]
+              testType:
+                type: string
+                enum: [CARS, ANALOGY, VISUAL_MEMORY, AUDITORY_MEMORY, HELP, SOUND_DISCRIMINATION, PRONUNCIATION_REPETITION, SOUND_IMAGE_LINKING, SEQUENCE_ORDER]
+              description:
+                type: string
+                nullable: true
     responses:
       "200":
         description: Test updated
@@ -251,15 +212,49 @@
                 success:
                   type: boolean
                 data:
-                  $ref: "#/components/schemas/AdminTest"
+                  $ref: "#/components/schemas/TestSummary"
+      "400":
+        description: Bad request
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "401":
+        description: Missing or invalid token
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "403":
+        description: Forbidden
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "404":
+        description: Test not found
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "500":
+        description: Internal server error
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
   delete:
     tags: [Admin Assessments]
     summary: Delete test
-    operationId: adminDeleteTest
+    description: Deletes a test. Prisma cascade rules remove linked question rows automatically.
     security:
       - BearerAuth: []
     parameters:
-      - $ref: "#/components/schemas/IdPathParam"
+      - name: testId
+        in: path
+        required: true
+        schema:
+          type: string
     responses:
       "200":
         description: Test deleted
@@ -267,46 +262,42 @@
           application/json:
             schema:
               $ref: "#/components/schemas/MessageResponse"
-
-/admin/assessments/tests/{testId}/questions:
-  get:
-    tags: [Admin Assessments]
-    summary: Get question payloads for a test
-    operationId: adminGetTestQuestions
-    security:
-      - BearerAuth: []
-    parameters:
-      - name: testId
-        in: path
-        required: true
-        schema:
-          type: string
-    responses:
-      "200":
-        description: Test metadata and specialized question payloads
+      "400":
+        description: Bad request
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                success:
-                  type: boolean
-                data:
-                  type: object
-                  properties:
-                    test:
-                      $ref: "#/components/schemas/AdminTest"
-                    questionModel:
-                      type: string
-                      enum: [Q_CARS, Q_Analogy, Q_VisualMemory_Batch, Q_AuditoryMemory, HelpSkill]
-                    questions:
-                      type: array
-                      items:
-                        $ref: "#/components/schemas/AdminQuestion"
+              $ref: "#/components/schemas/ErrorResponse"
+      "401":
+        description: Missing or invalid token
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "403":
+        description: Forbidden
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "404":
+        description: Test not found
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "500":
+        description: Internal server error
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+
+/admin/assessments/cars/{testId}/questions:
   post:
     tags: [Admin Assessments]
-    summary: Create a question payload for a test
-    operationId: adminCreateQuestion
+    summary: Create CARS question
+    description: Creates one CARS question after validating test type and order uniqueness within the test.
     security:
       - BearerAuth: []
     parameters:
@@ -320,13 +311,10 @@
       content:
         application/json:
           schema:
-            $ref: "#/components/schemas/AdminCreateQuestionRequest"
-        multipart/form-data:
-          schema:
-            $ref: "#/components/schemas/AdminCreateQuestionRequest"
+            $ref: "#/components/schemas/CARSQuestionSchema"
     responses:
       "201":
-        description: Question payload created
+        description: Question created
         content:
           application/json:
             schema:
@@ -335,66 +323,68 @@
                 success:
                   type: boolean
                 data:
-                  $ref: "#/components/schemas/AdminQuestion"
+                  $ref: "#/components/schemas/CARSQuestionSchema"
+      "400":
+        description: Bad request
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "401":
+        description: Missing or invalid token
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "403":
+        description: Forbidden
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "404":
+        description: Test not found
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "409":
+        description: Duplicate order
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "422":
+        description: Wrong test type
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "500":
+        description: Internal server error
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
 
-/admin/assessments/questions/{id}:
-  get:
-    tags: [Admin Assessments]
-    summary: Get one question payload by ID
-    operationId: adminGetQuestionById
-    security:
-      - BearerAuth: []
-    parameters:
-      - $ref: "#/components/schemas/IdPathParam"
-    responses:
-      "200":
-        description: Specialized question payload
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                success:
-                  type: boolean
-                data:
-                  $ref: "#/components/schemas/AdminQuestion"
-  put:
-    tags: [Admin Assessments]
-    summary: Update one question payload by ID
-    operationId: adminUpdateQuestion
-    security:
-      - BearerAuth: []
-    parameters:
-      - $ref: "#/components/schemas/IdPathParam"
-    requestBody:
-      required: true
-      content:
-        application/json:
-          schema:
-            $ref: "#/components/schemas/AdminCreateQuestionRequest"
-        multipart/form-data:
-          schema:
-            $ref: "#/components/schemas/AdminCreateQuestionRequest"
-    responses:
-      "200":
-        description: Question payload updated
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                success:
-                  type: boolean
-                data:
-                  $ref: "#/components/schemas/AdminQuestion"
+/admin/assessments/tests/{testId}/questions/{questionId}:
   delete:
     tags: [Admin Assessments]
-    summary: Delete a question payload by ID
-    operationId: adminDeleteQuestion
+    summary: Delete test question
+    description: Deletes one question by `questionId` within the context of `testId`. The test's `testType` determines which underlying Prisma model is used. Visual memory uses the batch delete endpoint instead.
     security:
       - BearerAuth: []
     parameters:
-      - $ref: "#/components/schemas/IdPathParam"
+      - name: testId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: questionId
+        in: path
+        required: true
+        schema:
+          type: string
     responses:
       "200":
         description: Question deleted
@@ -402,3 +392,549 @@
           application/json:
             schema:
               $ref: "#/components/schemas/MessageResponse"
+      "400":
+        description: Bad request
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "401":
+        description: Missing or invalid token
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "403":
+        description: Forbidden
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "404":
+        description: Test or question not found
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "422":
+        description: Wrong test type for question delete
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "500":
+        description: Internal server error
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+
+/admin/assessments/analogy/{testId}/questions:
+  post:
+    tags: [Admin Assessments]
+    summary: Create analogy question
+    description: Creates one analogy question after validating test type and order uniqueness within the test.
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: testId
+        in: path
+        required: true
+        schema:
+          type: string
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/AnalogyQuestionSchema"
+    responses:
+      "201":
+        description: Question created
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  $ref: "#/components/schemas/AnalogyQuestionSchema"
+      "400":
+        description: Bad request
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "401":
+        description: Missing or invalid token
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "403":
+        description: Forbidden
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "404":
+        description: Test not found
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "409":
+        description: Duplicate order
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "422":
+        description: Wrong test type
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "500":
+        description: Internal server error
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+
+/admin/assessments/visual-memory/{testId}/batches:
+  post:
+    tags: [Admin Assessments]
+    summary: Create visual memory batch
+    description: Creates one visual memory batch and all nested Q_VisualMemory rows atomically after validating the test type and batch order.
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: testId
+        in: path
+        required: true
+        schema:
+          type: string
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/VisualMemoryBatchSchema"
+    responses:
+      "201":
+        description: Batch created
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  $ref: "#/components/schemas/VisualMemoryBatchSchema"
+      "400":
+        description: Bad request
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "401":
+        description: Missing or invalid token
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "403":
+        description: Forbidden
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "404":
+        description: Test not found
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "409":
+        description: Duplicate order
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "422":
+        description: Wrong test type
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "500":
+        description: Internal server error
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+
+/admin/assessments/tests/{testId}/batches/{batchId}:
+  delete:
+    tags: [Admin Assessments]
+    summary: Delete visual memory batch
+    description: Deletes a visual memory batch within the context of `testId`. Prisma cascade rules delete nested Q_VisualMemory rows automatically.
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: testId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: batchId
+        in: path
+        required: true
+        schema:
+          type: string
+    responses:
+      "200":
+        description: Batch deleted
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MessageResponse"
+      "400":
+        description: Bad request
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "401":
+        description: Missing or invalid token
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "403":
+        description: Forbidden
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "404":
+        description: Batch not found
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "500":
+        description: Internal server error
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+
+/admin/assessments/auditory-memory/{testId}/questions:
+  post:
+    tags: [Admin Assessments]
+    summary: Create auditory memory question
+    description: Creates one auditory memory question after validating test type and order uniqueness.
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: testId
+        in: path
+        required: true
+        schema:
+          type: string
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/AuditoryMemoryQuestionSchema"
+    responses:
+      "201":
+        description: Question created
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  $ref: "#/components/schemas/AuditoryMemoryQuestionSchema"
+      "400":
+        description: Bad request
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "401":
+        description: Missing or invalid token
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "403":
+        description: Forbidden
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "404":
+        description: Test not found
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "409":
+        description: Duplicate order
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "422":
+        description: Wrong test type
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "500":
+        description: Internal server error
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+
+/admin/assessments/help/skills:
+  get:
+    tags: [Admin Assessments]
+    summary: List HELP skills
+    description: Returns HELP skills with optional domain filtering.
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: domain
+        in: query
+        required: false
+        schema:
+          type: string
+          enum: [COGNITIVE, FINE_MOTOR, GROSS_MOTOR, SOCIAL]
+    responses:
+      "200":
+        description: HELP skills
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/HelpSkillSchema"
+      "400":
+        description: Bad request
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "401":
+        description: Missing or invalid token
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "403":
+        description: Forbidden
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "500":
+        description: Internal server error
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+  post:
+    tags: [Admin Assessments]
+    summary: Create HELP skill
+    description: Creates one global HELP skill row.
+    security:
+      - BearerAuth: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/HelpSkillSchema"
+    responses:
+      "201":
+        description: HELP skill created
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  $ref: "#/components/schemas/HelpSkillSchema"
+      "400":
+        description: Bad request
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "401":
+        description: Missing or invalid token
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "403":
+        description: Forbidden
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "500":
+        description: Internal server error
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+
+/admin/assessments/help/skills/{skillId}:
+  delete:
+    tags: [Admin Assessments]
+    summary: Delete HELP skill
+    description: Deletes one HELP skill unless linked HelpEvaluation rows already exist.
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: skillId
+        in: path
+        required: true
+        schema:
+          type: string
+    responses:
+      "200":
+        description: HELP skill deleted
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MessageResponse"
+      "400":
+        description: Bad request
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "401":
+        description: Missing or invalid token
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "403":
+        description: Forbidden
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "404":
+        description: Skill not found
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "409":
+        description: Skill is linked to evaluations
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "500":
+        description: Internal server error
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+
+/admin/assessments/generic/{testId}/questions:
+  post:
+    tags: [Admin Assessments]
+    summary: Create generic question
+    description: Creates one generic Question row for SOUND_DISCRIMINATION, PRONUNCIATION_REPETITION, SOUND_IMAGE_LINKING, or SEQUENCE_ORDER after validating the test type and orderIndex uniqueness.
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: testId
+        in: path
+        required: true
+        schema:
+          type: string
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/GenericQuestionSchema"
+    responses:
+      "201":
+        description: Generic question created
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  $ref: "#/components/schemas/GenericQuestionSchema"
+      "400":
+        description: Bad request
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "401":
+        description: Missing or invalid token
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "403":
+        description: Forbidden
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "404":
+        description: Test not found
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "409":
+        description: Duplicate orderIndex
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "422":
+        description: Wrong test type
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "500":
+        description: Internal server error
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"

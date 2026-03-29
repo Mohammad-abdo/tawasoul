@@ -1,360 +1,138 @@
+import { validationResult } from 'express-validator';
 import { prisma } from '../../config/database.js';
 import { logger } from '../../utils/logger.js';
 import {
-  countAssessmentQuestions,
-  fetchAssessmentQuestions,
-  getAdminQuestionEntityById,
-  getQuestionModelForTestType,
-  parseMaybeJson,
-  serializeAssessmentQuestion
-} from '../../utils/assessment.utils.js';
+  buildTestDetail,
+  getQuestionCountForTest,
+  buildTestSummary,
+  ensureTestForType,
+  GENERIC_TEST_TYPES
+} from '../../utils/assessment-api.utils.js';
+import { createHttpError } from '../../utils/httpError.js';
+import { parseMaybeJson, serializeAssessmentQuestion } from '../../utils/assessment.utils.js';
 
-const formatTest = (test, questionCount, questions = undefined) => ({
-  ...test,
-  questionModel: getQuestionModelForTestType(test.testType),
-  questionCount,
-  ...(questions !== undefined ? { questions } : {})
-});
+const handleValidationErrors = (req, res) => {
+  const errors = validationResult(req);
 
-const getUploadedAssetPaths = (req) => {
-  const audioFile = req.files?.audio?.[0];
-  const imageFile = req.files?.image?.[0];
-
-  return {
-    audioAssetPath: audioFile ? `assessments/audio/${audioFile.filename}` : undefined,
-    imageAssetPath: imageFile ? `assessments/images/${imageFile.filename}` : undefined
-  };
-};
-
-const validationError = (message) => {
-  const error = new Error(message);
-  error.name = 'AssessmentValidationError';
-  return error;
-};
-
-const parseVisualMemoryQuestions = (rawQuestions) => {
-  const questions = parseMaybeJson(rawQuestions, []);
-  if (!Array.isArray(questions) || questions.length === 0) {
-    throw validationError('Visual memory batches require a non-empty questions array');
+  if (errors.isEmpty()) {
+    return false;
   }
 
-  return questions.map((question, index) => ({
-    order: question.order != null ? Number.parseInt(question.order, 10) : index + 1,
-    questionText: question.questionText,
-    questionType: question.questionType,
-    correctBool: question.correctBool ?? null,
-    choices: question.choices ?? null,
-    correctIndex: question.correctIndex ?? null
-  }));
-};
-
-const createSpecializedQuestion = async ({ tx, req, test, testId, body }) => {
-  const { audioAssetPath, imageAssetPath } = getUploadedAssetPaths(req);
-
-  switch (test.testType) {
-    case 'CARS':
-      return tx.q_CARS.create({
-        data: {
-          testId,
-          order: body.order != null ? Number.parseInt(body.order, 10) : 0,
-          questionText: parseMaybeJson(body.questionText),
-          choices: parseMaybeJson(body.choices, [])
-        }
-      });
-
-    case 'ANALOGY':
-      return tx.q_Analogy.create({
-        data: {
-          testId,
-          order: body.order != null ? Number.parseInt(body.order, 10) : 0,
-          questionImageUrl: body.questionImageUrl || imageAssetPath,
-          choices: parseMaybeJson(body.choices, []),
-          correctIndex: Number.parseInt(body.correctIndex, 10)
-        }
-      });
-
-    case 'VISUAL_MEMORY':
-      return tx.q_VisualMemory_Batch.create({
-        data: {
-          testId,
-          order: body.order != null ? Number.parseInt(body.order, 10) : 0,
-          imageUrl: body.imageUrl || imageAssetPath,
-          displaySeconds: Number.parseInt(body.displaySeconds, 10),
-          questions: {
-            create: parseVisualMemoryQuestions(body.questions)
-          }
-        },
-        include: {
-          questions: {
-            orderBy: [{ order: 'asc' }, { id: 'asc' }]
-          }
-        }
-      });
-
-    case 'AUDITORY_MEMORY':
-      return tx.q_AuditoryMemory.create({
-        data: {
-          testId,
-          order: body.order != null ? Number.parseInt(body.order, 10) : 0,
-          audioClipUrl: body.audioClipUrl || audioAssetPath,
-          questionText: parseMaybeJson(body.questionText),
-          modelAnswer: parseMaybeJson(body.modelAnswer, [])
-        }
-      });
-
-    case 'HELP':
-      return tx.helpSkill.create({
-        data: {
-          domain: body.domain,
-          skillNumber: body.skillNumber,
-          description: body.description,
-          ageRange: body.ageRange
-        }
-      });
-
-    default:
-      return tx.question.create({
-        data: {
-          testId,
-          orderIndex: body.orderIndex != null ? Number.parseInt(body.orderIndex, 10) : 0,
-          audioAssetPath: audioAssetPath || null,
-          imageAssetPath: imageAssetPath || null,
-          choices: parseMaybeJson(body.choices, null),
-          scoringGuide: body.scoringGuide,
-          maxScore: body.maxScore != null ? Number.parseInt(body.maxScore, 10) : null
-        }
-      });
-  }
-};
-
-const updateSpecializedQuestion = async ({ tx, req, found, body }) => {
-  const { audioAssetPath, imageAssetPath } = getUploadedAssetPaths(req);
-
-  switch (found.testType) {
-    case 'CARS':
-      return tx.q_CARS.update({
-        where: { id: found.entity.id },
-        data: {
-          ...(body.order !== undefined && { order: Number.parseInt(body.order, 10) }),
-          ...(body.questionText !== undefined && { questionText: parseMaybeJson(body.questionText) }),
-          ...(body.choices !== undefined && { choices: parseMaybeJson(body.choices, []) })
-        }
-      });
-
-    case 'ANALOGY':
-      return tx.q_Analogy.update({
-        where: { id: found.entity.id },
-        data: {
-          ...(body.order !== undefined && { order: Number.parseInt(body.order, 10) }),
-          ...((body.questionImageUrl !== undefined || imageAssetPath) && { questionImageUrl: body.questionImageUrl || imageAssetPath }),
-          ...(body.choices !== undefined && { choices: parseMaybeJson(body.choices, []) }),
-          ...(body.correctIndex !== undefined && { correctIndex: Number.parseInt(body.correctIndex, 10) })
-        }
-      });
-
-    case 'VISUAL_MEMORY': {
-      const updatedBatch = await tx.q_VisualMemory_Batch.update({
-        where: { id: found.entity.id },
-        data: {
-          ...(body.order !== undefined && { order: Number.parseInt(body.order, 10) }),
-          ...((body.imageUrl !== undefined || imageAssetPath) && { imageUrl: body.imageUrl || imageAssetPath }),
-          ...(body.displaySeconds !== undefined && { displaySeconds: Number.parseInt(body.displaySeconds, 10) })
-        }
-      });
-
-      if (body.questions !== undefined) {
-        await tx.q_VisualMemory.deleteMany({ where: { batchId: found.entity.id } });
-        const nestedQuestions = parseVisualMemoryQuestions(body.questions);
-        for (const question of nestedQuestions) {
-          await tx.q_VisualMemory.create({
-            data: {
-              batchId: found.entity.id,
-              ...question
-            }
-          });
-        }
-      }
-
-      return tx.q_VisualMemory_Batch.findUnique({
-        where: { id: updatedBatch.id },
-        include: {
-          questions: {
-            orderBy: [{ order: 'asc' }, { id: 'asc' }]
-          }
-        }
-      });
+  res.status(400).json({
+    success: false,
+    error: {
+      code: 'VALIDATION_ERROR',
+      message: errors.array()[0].msg
     }
+  });
 
-    case 'AUDITORY_MEMORY':
-      return tx.q_AuditoryMemory.update({
-        where: { id: found.entity.id },
-        data: {
-          ...(body.order !== undefined && { order: Number.parseInt(body.order, 10) }),
-          ...((body.audioClipUrl !== undefined || audioAssetPath) && { audioClipUrl: body.audioClipUrl || audioAssetPath }),
-          ...(body.questionText !== undefined && { questionText: parseMaybeJson(body.questionText) }),
-          ...(body.modelAnswer !== undefined && { modelAnswer: parseMaybeJson(body.modelAnswer, []) })
-        }
-      });
+  return true;
+};
 
-    case 'HELP':
-      return tx.helpSkill.update({
-        where: { id: found.entity.id },
-        data: {
-          ...(body.domain !== undefined && { domain: body.domain }),
-          ...(body.skillNumber !== undefined && { skillNumber: body.skillNumber }),
-          ...(body.description !== undefined && { description: body.description }),
-          ...(body.ageRange !== undefined && { ageRange: body.ageRange })
-        }
-      });
+const handleKnownError = (res, error) => {
+  if (!error.status) {
+    return false;
+  }
 
-    default:
-      return tx.question.update({
-        where: { id: found.entity.id },
-        data: {
-          ...(audioAssetPath && { audioAssetPath }),
-          ...(imageAssetPath && { imageAssetPath }),
-          ...(body.scoringGuide !== undefined && { scoringGuide: body.scoringGuide }),
-          ...(body.orderIndex !== undefined && { orderIndex: Number.parseInt(body.orderIndex, 10) }),
-          ...(body.choices !== undefined && { choices: parseMaybeJson(body.choices, null) }),
-          ...(body.maxScore !== undefined && { maxScore: body.maxScore ? Number.parseInt(body.maxScore, 10) : null })
-        }
-      });
+  res.status(error.status).json({
+    success: false,
+    error: {
+      code: error.code,
+      message: error.message
+    }
+  });
+
+  return true;
+};
+
+const ensureOrderAvailable = async (delegate, where, message) => {
+  const existing = await delegate.findFirst({
+    where,
+    select: { id: true }
+  });
+
+  if (existing) {
+    throw createHttpError(409, 'ORDER_CONFLICT', message);
   }
 };
 
-/**
- * Get All Tests
- */
-export const getAllTests = async (req, res, next) => {
+const findScopedRecordOrThrow = async (delegate, where, code = 'QUESTION_NOT_FOUND', message = 'Question not found') => {
+  const record = await delegate.findFirst({
+    where
+  });
+
+  if (!record) {
+    throw createHttpError(404, code, message);
+  }
+
+  return record;
+};
+
+export const getTests = async (req, res, next) => {
   try {
-    const {
-      testType,
-      page = 1,
-      limit = 20
-    } = req.query;
-    const skip = (Number.parseInt(page, 10) - 1) * Number.parseInt(limit, 10);
-    const take = Number.parseInt(limit, 10);
+    if (handleValidationErrors(req, res)) return;
 
     const where = {};
-    if (testType) where.testType = testType;
+    if (req.query.testType) {
+      where.testType = req.query.testType;
+    }
 
-    const [tests, total] = await Promise.all([
-      prisma.test.findMany({
-        where,
-        skip,
-        take,
-        orderBy: { createdAt: 'desc' }
-      }),
-      prisma.test.count({ where })
-    ]);
+    const tests = await prisma.test.findMany({
+      where,
+      orderBy: { createdAt: 'desc' }
+    });
 
-    const enrichedTests = await Promise.all(
-      tests.map(async (test) => formatTest(test, await countAssessmentQuestions({ prisma, test })))
+    const data = await Promise.all(
+      tests.map(async (test) => buildTestSummary({
+        test,
+        questionCount: await getQuestionCountForTest({ prisma, test })
+      }))
     );
 
     res.json({
       success: true,
-      data: {
-        tests: enrichedTests,
-        pagination: {
-          page: Number.parseInt(page, 10),
-          limit: Number.parseInt(limit, 10),
-          total,
-          pages: Math.ceil(total / Number.parseInt(limit, 10))
-        }
-      }
+      data
     });
   } catch (error) {
-    logger.error('Get all tests error:', error);
+    logger.error('Get admin tests error:', error);
     next(error);
   }
 };
 
-/**
- * Get Test by ID
- */
-export const getTestById = async (req, res, next) => {
-  try {
-    const { id } = req.params;
-
-    const test = await prisma.test.findUnique({
-      where: { id }
-    });
-
-    if (!test) {
-      return res.status(404).json({
-        success: false,
-        error: {
-          code: 'TEST_NOT_FOUND',
-          message: 'Test not found'
-        }
-      });
-    }
-
-    const [questionCount, questions] = await Promise.all([
-      countAssessmentQuestions({ prisma, test }),
-      fetchAssessmentQuestions({ prisma, test, req, includeCorrect: true })
-    ]);
-
-    res.json({
-      success: true,
-      data: formatTest(test, questionCount, questions)
-    });
-  } catch (error) {
-    logger.error('Get test by ID error:', error);
-    next(error);
-  }
-};
-
-/**
- * Create Test
- */
 export const createTest = async (req, res, next) => {
   try {
-    const { title, titleAr, testType, description, type } = req.body;
+    if (handleValidationErrors(req, res)) return;
 
-    if (!title) {
-      return res.status(400).json({
-        success: false,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Title is required'
-        }
-      });
-    }
+    const { title, titleAr, type, testType, description } = req.body;
 
     const test = await prisma.test.create({
       data: {
         title,
-        titleAr: titleAr || null,
-        testType: testType || 'CARS',
-        type: type || undefined,
-        description
+        titleAr,
+        type,
+        testType,
+        description: description || null
       }
     });
 
-    logger.info(`Test created: ${test.id} by admin ${req.admin.id}`);
+    logger.info(`Assessment test created: ${test.id} by admin ${req.admin.id}`);
 
     res.status(201).json({
       success: true,
-      data: formatTest(test, 0, [])
+      data: buildTestSummary({ test, questionCount: 0 })
     });
   } catch (error) {
-    logger.error('Create test error:', error);
+    logger.error('Create admin test error:', error);
     next(error);
   }
 };
 
-/**
- * Update Test
- */
-export const updateTest = async (req, res, next) => {
+export const getTestById = async (req, res, next) => {
   try {
-    const { id } = req.params;
-    const { title, titleAr, testType, description, type } = req.body;
+    if (handleValidationErrors(req, res)) return;
 
     const test = await prisma.test.findUnique({
-      where: { id }
+      where: { id: req.params.testId }
     });
 
     if (!test) {
@@ -367,41 +145,76 @@ export const updateTest = async (req, res, next) => {
       });
     }
 
-    const updatedTest = await prisma.test.update({
-      where: { id },
-      data: {
-        ...(title && { title }),
-        ...(titleAr !== undefined && { titleAr }),
-        ...(testType && { testType }),
-        ...(type && { type }),
-        ...(description !== undefined && { description })
-      }
+    const data = await buildTestDetail({
+      prisma,
+      req,
+      test,
+      includeCorrect: true
     });
-
-    logger.info(`Test updated: ${id} by admin ${req.admin.id}`);
 
     res.json({
       success: true,
-      data: formatTest(updatedTest, await countAssessmentQuestions({ prisma, test: updatedTest }))
+      data
     });
   } catch (error) {
-    logger.error('Update test error:', error);
+    logger.error('Get admin test detail error:', error);
     next(error);
   }
 };
 
-/**
- * Delete Test
- */
-export const deleteTest = async (req, res, next) => {
+export const updateTest = async (req, res, next) => {
   try {
-    const { id } = req.params;
+    if (handleValidationErrors(req, res)) return;
 
-    const test = await prisma.test.findUnique({
-      where: { id }
+    const existing = await prisma.test.findUnique({
+      where: { id: req.params.testId }
     });
 
-    if (!test) {
+    if (!existing) {
+      return res.status(404).json({
+        success: false,
+        error: {
+          code: 'TEST_NOT_FOUND',
+          message: 'Test not found'
+        }
+      });
+    }
+
+    const updated = await prisma.test.update({
+      where: { id: req.params.testId },
+      data: {
+        ...(req.body.title !== undefined && { title: req.body.title }),
+        ...(req.body.titleAr !== undefined && { titleAr: req.body.titleAr }),
+        ...(req.body.type !== undefined && { type: req.body.type }),
+        ...(req.body.testType !== undefined && { testType: req.body.testType }),
+        ...(req.body.description !== undefined && { description: req.body.description || null })
+      }
+    });
+
+    logger.info(`Assessment test updated: ${updated.id} by admin ${req.admin.id}`);
+
+    res.json({
+      success: true,
+      data: buildTestSummary({
+        test: updated,
+        questionCount: await getQuestionCountForTest({ prisma, test: updated })
+      })
+    });
+  } catch (error) {
+    logger.error('Update admin test error:', error);
+    next(error);
+  }
+};
+
+export const deleteTest = async (req, res, next) => {
+  try {
+    if (handleValidationErrors(req, res)) return;
+
+    const existing = await prisma.test.findUnique({
+      where: { id: req.params.testId }
+    });
+
+    if (!existing) {
       return res.status(404).json({
         success: false,
         error: {
@@ -412,97 +225,69 @@ export const deleteTest = async (req, res, next) => {
     }
 
     await prisma.test.delete({
-      where: { id }
+      where: { id: req.params.testId }
     });
 
-    logger.info(`Test deleted: ${id} by admin ${req.admin.id}`);
+    logger.info(`Assessment test deleted: ${req.params.testId} by admin ${req.admin.id}`);
 
     res.json({
       success: true,
       message: 'Test deleted successfully'
     });
   } catch (error) {
-    logger.error('Delete test error:', error);
+    logger.error('Delete admin test error:', error);
     next(error);
   }
 };
 
-/**
- * Get Test Questions
- */
-export const getTestQuestions = async (req, res, next) => {
+export const createCarsQuestion = async (req, res, next) => {
   try {
-    const { testId } = req.params;
+    if (handleValidationErrors(req, res)) return;
 
-    const test = await prisma.test.findUnique({
-      where: { id: testId }
+    await ensureTestForType({
+      prisma,
+      testId: req.params.testId,
+      expectedType: 'CARS'
     });
 
-    if (!test) {
-      return res.status(404).json({
-        success: false,
-        error: {
-          code: 'TEST_NOT_FOUND',
-          message: 'Test not found'
-        }
-      });
-    }
+    await ensureOrderAvailable(
+      prisma.q_CARS,
+      { testId: req.params.testId, order: req.body.order },
+      'A CARS question with this order already exists in this test'
+    );
 
-    const [questionCount, questions] = await Promise.all([
-      countAssessmentQuestions({ prisma, test }),
-      fetchAssessmentQuestions({ prisma, test, req, includeCorrect: true })
-    ]);
-
-    res.json({
-      success: true,
+    const question = await prisma.q_CARS.create({
       data: {
-        test: formatTest(test, questionCount),
-        questionModel: getQuestionModelForTestType(test.testType),
-        questions
+        testId: req.params.testId,
+        order: req.body.order,
+        questionText: parseMaybeJson(req.body.questionText),
+        choices: parseMaybeJson(req.body.choices, [])
       }
     });
-  } catch (error) {
-    logger.error('Get test questions error:', error);
-    next(error);
-  }
-};
 
-/**
- * Get Question by ID
- */
-export const getQuestionById = async (req, res, next) => {
-  try {
-    const found = await getAdminQuestionEntityById({ prisma, id: req.params.id, req });
-
-    if (!found) {
-      return res.status(404).json({
-        success: false,
-        error: {
-          code: 'QUESTION_NOT_FOUND',
-          message: 'Question not found'
-        }
-      });
-    }
-
-    res.json({
+    res.status(201).json({
       success: true,
-      data: found.serialized
+      data: serializeAssessmentQuestion({
+        req,
+        testType: 'CARS',
+        question,
+        includeCorrect: true
+      })
     });
   } catch (error) {
-    logger.error('Get question by ID error:', error);
+    if (handleKnownError(res, error)) return;
+    logger.error('Create CARS question error:', error);
     next(error);
   }
 };
 
-/**
- * Create Question
- */
-export const createQuestion = async (req, res, next) => {
+export const deleteTestQuestion = async (req, res, next) => {
   try {
-    const { testId } = req.params;
+    if (handleValidationErrors(req, res)) return;
 
     const test = await prisma.test.findUnique({
-      where: { id: testId }
+      where: { id: req.params.testId },
+      select: { id: true, testType: true }
     });
 
     if (!test) {
@@ -515,17 +300,381 @@ export const createQuestion = async (req, res, next) => {
       });
     }
 
-    const question = await prisma.$transaction((tx) =>
-      createSpecializedQuestion({
-        tx,
+    switch (test.testType) {
+      case 'CARS':
+        await findScopedRecordOrThrow(prisma.q_CARS, {
+          id: req.params.questionId,
+          testId: test.id
+        });
+        await prisma.q_CARS.delete({
+          where: { id: req.params.questionId }
+        });
+        break;
+      case 'ANALOGY':
+        await findScopedRecordOrThrow(prisma.q_Analogy, {
+          id: req.params.questionId,
+          testId: test.id
+        });
+        await prisma.q_Analogy.delete({
+          where: { id: req.params.questionId }
+        });
+        break;
+      case 'AUDITORY_MEMORY':
+        await findScopedRecordOrThrow(prisma.q_AuditoryMemory, {
+          id: req.params.questionId,
+          testId: test.id
+        });
+        await prisma.q_AuditoryMemory.delete({
+          where: { id: req.params.questionId }
+        });
+        break;
+      case 'SOUND_DISCRIMINATION':
+      case 'PRONUNCIATION_REPETITION':
+      case 'SOUND_IMAGE_LINKING':
+      case 'SEQUENCE_ORDER':
+        await findScopedRecordOrThrow(prisma.question, {
+          id: req.params.questionId,
+          testId: test.id
+        });
+        await prisma.question.delete({
+          where: { id: req.params.questionId }
+        });
+        break;
+      case 'VISUAL_MEMORY':
+        return res.status(422).json({
+          success: false,
+          error: {
+            code: 'INVALID_TEST_TYPE',
+            message: 'Visual memory content must be deleted using the batch delete endpoint'
+          }
+        });
+      case 'HELP':
+        return res.status(422).json({
+          success: false,
+          error: {
+            code: 'INVALID_TEST_TYPE',
+            message: 'HELP tests do not support question deletion'
+          }
+        });
+      default:
+        return res.status(422).json({
+          success: false,
+          error: {
+            code: 'INVALID_TEST_TYPE',
+            message: 'This test type does not support question deletion'
+          }
+        });
+    }
+
+    res.json({
+      success: true,
+      message: 'Question deleted successfully'
+    });
+  } catch (error) {
+    if (handleKnownError(res, error)) return;
+    logger.error('Delete assessment question error:', error);
+    next(error);
+  }
+};
+
+export const createAnalogyQuestion = async (req, res, next) => {
+  try {
+    if (handleValidationErrors(req, res)) return;
+
+    await ensureTestForType({
+      prisma,
+      testId: req.params.testId,
+      expectedType: 'ANALOGY'
+    });
+
+    await ensureOrderAvailable(
+      prisma.q_Analogy,
+      { testId: req.params.testId, order: req.body.order },
+      'An analogy question with this order already exists in this test'
+    );
+
+    const question = await prisma.q_Analogy.create({
+      data: {
+        testId: req.params.testId,
+        order: req.body.order,
+        questionImageUrl: req.body.questionImageUrl,
+        choices: parseMaybeJson(req.body.choices, []),
+        correctIndex: req.body.correctIndex
+      }
+    });
+
+    res.status(201).json({
+      success: true,
+      data: serializeAssessmentQuestion({
         req,
-        test,
-        testId,
-        body: req.body
+        testType: 'ANALOGY',
+        question,
+        includeCorrect: true
+      })
+    });
+  } catch (error) {
+    if (handleKnownError(res, error)) return;
+    logger.error('Create analogy question error:', error);
+    next(error);
+  }
+};
+
+export const createVisualMemoryBatch = async (req, res, next) => {
+  try {
+    if (handleValidationErrors(req, res)) return;
+
+    await ensureTestForType({
+      prisma,
+      testId: req.params.testId,
+      expectedType: 'VISUAL_MEMORY'
+    });
+
+    await ensureOrderAvailable(
+      prisma.q_VisualMemory_Batch,
+      { testId: req.params.testId, order: req.body.order },
+      'A visual memory batch with this order already exists in this test'
+    );
+
+    const questions = parseMaybeJson(req.body.questions, []);
+
+    const batch = await prisma.$transaction((tx) =>
+      tx.q_VisualMemory_Batch.create({
+        data: {
+          testId: req.params.testId,
+          order: req.body.order,
+          imageUrl: req.body.imageUrl,
+          displaySeconds: req.body.displaySeconds,
+          questions: {
+            create: questions.map((question) => ({
+              order: question.order,
+              questionText: question.questionText,
+              questionType: question.questionType,
+              correctBool: question.correctBool ?? null,
+              choices: question.choices ?? null,
+              correctIndex: question.correctIndex ?? null
+            }))
+          }
+        },
+        include: {
+          questions: {
+            orderBy: [{ order: 'asc' }, { id: 'asc' }]
+          }
+        }
       })
     );
 
-    logger.info(`Question created: ${question.id} for test ${testId} by admin ${req.admin.id}`);
+    res.status(201).json({
+      success: true,
+      data: serializeAssessmentQuestion({
+        req,
+        testType: 'VISUAL_MEMORY',
+        question: batch,
+        includeCorrect: true
+      })
+    });
+  } catch (error) {
+    if (handleKnownError(res, error)) return;
+    logger.error('Create visual memory batch error:', error);
+    next(error);
+  }
+};
+
+export const deleteVisualMemoryBatch = async (req, res, next) => {
+  try {
+    if (handleValidationErrors(req, res)) return;
+
+    await ensureTestForType({
+      prisma,
+      testId: req.params.testId,
+      expectedType: 'VISUAL_MEMORY'
+    });
+
+    await findScopedRecordOrThrow(
+      prisma.q_VisualMemory_Batch,
+      { id: req.params.batchId, testId: req.params.testId },
+      'BATCH_NOT_FOUND',
+      'Batch not found'
+    );
+    await prisma.q_VisualMemory_Batch.delete({
+      where: { id: req.params.batchId }
+    });
+
+    res.json({
+      success: true,
+      message: 'Batch deleted successfully'
+    });
+  } catch (error) {
+    if (handleKnownError(res, error)) return;
+    logger.error('Delete visual memory batch error:', error);
+    next(error);
+  }
+};
+
+export const createAuditoryMemoryQuestion = async (req, res, next) => {
+  try {
+    if (handleValidationErrors(req, res)) return;
+
+    await ensureTestForType({
+      prisma,
+      testId: req.params.testId,
+      expectedType: 'AUDITORY_MEMORY'
+    });
+
+    await ensureOrderAvailable(
+      prisma.q_AuditoryMemory,
+      { testId: req.params.testId, order: req.body.order },
+      'An auditory memory question with this order already exists in this test'
+    );
+
+    const question = await prisma.q_AuditoryMemory.create({
+      data: {
+        testId: req.params.testId,
+        order: req.body.order,
+        audioClipUrl: req.body.audioClipUrl,
+        questionText: parseMaybeJson(req.body.questionText),
+        modelAnswer: parseMaybeJson(req.body.modelAnswer)
+      }
+    });
+
+    res.status(201).json({
+      success: true,
+      data: serializeAssessmentQuestion({
+        req,
+        testType: 'AUDITORY_MEMORY',
+        question,
+        includeCorrect: true
+      })
+    });
+  } catch (error) {
+    if (handleKnownError(res, error)) return;
+    logger.error('Create auditory memory question error:', error);
+    next(error);
+  }
+};
+
+export const getHelpSkills = async (req, res, next) => {
+  try {
+    if (handleValidationErrors(req, res)) return;
+
+    const where = {};
+    if (req.query.domain) {
+      where.domain = req.query.domain;
+    }
+
+    const skills = await prisma.helpSkill.findMany({
+      where,
+      orderBy: [{ domain: 'asc' }, { skillNumber: 'asc' }, { id: 'asc' }]
+    });
+
+    res.json({
+      success: true,
+      data: skills
+    });
+  } catch (error) {
+    logger.error('Get HELP skills error:', error);
+    next(error);
+  }
+};
+
+export const createHelpSkill = async (req, res, next) => {
+  try {
+    if (handleValidationErrors(req, res)) return;
+
+    const skill = await prisma.helpSkill.create({
+      data: {
+        domain: req.body.domain,
+        skillNumber: req.body.skillNumber,
+        description: req.body.description,
+        ageRange: req.body.ageRange
+      }
+    });
+
+    res.status(201).json({
+      success: true,
+      data: skill
+    });
+  } catch (error) {
+    logger.error('Create HELP skill error:', error);
+    next(error);
+  }
+};
+
+export const deleteHelpSkill = async (req, res, next) => {
+  try {
+    if (handleValidationErrors(req, res)) return;
+
+    const skill = await prisma.helpSkill.findUnique({
+      where: { id: req.params.skillId },
+      include: {
+        _count: {
+          select: {
+            evaluations: true
+          }
+        }
+      }
+    });
+
+    if (!skill) {
+      return res.status(404).json({
+        success: false,
+        error: {
+          code: 'HELP_SKILL_NOT_FOUND',
+          message: 'Help skill not found'
+        }
+      });
+    }
+
+    if (skill._count.evaluations > 0) {
+      return res.status(409).json({
+        success: false,
+        error: {
+          code: 'HELP_SKILL_IN_USE',
+          message: 'Cannot delete a help skill that has linked evaluations'
+        }
+      });
+    }
+
+    await prisma.helpSkill.delete({
+      where: { id: req.params.skillId }
+    });
+
+    res.json({
+      success: true,
+      message: 'Help skill deleted successfully'
+    });
+  } catch (error) {
+    logger.error('Delete HELP skill error:', error);
+    next(error);
+  }
+};
+
+export const createGenericQuestion = async (req, res, next) => {
+  try {
+    if (handleValidationErrors(req, res)) return;
+
+    const test = await ensureTestForType({
+      prisma,
+      testId: req.params.testId,
+      allowedTypes: GENERIC_TEST_TYPES
+    });
+
+    await ensureOrderAvailable(
+      prisma.question,
+      { testId: req.params.testId, orderIndex: req.body.orderIndex },
+      'A generic question with this orderIndex already exists in this test'
+    );
+
+    const question = await prisma.question.create({
+      data: {
+        testId: req.params.testId,
+        orderIndex: req.body.orderIndex,
+        audioAssetPath: req.body.audioAssetPath || null,
+        imageAssetPath: req.body.imageAssetPath || null,
+        choices: req.body.choices === undefined ? null : parseMaybeJson(req.body.choices, null),
+        scoringGuide: req.body.scoringGuide,
+        maxScore: req.body.maxScore
+      }
+    });
 
     res.status(201).json({
       success: true,
@@ -537,123 +686,8 @@ export const createQuestion = async (req, res, next) => {
       })
     });
   } catch (error) {
-    logger.error('Create question error:', error);
-
-    if (error.name === 'AssessmentValidationError') {
-      return res.status(400).json({
-        success: false,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: error.message
-        }
-      });
-    }
-
-    next(error);
-  }
-};
-
-/**
- * Update Question
- */
-export const updateQuestion = async (req, res, next) => {
-  try {
-    const found = await getAdminQuestionEntityById({ prisma, id: req.params.id, req });
-
-    if (!found) {
-      return res.status(404).json({
-        success: false,
-        error: {
-          code: 'QUESTION_NOT_FOUND',
-          message: 'Question not found'
-        }
-      });
-    }
-
-    const updatedQuestion = await prisma.$transaction((tx) =>
-      updateSpecializedQuestion({
-        tx,
-        req,
-        found,
-        body: req.body
-      })
-    );
-
-    logger.info(`Question updated: ${req.params.id} by admin ${req.admin.id}`);
-
-    res.json({
-      success: true,
-      data: serializeAssessmentQuestion({
-        req,
-        testType: found.testType === 'LEGACY' ? found.entity.test?.testType : found.testType,
-        question: updatedQuestion,
-        includeCorrect: true
-      })
-    });
-  } catch (error) {
-    logger.error('Update question error:', error);
-
-    if (error.name === 'AssessmentValidationError') {
-      return res.status(400).json({
-        success: false,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: error.message
-        }
-      });
-    }
-
-    next(error);
-  }
-};
-
-/**
- * Delete Question
- */
-export const deleteQuestion = async (req, res, next) => {
-  try {
-    const found = await getAdminQuestionEntityById({ prisma, id: req.params.id, req });
-
-    if (!found) {
-      return res.status(404).json({
-        success: false,
-        error: {
-          code: 'QUESTION_NOT_FOUND',
-          message: 'Question not found'
-        }
-      });
-    }
-
-    await prisma.$transaction(async (tx) => {
-      switch (found.testType) {
-        case 'CARS':
-          await tx.q_CARS.delete({ where: { id: found.entity.id } });
-          break;
-        case 'ANALOGY':
-          await tx.q_Analogy.delete({ where: { id: found.entity.id } });
-          break;
-        case 'VISUAL_MEMORY':
-          await tx.q_VisualMemory_Batch.delete({ where: { id: found.entity.id } });
-          break;
-        case 'AUDITORY_MEMORY':
-          await tx.q_AuditoryMemory.delete({ where: { id: found.entity.id } });
-          break;
-        case 'HELP':
-          await tx.helpSkill.delete({ where: { id: found.entity.id } });
-          break;
-        default:
-          await tx.question.delete({ where: { id: found.entity.id } });
-      }
-    });
-
-    logger.info(`Question deleted: ${req.params.id} by admin ${req.admin.id}`);
-
-    res.json({
-      success: true,
-      message: 'Question deleted successfully'
-    });
-  } catch (error) {
-    logger.error('Delete question error:', error);
+    if (handleKnownError(res, error)) return;
+    logger.error('Create generic assessment question error:', error);
     next(error);
   }
 };

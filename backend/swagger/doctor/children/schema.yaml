@@ -6,69 +6,12 @@ ChildWithAssessments:
         assessmentResults:
           type: array
           items:
-            type: object
-            properties:
-              id:
-                type: string
-              testId:
-                type: string
-                nullable: true
-              questionId:
-                type: string
-                nullable: true
-              scoreGiven:
-                type: integer
-                nullable: true
-              totalScore:
-                type: integer
-                nullable: true
-              maxScore:
-                type: integer
-                nullable: true
-              sessionId:
-                type: string
-                nullable: true
-              timestamp:
-                type: string
-                format: date-time
-              test:
-                $ref: "#/components/schemas/AssessmentTest"
-              helpAssessment:
-                allOf:
-                  - $ref: "#/components/schemas/HelpAssessment"
-                nullable: true
-              question:
-                type: object
-                nullable: true
-                properties:
-                  id:
-                    type: string
-                  testId:
-                    type: string
-                  maxScore:
-                    type: integer
-                    nullable: true
-              qCarsAnswers:
-                type: array
-                items:
-                  $ref: "#/components/schemas/AssessmentAnswerCars"
-              qAnalogyAnswers:
-                type: array
-                items:
-                  $ref: "#/components/schemas/AssessmentAnswerAnalogy"
-              qVisualMemoryAnswers:
-                type: array
-                items:
-                  $ref: "#/components/schemas/AssessmentAnswerVisualMemory"
-              qAuditoryMemoryAnswers:
-                type: array
-                items:
-                  $ref: "#/components/schemas/AssessmentAnswerAuditoryMemory"
+            $ref: "#/components/schemas/AssessmentResultDetail"
         helpAssessments:
           type: array
           items:
             allOf:
-              - $ref: "#/components/schemas/HelpAssessment"
+              - $ref: "#/components/schemas/HelpAssessmentSchema"
               - type: object
                 properties:
                   doctor:
@@ -84,5 +27,5 @@ ChildWithAssessments:
                         format: email
                   assessmentResult:
                     allOf:
-                      - $ref: "#/components/schemas/AssessmentResult"
+                      - $ref: "#/components/schemas/AssessmentResultDetail"
                     nullable: true
