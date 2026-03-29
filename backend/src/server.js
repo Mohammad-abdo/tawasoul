@@ -184,6 +184,8 @@ httpServer.listen(PORT, () => {
   logger.info(`Server running on port ${PORT}`);
   logger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);
   logger.info('API Docs: /api/docs');
+  console.log("++++++0",process.env.DATABASE_URL);
+
 });
 
 // Graceful shutdown
