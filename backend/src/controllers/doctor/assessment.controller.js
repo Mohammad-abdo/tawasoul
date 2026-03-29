@@ -2,6 +2,7 @@ import { validationResult } from 'express-validator';
 import { prisma } from '../../config/database.js';
 import { logger } from '../../utils/logger.js';
 import {
+  buildTestDetail,
   buildTestSummary,
   calculateHelpEvaluationTotals,
   ensureDoctorCanAccessChild,
@@ -93,6 +94,78 @@ export const getTests = async (req, res, next) => {
   } catch (error) {
     if (handleKnownError(res, error)) return;
     logger.error('Get doctor assessment tests error:', error);
+    next(error);
+  }
+};
+
+export const getTestById = async (req, res, next) => {
+  try {
+    if (handleValidationErrors(req, res)) return;
+
+    const test = await prisma.test.findUnique({
+      where: { id: req.params.testId }
+    });
+
+    if (!test) {
+      return res.status(404).json({
+        success: false,
+        error: {
+          code: 'TEST_NOT_FOUND',
+          message: 'Test not found'
+        }
+      });
+    }
+
+    const data = await buildTestDetail({
+      prisma,
+      req,
+      test,
+      includeCorrect: false
+    });
+
+    res.json({
+      success: true,
+      data
+    });
+  } catch (error) {
+    if (handleKnownError(res, error)) return;
+    logger.error('Get doctor assessment test detail error:', error);
+    next(error);
+  }
+};
+
+export const getTestQuestions = async (req, res, next) => {
+  try {
+    if (handleValidationErrors(req, res)) return;
+
+    const test = await prisma.test.findUnique({
+      where: { id: req.params.testId }
+    });
+
+    if (!test) {
+      return res.status(404).json({
+        success: false,
+        error: {
+          code: 'TEST_NOT_FOUND',
+          message: 'Test not found'
+        }
+      });
+    }
+
+    const data = await buildTestDetail({
+      prisma,
+      req,
+      test,
+      includeCorrect: false
+    });
+
+    res.json({
+      success: true,
+      data: data.questions
+    });
+  } catch (error) {
+    if (handleKnownError(res, error)) return;
+    logger.error('Get doctor assessment test questions error:', error);
     next(error);
   }
 };

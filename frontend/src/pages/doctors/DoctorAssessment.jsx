@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import apiClient from '../../api/client';
+import { doctorAssessments } from '../../api/doctor';
 import { 
   Play, 
   Pause, 
@@ -28,13 +28,13 @@ const DoctorAssessment = () => {
   const { data: test, isLoading } = useQuery({
     queryKey: ['assessment-test', testId],
     queryFn: async () => {
-      const response = await apiClient.get(`/assessments/tests/${testId}/questions`);
+      const response = await doctorAssessments.getTestQuestions(testId);
       return response.data.data;
     },
   });
 
   const submitMutation = useMutation({
-    mutationFn: (data) => apiClient.post('/assessments/submit-result', data),
+    mutationFn: (data) => doctorAssessments.submitResult(data),
     onSuccess: () => {
       toast.success('تم حفظ نتيجة الاختبار بنجاح');
       navigate(-1);
