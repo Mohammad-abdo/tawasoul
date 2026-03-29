@@ -21,6 +21,18 @@ router.get(
   query('testType').optional().isIn(TEST_TYPES).withMessage(`testType must be one of: ${TEST_TYPES.join(', ')}`),
   assessmentController.getTests
 );
+router.get(
+  '/tests/:testId',
+  authenticateDoctor,
+  requiredParam('testId', 'testId'),
+  assessmentController.getTestById
+);
+router.get(
+  '/tests/:testId/questions',
+  authenticateDoctor,
+  requiredParam('testId', 'testId'),
+  assessmentController.getTestQuestions
+);
 
 router.get(
   '/children/:childId/results',
