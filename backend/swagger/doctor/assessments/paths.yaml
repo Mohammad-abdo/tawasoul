@@ -1,3 +1,50 @@
+/doctor/assessments/tests:
+  get:
+    tags: [Doctor Assessments]
+    summary: List assessment tests
+    description: Returns doctor-facing assessment test summaries without question payloads.
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: testType
+        in: query
+        required: false
+        schema:
+          type: string
+          enum: [CARS, ANALOGY, VISUAL_MEMORY, AUDITORY_MEMORY, HELP, IMAGE_SEQUENCE_ORDER]
+    responses:
+      "200":
+        description: Test summaries
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/TestSummary"
+      "400":
+        description: Bad request
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "401":
+        description: Missing or invalid token
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "500":
+        description: Internal server error
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+
 /doctor/assessments/children/{childId}/results:
   get:
     tags: [Doctor Assessments]
@@ -137,7 +184,7 @@
   post:
     tags: [Doctor Assessments]
     summary: Submit generic doctor score
-    description: Upserts a doctor-scored generic assessment result for one child question and session. The endpoint validates child access, test type, and maxScore bounds.
+    description: Legacy endpoint for doctor-scored generic assessment questions tied to older assessment test types. Keep this only for backward compatibility if those tests still exist in deployed data.
     security:
       - BearerAuth: []
     requestBody:

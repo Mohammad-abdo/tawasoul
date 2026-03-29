@@ -5,7 +5,8 @@ const formatBookingSummary = (booking) => ({
   id: booking.id,
   user: booking.user,
   childId: booking.childId,
-  sessionType: booking.sessionType,
+  sessionType: booking.sessionType ?? booking.category,
+  category: booking.category ?? booking.sessionType ?? null,
   duration: booking.duration,
   price: booking.price,
   status: booking.status,
@@ -19,6 +20,22 @@ const formatBookingSummary = (booking) => ({
   payment: booking.payment,
   createdAt: booking.createdAt
 });
+
+const formatDoctorDetails = (doctor) => {
+  if (!doctor) {
+    return null;
+  }
+
+  const specialties = Array.isArray(doctor.specialties)
+    ? doctor.specialties.map((entry) => entry.specialty)
+    : [];
+
+  return {
+    ...doctor,
+    specialization: specialties[0] ?? null,
+    specialties
+  };
+};
 
 export const getDoctorBookings = async (doctorId, { status, page = 1, limit = 20 }) => {
   const parsedPage = parseInt(page);
@@ -55,9 +72,10 @@ export const getBookingById = async (doctorId, id) => {
   return {
     id: booking.id,
     user: booking.user,
-    doctor: booking.doctor,
+    doctor: formatDoctorDetails(booking.doctor),
     childId: booking.childId,
-    sessionType: booking.sessionType,
+    sessionType: booking.sessionType ?? booking.category,
+    category: booking.category ?? booking.sessionType ?? null,
     duration: booking.duration,
     price: booking.price,
     status: booking.status,

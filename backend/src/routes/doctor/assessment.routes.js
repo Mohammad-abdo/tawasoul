@@ -1,11 +1,12 @@
 import express from 'express';
-import { body, param } from 'express-validator';
+import { body, param, query } from 'express-validator';
 import { authenticateDoctor } from '../../middleware/auth.middleware.js';
 import * as assessmentController from '../../controllers/doctor/assessment.controller.js';
 
 const router = express.Router();
 
 const HELP_SCORES = ['NOT_SUITABLE', 'NOT_PRESENT', 'INITIAL_ATTEMPTS', 'PARTIAL_LEVEL', 'SUCCESSFUL'];
+const TEST_TYPES = ['CARS', 'ANALOGY', 'VISUAL_MEMORY', 'AUDITORY_MEMORY', 'HELP', 'IMAGE_SEQUENCE_ORDER'];
 
 const requiredParam = (name, label) =>
   param(name)
@@ -13,6 +14,13 @@ const requiredParam = (name, label) =>
     .trim()
     .notEmpty()
     .withMessage(`${label} is required`);
+
+router.get(
+  '/tests',
+  authenticateDoctor,
+  query('testType').optional().isIn(TEST_TYPES).withMessage(`testType must be one of: ${TEST_TYPES.join(', ')}`),
+  assessmentController.getTests
+);
 
 router.get(
   '/children/:childId/results',

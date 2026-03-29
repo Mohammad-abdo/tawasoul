@@ -11,7 +11,7 @@
         required: false
         schema:
           type: string
-          enum: [CARS, ANALOGY, VISUAL_MEMORY, AUDITORY_MEMORY, HELP, SOUND_DISCRIMINATION, PRONUNCIATION_REPETITION, SOUND_IMAGE_LINKING, SEQUENCE_ORDER]
+          enum: [CARS, ANALOGY, VISUAL_MEMORY, AUDITORY_MEMORY, HELP, IMAGE_SEQUENCE_ORDER]
     responses:
       "200":
         description: Tests
@@ -73,7 +73,7 @@
                 enum: [AUDITORY, VISUAL]
               testType:
                 type: string
-                enum: [CARS, ANALOGY, VISUAL_MEMORY, AUDITORY_MEMORY, HELP, SOUND_DISCRIMINATION, PRONUNCIATION_REPETITION, SOUND_IMAGE_LINKING, SEQUENCE_ORDER]
+                enum: [CARS, ANALOGY, VISUAL_MEMORY, AUDITORY_MEMORY, HELP, IMAGE_SEQUENCE_ORDER]
               description:
                 type: string
                 nullable: true
@@ -197,7 +197,7 @@
                 enum: [AUDITORY, VISUAL]
               testType:
                 type: string
-                enum: [CARS, ANALOGY, VISUAL_MEMORY, AUDITORY_MEMORY, HELP, SOUND_DISCRIMINATION, PRONUNCIATION_REPETITION, SOUND_IMAGE_LINKING, SEQUENCE_ORDER]
+                enum: [CARS, ANALOGY, VISUAL_MEMORY, AUDITORY_MEMORY, HELP, IMAGE_SEQUENCE_ORDER]
               description:
                 type: string
                 nullable: true
@@ -707,6 +707,154 @@
             schema:
               $ref: "#/components/schemas/ErrorResponse"
 
+/admin/assessments/image-sequence-order/{testId}/questions:
+  post:
+    tags: [Admin Assessments]
+    summary: Create image sequence order question
+    description: Creates one image sequence order question with its ordered image rows after validating the test type and question order uniqueness.
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: testId
+        in: path
+        required: true
+        schema:
+          type: string
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/SequenceOrderQuestionSchema"
+    responses:
+      "201":
+        description: Question created
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  $ref: "#/components/schemas/SequenceOrderQuestionSchema"
+      "400":
+        description: Bad request
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "401":
+        description: Missing or invalid token
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "403":
+        description: Forbidden
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "404":
+        description: Test not found
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "409":
+        description: Duplicate order
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "422":
+        description: Wrong test type
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "500":
+        description: Internal server error
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+
+/admin/assessments/image-sequence-order/questions/{questionId}:
+  patch:
+    tags: [Admin Assessments]
+    summary: Update image sequence order question
+    description: Updates one image sequence order question and replaces its ordered image rows when a new images array is provided.
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: questionId
+        in: path
+        required: true
+        schema:
+          type: string
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/SequenceOrderQuestionSchema"
+    responses:
+      "200":
+        description: Question updated
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  $ref: "#/components/schemas/SequenceOrderQuestionSchema"
+      "400":
+        description: Bad request
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "401":
+        description: Missing or invalid token
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "403":
+        description: Forbidden
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "404":
+        description: Question not found
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "409":
+        description: Duplicate order
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "422":
+        description: Wrong test type
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "500":
+        description: Internal server error
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+
 /admin/assessments/help/skills:
   get:
     tags: [Admin Assessments]
@@ -869,7 +1017,7 @@
   post:
     tags: [Admin Assessments]
     summary: Create generic question
-    description: Creates one generic Question row for SOUND_DISCRIMINATION, PRONUNCIATION_REPETITION, SOUND_IMAGE_LINKING, or SEQUENCE_ORDER after validating the test type and orderIndex uniqueness.
+    description: Legacy endpoint for generic Question rows tied to older assessment test types. Keep this only for backward compatibility if those tests still exist in deployed data.
     security:
       - BearerAuth: []
     parameters:

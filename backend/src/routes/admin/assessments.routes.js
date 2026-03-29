@@ -12,10 +12,7 @@ const TEST_TYPES = [
   'VISUAL_MEMORY',
   'AUDITORY_MEMORY',
   'HELP',
-  'SOUND_DISCRIMINATION',
-  'PRONUNCIATION_REPETITION',
-  'SOUND_IMAGE_LINKING',
-  'SEQUENCE_ORDER'
+  'IMAGE_SEQUENCE_ORDER'
 ];
 const HELP_DOMAINS = ['COGNITIVE', 'FINE_MOTOR', 'GROSS_MOTOR', 'SOCIAL'];
 const VISUAL_MEMORY_TYPES = ['YES_NO', 'MCQ'];
@@ -130,6 +127,64 @@ const auditoryMemoryValidators = [
   body('modelAnswer.order').isBoolean().withMessage('modelAnswer.order must be a boolean')
 ];
 
+const sequenceOrderValidators = [
+  body('order').isInt({ min: 1 }).withMessage('order must be an integer greater than or equal to 1'),
+  body('images').isArray({ min: 2 }).withMessage('images must be an array with at least 2 items'),
+  body('images.*.assetPath').isString().trim().notEmpty().withMessage('each image.assetPath is required'),
+  body('images.*.position').isInt({ min: 1 }).withMessage('each image.position must be an integer greater than or equal to 1'),
+  body('images').custom((images) => {
+    const positions = images.map((image) => image.position);
+
+    if (new Set(positions).size !== positions.length) {
+      throw new Error('image positions must be unique within the array');
+    }
+
+    const sorted = [...positions].sort((left, right) => left - right);
+    for (let index = 0; index < sorted.length; index += 1) {
+      if (sorted[index] !== index + 1) {
+        throw new Error('image positions must be consecutive starting from 1');
+      }
+    }
+
+    return true;
+  })
+];
+
+const patchSequenceOrderValidators = [
+  body('order').optional().isInt({ min: 1 }).withMessage('order must be an integer greater than or equal to 1'),
+  body('images').optional().isArray({ min: 2 }).withMessage('images must be an array with at least 2 items'),
+  body().custom((value) => {
+    if (value.order === undefined && value.images === undefined) {
+      throw new Error('At least one of order or images must be provided');
+    }
+
+    if (Array.isArray(value.images)) {
+      if (value.images.some((image) => typeof image?.assetPath !== 'string' || !image.assetPath.trim())) {
+        throw new Error('each image.assetPath is required');
+      }
+
+      if (value.images.some((image) => !Number.isInteger(image?.position) || image.position < 1)) {
+        throw new Error('each image.position must be an integer greater than or equal to 1');
+      }
+
+      const positions = value.images.map((image) => image.position);
+
+      if (new Set(positions).size !== positions.length) {
+        throw new Error('image positions must be unique within the array');
+      }
+
+      const sorted = [...positions].sort((left, right) => left - right);
+      for (let index = 0; index < sorted.length; index += 1) {
+        if (sorted[index] !== index + 1) {
+          throw new Error('image positions must be consecutive starting from 1');
+        }
+      }
+    }
+
+    return true;
+  })
+];
+
 const helpSkillValidators = [
   body('domain').isIn(HELP_DOMAINS).withMessage(`domain must be one of: ${HELP_DOMAINS.join(', ')}`),
   body('skillNumber').isString().trim().notEmpty().withMessage('skillNumber is required'),
@@ -165,6 +220,8 @@ router.post('/visual-memory/:testId/batches', authenticateAdmin, requiredIdParam
 router.delete('/tests/:testId/batches/:batchId', authenticateAdmin, requiredIdParam('testId', 'testId'), requiredIdParam('batchId', 'batchId'), assessmentsController.deleteVisualMemoryBatch);
 
 router.post('/auditory-memory/:testId/questions', authenticateAdmin, requiredIdParam('testId', 'testId'), auditoryMemoryValidators, assessmentsController.createAuditoryMemoryQuestion);
+router.post('/image-sequence-order/:testId/questions', authenticateAdmin, requiredIdParam('testId', 'testId'), sequenceOrderValidators, assessmentsController.createImageSequenceOrderQuestion);
+router.patch('/image-sequence-order/questions/:questionId', authenticateAdmin, requiredIdParam('questionId', 'questionId'), patchSequenceOrderValidators, assessmentsController.updateImageSequenceOrderQuestion);
 
 router.get('/help/skills', authenticateAdmin, query('domain').optional().isIn(HELP_DOMAINS).withMessage(`domain must be one of: ${HELP_DOMAINS.join(', ')}`), assessmentsController.getHelpSkills);
 router.post('/help/skills', authenticateAdmin, helpSkillValidators, assessmentsController.createHelpSkill);

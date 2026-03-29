@@ -219,6 +219,17 @@ export const fetchAssessmentSessionResults = ({ prisma, childId, sessionId }) =>
         include: {
           question: true
         }
+      },
+      qSequenceOrderAnswers: {
+        include: {
+          question: {
+            include: {
+              images: {
+                orderBy: [{ position: 'asc' }, { id: 'asc' }]
+              }
+            }
+          }
+        }
       }
     },
     orderBy: [{ timestamp: 'asc' }, { id: 'asc' }]
@@ -243,6 +254,7 @@ export const serializeAssessmentResultDetail = (result) => {
     qCarsAnswers: testType === 'CARS' ? result.qCarsAnswers : [],
     qAnalogyAnswers: testType === 'ANALOGY' ? result.qAnalogyAnswers : [],
     qVisualMemoryAnswers: testType === 'VISUAL_MEMORY' ? result.qVisualMemoryAnswers : [],
-    qAuditoryMemoryAnswers: testType === 'AUDITORY_MEMORY' ? result.qAuditoryMemoryAnswers : []
+    qAuditoryMemoryAnswers: testType === 'AUDITORY_MEMORY' ? result.qAuditoryMemoryAnswers : [],
+    qSequenceOrderAnswers: testType === 'IMAGE_SEQUENCE_ORDER' ? result.qSequenceOrderAnswers : []
   };
 };

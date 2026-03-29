@@ -45,7 +45,11 @@ export const findDetailedById = (id) =>
         select: {
           id: true,
           name: true,
-          specialization: true,
+          specialties: {
+            select: {
+              specialty: true
+            }
+          },
           avatar: true,
           phone: true,
           email: true,

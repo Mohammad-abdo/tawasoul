@@ -2,6 +2,7 @@ import { validationResult } from 'express-validator';
 import { prisma } from '../../config/database.js';
 import { logger } from '../../utils/logger.js';
 import {
+  buildTestSummary,
   calculateHelpEvaluationTotals,
   ensureDoctorCanAccessChild,
   ensureTestForType,
@@ -69,6 +70,31 @@ const getHelpAssessmentOrThrow = async (helpAssessmentId) => {
   }
 
   return helpAssessment;
+};
+
+export const getTests = async (req, res, next) => {
+  try {
+    if (handleValidationErrors(req, res)) return;
+
+    const where = {};
+    if (req.query.testType) {
+      where.testType = req.query.testType;
+    }
+
+    const tests = await prisma.test.findMany({
+      where,
+      orderBy: [{ testType: 'asc' }, { createdAt: 'desc' }]
+    });
+
+    res.json({
+      success: true,
+      data: tests.map((test) => buildTestSummary({ test }))
+    });
+  } catch (error) {
+    if (handleKnownError(res, error)) return;
+    logger.error('Get doctor assessment tests error:', error);
+    next(error);
+  }
 };
 
 export const getAssessmentResultsByChild = async (req, res, next) => {
