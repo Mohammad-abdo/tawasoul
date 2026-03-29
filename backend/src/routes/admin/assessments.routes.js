@@ -1,16 +1,9 @@
 import express from 'express';
 import { authenticateAdmin } from '../../middleware/auth.middleware.js';
 import { uploadAssessmentFiles } from '../../middleware/upload.middleware.js';
-import * as testCategoriesController from '../../controllers/admin/test-categories.controller.js';
 import * as assessmentsController from '../../controllers/admin/assessments.controller.js';
 
 const router = express.Router();
-
-router.get('/test-categories', authenticateAdmin, testCategoriesController.getAllTestCategories);
-router.get('/test-categories/:id', authenticateAdmin, testCategoriesController.getTestCategoryById);
-router.post('/test-categories', authenticateAdmin, testCategoriesController.createTestCategory);
-router.put('/test-categories/:id', authenticateAdmin, testCategoriesController.updateTestCategory);
-router.delete('/test-categories/:id', authenticateAdmin, testCategoriesController.deleteTestCategory);
 
 router.get('/tests', authenticateAdmin, assessmentsController.getAllTests);
 router.get('/tests/:id', authenticateAdmin, assessmentsController.getTestById);

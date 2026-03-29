@@ -228,10 +228,6 @@ const updateSpecializedQuestion = async ({ tx, req, found, body }) => {
 export const getAllTests = async (req, res, next) => {
   try {
     const {
-      testCategoryId,
-      testCategory,
-      categoryId,
-      category,
       testType,
       page = 1,
       limit = 20
@@ -240,8 +236,6 @@ export const getAllTests = async (req, res, next) => {
     const take = Number.parseInt(limit, 10);
 
     const where = {};
-    if (testCategoryId || categoryId) where.testCategoryId = testCategoryId || categoryId;
-    if (testCategory || category) where.testCategory = { name: testCategory || category };
     if (testType) where.testType = testType;
 
     const [tests, total] = await Promise.all([
@@ -249,10 +243,7 @@ export const getAllTests = async (req, res, next) => {
         where,
         skip,
         take,
-        orderBy: { createdAt: 'desc' },
-        include: {
-          testCategory: true
-        }
+        orderBy: { createdAt: 'desc' }
       }),
       prisma.test.count({ where })
     ]);
@@ -287,10 +278,7 @@ export const getTestById = async (req, res, next) => {
     const { id } = req.params;
 
     const test = await prisma.test.findUnique({
-      where: { id },
-      include: {
-        testCategory: true
-      }
+      where: { id }
     });
 
     if (!test) {
@@ -323,7 +311,7 @@ export const getTestById = async (req, res, next) => {
  */
 export const createTest = async (req, res, next) => {
   try {
-    const { title, titleAr, testCategoryId, categoryId, testType, description, type } = req.body;
+    const { title, titleAr, testType, description, type } = req.body;
 
     if (!title) {
       return res.status(400).json({
@@ -339,13 +327,9 @@ export const createTest = async (req, res, next) => {
       data: {
         title,
         titleAr: titleAr || null,
-        testCategoryId: testCategoryId || categoryId || null,
         testType: testType || 'CARS',
         type: type || undefined,
         description
-      },
-      include: {
-        testCategory: true
       }
     });
 
@@ -367,7 +351,7 @@ export const createTest = async (req, res, next) => {
 export const updateTest = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { title, titleAr, testCategoryId, categoryId, testType, description, type } = req.body;
+    const { title, titleAr, testType, description, type } = req.body;
 
     const test = await prisma.test.findUnique({
       where: { id }
@@ -388,13 +372,9 @@ export const updateTest = async (req, res, next) => {
       data: {
         ...(title && { title }),
         ...(titleAr !== undefined && { titleAr }),
-        ...((testCategoryId !== undefined || categoryId !== undefined) && { testCategoryId: testCategoryId ?? categoryId }),
         ...(testType && { testType }),
         ...(type && { type }),
         ...(description !== undefined && { description })
-      },
-      include: {
-        testCategory: true
       }
     });
 
@@ -455,8 +435,7 @@ export const getTestQuestions = async (req, res, next) => {
     const { testId } = req.params;
 
     const test = await prisma.test.findUnique({
-      where: { id: testId },
-      include: { testCategory: true }
+      where: { id: testId }
     });
 
     if (!test) {

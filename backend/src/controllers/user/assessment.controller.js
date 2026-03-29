@@ -20,17 +20,13 @@ const formatTest = (test, questionCount) => ({
  */
 export const getTests = async (req, res, next) => {
   try {
-    const { testCategory, category, testType } = req.query;
+    const { testType } = req.query;
     const where = {};
-    if (testCategory || category) where.testCategory = { name: testCategory || category };
     if (testType) where.testType = testType;
 
     const tests = await prisma.test.findMany({
       where,
-      include: {
-        testCategory: true
-      },
-      orderBy: [{ testCategory: { name: 'asc' } }, { testType: 'asc' }, { createdAt: 'desc' }]
+      orderBy: [{ testType: 'asc' }, { createdAt: 'desc' }]
     });
 
     const data = await Promise.all(
@@ -55,8 +51,7 @@ export const getTestQuestions = async (req, res, next) => {
     const { testId } = req.params;
 
     const test = await prisma.test.findUnique({
-      where: { id: testId },
-      include: { testCategory: true }
+      where: { id: testId }
     });
 
     if (!test) {
