@@ -58,13 +58,16 @@ export const doctorAvailability = {
 export const doctorAssessments = {
   getTests: () => 
     apiClient.get('/doctor/assessments/tests'),
+
+  getTestById: (testId) =>
+    apiClient.get(`/doctor/assessments/tests/${testId}`),
   
   getTestQuestions: (testId) =>
     apiClient.get(`/doctor/assessments/tests/${testId}/questions`),
   
   submitResult: (data) =>
-    apiClient.post('/doctor/assessments/submit-result', data),
+    apiClient.post('/doctor/assessments/generic/submit', data),
   
   getChildResults: (childId) => 
-    apiClient.get(`/doctor/children/${childId}/results`),
+    apiClient.get(`/doctor/assessments/children/${childId}/results`),
 };
