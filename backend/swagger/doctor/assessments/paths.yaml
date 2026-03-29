@@ -1,0 +1,465 @@
+/doctor/assessments/children/{childId}/results:
+  get:
+    tags: [Doctor Assessments]
+    summary: List child assessment results
+    description: Returns the doctor's accessible child assessment results grouped by testType without answer breakdowns.
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: childId
+        in: path
+        required: true
+        schema:
+          type: string
+    responses:
+      "200":
+        description: Grouped assessment result summaries
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      testType:
+                        type: string
+                      results:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/AssessmentResultSummary"
+      "400":
+        description: Bad request
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "401":
+        description: Missing or invalid token
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "403":
+        description: Doctor does not have access to the child
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "404":
+        description: Child not found
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "500":
+        description: Internal server error
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+
+/doctor/assessments/children/{childId}/results/{sessionId}:
+  get:
+    tags: [Doctor Assessments]
+    summary: Get child assessment session detail
+    description: Returns the doctor's accessible child assessment session detail including the answer relation that matches the session testType.
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: childId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: sessionId
+        in: path
+        required: true
+        schema:
+          type: string
+    responses:
+      "200":
+        description: Session detail
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  type: object
+                  properties:
+                    childId:
+                      type: string
+                    sessionId:
+                      type: string
+                    results:
+                      type: array
+                      items:
+                        $ref: "#/components/schemas/AssessmentResultDetail"
+      "400":
+        description: Bad request
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "401":
+        description: Missing or invalid token
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "403":
+        description: Doctor does not have access to the child
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "404":
+        description: Child or session not found
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "500":
+        description: Internal server error
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+
+/doctor/assessments/generic/submit:
+  post:
+    tags: [Doctor Assessments]
+    summary: Submit generic doctor score
+    description: Upserts a doctor-scored generic assessment result for one child question and session. The endpoint validates child access, test type, and maxScore bounds.
+    security:
+      - BearerAuth: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/GenericScoreBody"
+    responses:
+      "200":
+        description: Generic assessment score updated
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  type: object
+      "201":
+        description: Generic assessment score created
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  type: object
+      "400":
+        description: Bad request
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "401":
+        description: Missing or invalid token
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "403":
+        description: Doctor does not have access to the child
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "404":
+        description: Child or test not found
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "422":
+        description: Invalid test type, question linkage, or score range
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "500":
+        description: Internal server error
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+
+/doctor/assessments/help/start:
+  post:
+    tags: [Doctor Assessments]
+    summary: Start HELP assessment
+    description: Creates a HELP assessment session for the authenticated doctor after validating child access and session uniqueness.
+    security:
+      - BearerAuth: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/HelpStartBody"
+    responses:
+      "201":
+        description: HELP assessment started
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  type: object
+                  properties:
+                    helpAssessmentId:
+                      type: string
+                    childId:
+                      type: string
+                    doctorId:
+                      type: string
+                    sessionId:
+                      type: string
+                    developmentalAge:
+                      type: string
+                    createdAt:
+                      type: string
+                      format: date-time
+      "400":
+        description: Bad request
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "401":
+        description: Missing or invalid token
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "403":
+        description: Doctor does not have access to the child
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "404":
+        description: Child or HELP test not found
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "409":
+        description: Duplicate sessionId
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "500":
+        description: Internal server error
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+
+/doctor/assessments/help/{helpAssessmentId}/evaluate:
+  post:
+    tags: [Doctor Assessments]
+    summary: Upsert HELP evaluation
+    description: Upserts one HelpEvaluation row for the authenticated doctor's HELP assessment and refreshes linked AssessmentResult totals.
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: helpAssessmentId
+        in: path
+        required: true
+        schema:
+          type: string
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/HelpEvaluateBody"
+    responses:
+      "200":
+        description: HELP evaluation upserted
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  $ref: "#/components/schemas/HelpEvaluationSchema"
+      "400":
+        description: Bad request
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "401":
+        description: Missing or invalid token
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "403":
+        description: HELP assessment belongs to another doctor
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "404":
+        description: HELP assessment or skill not found
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "500":
+        description: Internal server error
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+
+/doctor/assessments/help/{helpAssessmentId}:
+  get:
+    tags: [Doctor Assessments]
+    summary: Get HELP assessment
+    description: Returns a HELP assessment with all evaluation rows and nested HelpSkill details for the authenticated doctor.
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: helpAssessmentId
+        in: path
+        required: true
+        schema:
+          type: string
+    responses:
+      "200":
+        description: HELP assessment detail
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  $ref: "#/components/schemas/HelpAssessmentSchema"
+      "400":
+        description: Bad request
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "401":
+        description: Missing or invalid token
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "403":
+        description: HELP assessment belongs to another doctor
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "404":
+        description: HELP assessment not found
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "500":
+        description: Internal server error
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+  patch:
+    tags: [Doctor Assessments]
+    summary: Update HELP assessment
+    description: Updates only the developmentalAge field for the authenticated doctor's HELP assessment.
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: helpAssessmentId
+        in: path
+        required: true
+        schema:
+          type: string
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [developmentalAge]
+            properties:
+              developmentalAge:
+                type: string
+    responses:
+      "200":
+        description: HELP assessment updated
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  $ref: "#/components/schemas/HelpAssessmentSchema"
+      "400":
+        description: Bad request
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "401":
+        description: Missing or invalid token
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "403":
+        description: HELP assessment belongs to another doctor
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "404":
+        description: HELP assessment not found
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "500":
+        description: Internal server error
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"

@@ -1,0 +1,42 @@
+ActivityLog:
+  type: object
+  properties:
+    id:
+      type: string
+    adminId:
+      type: string
+    admin:
+      type: object
+      nullable: true
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+    action:
+      type: string
+      example: CREATE
+    entityType:
+      type: string
+      example: USER
+    entityId:
+      type: string
+      nullable: true
+    description:
+      type: string
+      nullable: true
+    changes:
+      type: object
+      nullable: true
+      description: JSON object with before/after state for UPDATE actions
+    ipAddress:
+      type: string
+      nullable: true
+    userAgent:
+      type: string
+      nullable: true
+    createdAt:
+      type: string
+      format: date-time

@@ -30,6 +30,17 @@ export const errorHandler = (err, req, res, next) => {
     });
   }
 
+  if (err.name === 'PrismaClientInitializationError' || err.errorCode === 'P1001') {
+    return res.status(503).json({
+      success: false,
+      error: {
+        code: 'DATABASE_UNAVAILABLE',
+        message: 'Database is unavailable. Check DATABASE_URL and make sure MySQL is running.',
+        ...(process.env.NODE_ENV !== 'production' && { details: err.message })
+      }
+    });
+  }
+
   // Validation errors
   if (err.name === 'ValidationError') {
     return res.status(422).json({

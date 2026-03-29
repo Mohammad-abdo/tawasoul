@@ -1,144 +1,138 @@
+import { validationResult } from 'express-validator';
 import { prisma } from '../../config/database.js';
 import { logger } from '../../utils/logger.js';
-import { getFileUrl } from '../../middleware/upload.middleware.js';
+import {
+  buildTestDetail,
+  getQuestionCountForTest,
+  buildTestSummary,
+  ensureTestForType,
+  GENERIC_TEST_TYPES
+} from '../../utils/assessment-api.utils.js';
+import { createHttpError } from '../../utils/httpError.js';
+import { parseMaybeJson, serializeAssessmentQuestion } from '../../utils/assessment.utils.js';
 
-/**
- * Get All Tests
- */
-export const getAllTests = async (req, res, next) => {
+const handleValidationErrors = (req, res) => {
+  const errors = validationResult(req);
+
+  if (errors.isEmpty()) {
+    return false;
+  }
+
+  res.status(400).json({
+    success: false,
+    error: {
+      code: 'VALIDATION_ERROR',
+      message: errors.array()[0].msg
+    }
+  });
+
+  return true;
+};
+
+const handleKnownError = (res, error) => {
+  if (!error.status) {
+    return false;
+  }
+
+  res.status(error.status).json({
+    success: false,
+    error: {
+      code: error.code,
+      message: error.message
+    }
+  });
+
+  return true;
+};
+
+const ensureOrderAvailable = async (delegate, where, message) => {
+  const existing = await delegate.findFirst({
+    where,
+    select: { id: true }
+  });
+
+  if (existing) {
+    throw createHttpError(409, 'ORDER_CONFLICT', message);
+  }
+};
+
+const findScopedRecordOrThrow = async (delegate, where, code = 'QUESTION_NOT_FOUND', message = 'Question not found') => {
+  const record = await delegate.findFirst({
+    where
+  });
+
+  if (!record) {
+    throw createHttpError(404, code, message);
+  }
+
+  return record;
+};
+
+export const getTests = async (req, res, next) => {
   try {
-    const { categoryId, category, testType, page = 1, limit = 20 } = req.query;
-    const skip = (parseInt(page) - 1) * parseInt(limit);
-    const take = parseInt(limit);
+    if (handleValidationErrors(req, res)) return;
 
     const where = {};
-    if (categoryId) where.categoryId = categoryId;
-    if (category) where.category = { name: category }; // Legacy support if needed, or filter by relation
-    if (testType) where.testType = testType;
-
-    const [tests, total] = await Promise.all([
-      prisma.test.findMany({
-        where,
-        skip,
-        take,
-        orderBy: { createdAt: 'desc' },
-        include: {
-          category: true, // Include the relation
-          _count: {
-            select: { questions: true }
-          }
-        }
-      }),
-      prisma.test.count({ where })
-    ]);
-
-    res.json({
-      success: true,
-      data: {
-        tests,
-        pagination: {
-          page: parseInt(page),
-          limit: parseInt(limit),
-          total,
-          pages: Math.ceil(total / parseInt(limit))
-        }
-      }
-    });
-  } catch (error) {
-    logger.error('Get all tests error:', error);
-    next(error);
-  }
-};
-
-/**
- * Get Test by ID
- */
-export const getTestById = async (req, res, next) => {
-  try {
-    const { id } = req.params;
-
-    const test = await prisma.test.findUnique({
-      where: { id },
-      include: {
-        category: true, // Include the relation
-        questions: {
-          orderBy: [{ orderIndex: 'asc' }, { createdAt: 'asc' }]
-        },
-        _count: {
-          select: { questions: true }
-        }
-      }
-    });
-
-    if (!test) {
-      return res.status(404).json({
-        success: false,
-        error: {
-          code: 'TEST_NOT_FOUND',
-          message: 'Test not found'
-        }
-      });
+    if (req.query.testType) {
+      where.testType = req.query.testType;
     }
 
+    const tests = await prisma.test.findMany({
+      where,
+      orderBy: { createdAt: 'desc' }
+    });
+
+    const data = await Promise.all(
+      tests.map(async (test) => buildTestSummary({
+        test,
+        questionCount: await getQuestionCountForTest({ prisma, test })
+      }))
+    );
+
     res.json({
       success: true,
-      data: test
+      data
     });
   } catch (error) {
-    logger.error('Get test by ID error:', error);
+    logger.error('Get admin tests error:', error);
     next(error);
   }
 };
 
-/**
- * Create Test
- */
 export const createTest = async (req, res, next) => {
   try {
-    const { title, titleAr, categoryId, testType, description } = req.body;
+    if (handleValidationErrors(req, res)) return;
 
-    if (!title) {
-      return res.status(400).json({
-        success: false,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Title is required'
-        }
-      });
-    }
+    const { title, titleAr, type, testType, description } = req.body;
 
     const test = await prisma.test.create({
       data: {
         title,
-        titleAr: titleAr || null,
-        categoryId: categoryId || null, // Link to dynamic category
-        testType: testType || 'SOUND_DISCRIMINATION',
-        description
+        titleAr,
+        type,
+        testType,
+        description: description || null
       }
     });
 
-    logger.info(`Test created: ${test.id} by admin ${req.admin.id}`);
+    logger.info(`Assessment test created: ${test.id} by admin ${req.admin.id}`);
 
     res.status(201).json({
       success: true,
-      data: test
+      data: buildTestSummary({ test, questionCount: 0 })
     });
   } catch (error) {
-    logger.error('Create test error:', error);
+    logger.error('Create admin test error:', error);
     next(error);
   }
 };
 
-/**
- * Update Test
- */
-export const updateTest = async (req, res, next) => {
+export const getTestById = async (req, res, next) => {
   try {
-    const { id } = req.params;
-    const { title, titleAr, categoryId, testType, description } = req.body;
+    if (handleValidationErrors(req, res)) return;
 
     const test = await prisma.test.findUnique({
-      where: { id }
+      where: { id: req.params.testId }
     });
 
     if (!test) {
@@ -151,41 +145,76 @@ export const updateTest = async (req, res, next) => {
       });
     }
 
-    const updatedTest = await prisma.test.update({
-      where: { id },
-      data: {
-        ...(title && { title }),
-        ...(titleAr !== undefined && { titleAr }),
-        ...(categoryId !== undefined && { categoryId }), // Link to dynamic category
-        ...(testType && { testType }),
-        ...(description !== undefined && { description })
-      }
+    const data = await buildTestDetail({
+      prisma,
+      req,
+      test,
+      includeCorrect: true
     });
-
-    logger.info(`Test updated: ${id} by admin ${req.admin.id}`);
 
     res.json({
       success: true,
-      data: updatedTest
+      data
     });
   } catch (error) {
-    logger.error('Update test error:', error);
+    logger.error('Get admin test detail error:', error);
     next(error);
   }
 };
 
-/**
- * Delete Test
- */
-export const deleteTest = async (req, res, next) => {
+export const updateTest = async (req, res, next) => {
   try {
-    const { id } = req.params;
+    if (handleValidationErrors(req, res)) return;
 
-    const test = await prisma.test.findUnique({
-      where: { id }
+    const existing = await prisma.test.findUnique({
+      where: { id: req.params.testId }
     });
 
-    if (!test) {
+    if (!existing) {
+      return res.status(404).json({
+        success: false,
+        error: {
+          code: 'TEST_NOT_FOUND',
+          message: 'Test not found'
+        }
+      });
+    }
+
+    const updated = await prisma.test.update({
+      where: { id: req.params.testId },
+      data: {
+        ...(req.body.title !== undefined && { title: req.body.title }),
+        ...(req.body.titleAr !== undefined && { titleAr: req.body.titleAr }),
+        ...(req.body.type !== undefined && { type: req.body.type }),
+        ...(req.body.testType !== undefined && { testType: req.body.testType }),
+        ...(req.body.description !== undefined && { description: req.body.description || null })
+      }
+    });
+
+    logger.info(`Assessment test updated: ${updated.id} by admin ${req.admin.id}`);
+
+    res.json({
+      success: true,
+      data: buildTestSummary({
+        test: updated,
+        questionCount: await getQuestionCountForTest({ prisma, test: updated })
+      })
+    });
+  } catch (error) {
+    logger.error('Update admin test error:', error);
+    next(error);
+  }
+};
+
+export const deleteTest = async (req, res, next) => {
+  try {
+    if (handleValidationErrors(req, res)) return;
+
+    const existing = await prisma.test.findUnique({
+      where: { id: req.params.testId }
+    });
+
+    if (!existing) {
       return res.status(404).json({
         success: false,
         error: {
@@ -196,99 +225,69 @@ export const deleteTest = async (req, res, next) => {
     }
 
     await prisma.test.delete({
-      where: { id }
+      where: { id: req.params.testId }
     });
 
-    logger.info(`Test deleted: ${id} by admin ${req.admin.id}`);
+    logger.info(`Assessment test deleted: ${req.params.testId} by admin ${req.admin.id}`);
 
     res.json({
       success: true,
       message: 'Test deleted successfully'
     });
   } catch (error) {
-    logger.error('Delete test error:', error);
+    logger.error('Delete admin test error:', error);
     next(error);
   }
 };
 
-/**
- * Get Test Questions
- */
-export const getTestQuestions = async (req, res, next) => {
+export const createCarsQuestion = async (req, res, next) => {
   try {
-    const { testId } = req.params;
+    if (handleValidationErrors(req, res)) return;
 
-    const questions = await prisma.question.findMany({
-      where: { testId },
-      orderBy: [{ orderIndex: 'asc' }, { createdAt: 'asc' }]
+    await ensureTestForType({
+      prisma,
+      testId: req.params.testId,
+      expectedType: 'CARS'
     });
 
-    // Format audio/image paths
-    const formattedQuestions = questions.map(q => ({
-      ...q,
-      audioAssetPath: q.audioAssetPath ? getFileUrl(req, q.audioAssetPath, 'assessments/audio') : null,
-      imageAssetPath: q.imageAssetPath ? getFileUrl(req, q.imageAssetPath, 'assessments/images') : null
-    }));
+    await ensureOrderAvailable(
+      prisma.q_CARS,
+      { testId: req.params.testId, order: req.body.order },
+      'A CARS question with this order already exists in this test'
+    );
 
-    res.json({
-      success: true,
-      data: formattedQuestions
-    });
-  } catch (error) {
-    logger.error('Get test questions error:', error);
-    next(error);
-  }
-};
-
-/**
- * Get Question by ID
- */
-export const getQuestionById = async (req, res, next) => {
-  try {
-    const { id } = req.params;
-
-    const question = await prisma.question.findUnique({
-      where: { id },
-      include: {
-        test: true
-      }
-    });
-
-    if (!question) {
-      return res.status(404).json({
-        success: false,
-        error: {
-          code: 'QUESTION_NOT_FOUND',
-          message: 'Question not found'
-        }
-      });
-    }
-
-    res.json({
-      success: true,
+    const question = await prisma.q_CARS.create({
       data: {
-        ...question,
-        audioAssetPath: question.audioAssetPath ? getFileUrl(req, question.audioAssetPath, 'assessments/audio') : null,
-        imageAssetPath: question.imageAssetPath ? getFileUrl(req, question.imageAssetPath, 'assessments/images') : null
+        testId: req.params.testId,
+        order: req.body.order,
+        questionText: parseMaybeJson(req.body.questionText),
+        choices: parseMaybeJson(req.body.choices, [])
       }
     });
+
+    res.status(201).json({
+      success: true,
+      data: serializeAssessmentQuestion({
+        req,
+        testType: 'CARS',
+        question,
+        includeCorrect: true
+      })
+    });
   } catch (error) {
-    logger.error('Get question by ID error:', error);
+    if (handleKnownError(res, error)) return;
+    logger.error('Create CARS question error:', error);
     next(error);
   }
 };
 
-/**
- * Create Question
- */
-export const createQuestion = async (req, res, next) => {
+export const deleteTestQuestion = async (req, res, next) => {
   try {
-    const { testId } = req.params;
-    const { scoringGuide, orderIndex, choices, maxScore } = req.body;
+    if (handleValidationErrors(req, res)) return;
 
-    // Check if test exists
     const test = await prisma.test.findUnique({
-      where: { id: testId }
+      where: { id: req.params.testId },
+      select: { id: true, testType: true }
     });
 
     if (!test) {
@@ -301,148 +300,394 @@ export const createQuestion = async (req, res, next) => {
       });
     }
 
-    // Get file paths from uploaded files
-    const audioFile = req.files?.audio?.[0];
-    const imageFile = req.files?.image?.[0];
-
-    const audioAssetPath = audioFile ? `assessments/audio/${audioFile.filename}` : null;
-    const imageAssetPath = imageFile ? `assessments/images/${imageFile.filename}` : null;
-
-    if (!audioAssetPath && !imageAssetPath) {
-      return res.status(400).json({
-        success: false,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'At least one media file (audio or image) is required'
-        }
-      });
+    switch (test.testType) {
+      case 'CARS':
+        await findScopedRecordOrThrow(prisma.q_CARS, {
+          id: req.params.questionId,
+          testId: test.id
+        });
+        await prisma.q_CARS.delete({
+          where: { id: req.params.questionId }
+        });
+        break;
+      case 'ANALOGY':
+        await findScopedRecordOrThrow(prisma.q_Analogy, {
+          id: req.params.questionId,
+          testId: test.id
+        });
+        await prisma.q_Analogy.delete({
+          where: { id: req.params.questionId }
+        });
+        break;
+      case 'AUDITORY_MEMORY':
+        await findScopedRecordOrThrow(prisma.q_AuditoryMemory, {
+          id: req.params.questionId,
+          testId: test.id
+        });
+        await prisma.q_AuditoryMemory.delete({
+          where: { id: req.params.questionId }
+        });
+        break;
+      case 'SOUND_DISCRIMINATION':
+      case 'PRONUNCIATION_REPETITION':
+      case 'SOUND_IMAGE_LINKING':
+      case 'SEQUENCE_ORDER':
+        await findScopedRecordOrThrow(prisma.question, {
+          id: req.params.questionId,
+          testId: test.id
+        });
+        await prisma.question.delete({
+          where: { id: req.params.questionId }
+        });
+        break;
+      case 'VISUAL_MEMORY':
+        return res.status(422).json({
+          success: false,
+          error: {
+            code: 'INVALID_TEST_TYPE',
+            message: 'Visual memory content must be deleted using the batch delete endpoint'
+          }
+        });
+      case 'HELP':
+        return res.status(422).json({
+          success: false,
+          error: {
+            code: 'INVALID_TEST_TYPE',
+            message: 'HELP tests do not support question deletion'
+          }
+        });
+      default:
+        return res.status(422).json({
+          success: false,
+          error: {
+            code: 'INVALID_TEST_TYPE',
+            message: 'This test type does not support question deletion'
+          }
+        });
     }
-
-    const choicesParsed = typeof choices === 'string' ? (choices ? JSON.parse(choices) : null) : choices;
-
-    const question = await prisma.question.create({
-      data: {
-        testId,
-        orderIndex: orderIndex != null ? parseInt(orderIndex, 10) : 0,
-        audioAssetPath,
-        imageAssetPath,
-        choices: choicesParsed,
-        scoringGuide,
-        maxScore: maxScore != null ? parseInt(maxScore, 10) : null
-      }
-    });
-
-    logger.info(`Question created: ${question.id} for test ${testId} by admin ${req.admin.id}`);
-
-    res.status(201).json({
-      success: true,
-      data: {
-        ...question,
-        audioAssetPath: question.audioAssetPath ? getFileUrl(req, question.audioAssetPath, 'assessments/audio') : null,
-        imageAssetPath: question.imageAssetPath ? getFileUrl(req, question.imageAssetPath, 'assessments/images') : null
-      }
-    });
-  } catch (error) {
-    logger.error('Create question error:', error);
-    next(error);
-  }
-};
-
-/**
- * Update Question
- */
-export const updateQuestion = async (req, res, next) => {
-  try {
-    const { id } = req.params;
-    const { scoringGuide, orderIndex, choices, maxScore } = req.body;
-
-    const question = await prisma.question.findUnique({
-      where: { id }
-    });
-
-    if (!question) {
-      return res.status(404).json({
-        success: false,
-        error: {
-          code: 'QUESTION_NOT_FOUND',
-          message: 'Question not found'
-        }
-      });
-    }
-
-    // Get file paths from uploaded files (if any)
-    const audioFile = req.files?.audio?.[0];
-    const imageFile = req.files?.image?.[0];
-
-    const audioAssetPath = audioFile ? `assessments/audio/${audioFile.filename}` : undefined;
-    const imageAssetPath = imageFile ? `assessments/images/${imageFile.filename}` : undefined;
-
-    const choicesParsed = choices !== undefined
-      ? (typeof choices === 'string' ? (choices ? JSON.parse(choices) : null) : choices)
-      : undefined;
-
-    const updateData = {};
-    if (audioAssetPath) updateData.audioAssetPath = audioAssetPath;
-    if (imageAssetPath) updateData.imageAssetPath = imageAssetPath;
-    if (scoringGuide !== undefined) updateData.scoringGuide = scoringGuide;
-    if (orderIndex !== undefined) updateData.orderIndex = parseInt(orderIndex, 10);
-    if (choicesParsed !== undefined) updateData.choices = choicesParsed;
-    if (maxScore !== undefined) updateData.maxScore = maxScore ? parseInt(maxScore, 10) : null;
-
-    const updatedQuestion = await prisma.question.update({
-      where: { id },
-      data: updateData
-    });
-
-    logger.info(`Question updated: ${id} by admin ${req.admin.id}`);
-
-    res.json({
-      success: true,
-      data: {
-        ...updatedQuestion,
-        audioAssetPath: updatedQuestion.audioAssetPath ? getFileUrl(req, updatedQuestion.audioAssetPath, 'assessments/audio') : null,
-        imageAssetPath: updatedQuestion.imageAssetPath ? getFileUrl(req, updatedQuestion.imageAssetPath, 'assessments/images') : null
-      }
-    });
-  } catch (error) {
-    logger.error('Update question error:', error);
-    next(error);
-  }
-};
-
-/**
- * Delete Question
- */
-export const deleteQuestion = async (req, res, next) => {
-  try {
-    const { id } = req.params;
-
-    const question = await prisma.question.findUnique({
-      where: { id }
-    });
-
-    if (!question) {
-      return res.status(404).json({
-        success: false,
-        error: {
-          code: 'QUESTION_NOT_FOUND',
-          message: 'Question not found'
-        }
-      });
-    }
-
-    await prisma.question.delete({
-      where: { id }
-    });
-
-    logger.info(`Question deleted: ${id} by admin ${req.admin.id}`);
 
     res.json({
       success: true,
       message: 'Question deleted successfully'
     });
   } catch (error) {
-    logger.error('Delete question error:', error);
+    if (handleKnownError(res, error)) return;
+    logger.error('Delete assessment question error:', error);
+    next(error);
+  }
+};
+
+export const createAnalogyQuestion = async (req, res, next) => {
+  try {
+    if (handleValidationErrors(req, res)) return;
+
+    await ensureTestForType({
+      prisma,
+      testId: req.params.testId,
+      expectedType: 'ANALOGY'
+    });
+
+    await ensureOrderAvailable(
+      prisma.q_Analogy,
+      { testId: req.params.testId, order: req.body.order },
+      'An analogy question with this order already exists in this test'
+    );
+
+    const question = await prisma.q_Analogy.create({
+      data: {
+        testId: req.params.testId,
+        order: req.body.order,
+        questionImageUrl: req.body.questionImageUrl,
+        choices: parseMaybeJson(req.body.choices, []),
+        correctIndex: req.body.correctIndex
+      }
+    });
+
+    res.status(201).json({
+      success: true,
+      data: serializeAssessmentQuestion({
+        req,
+        testType: 'ANALOGY',
+        question,
+        includeCorrect: true
+      })
+    });
+  } catch (error) {
+    if (handleKnownError(res, error)) return;
+    logger.error('Create analogy question error:', error);
+    next(error);
+  }
+};
+
+export const createVisualMemoryBatch = async (req, res, next) => {
+  try {
+    if (handleValidationErrors(req, res)) return;
+
+    await ensureTestForType({
+      prisma,
+      testId: req.params.testId,
+      expectedType: 'VISUAL_MEMORY'
+    });
+
+    await ensureOrderAvailable(
+      prisma.q_VisualMemory_Batch,
+      { testId: req.params.testId, order: req.body.order },
+      'A visual memory batch with this order already exists in this test'
+    );
+
+    const questions = parseMaybeJson(req.body.questions, []);
+
+    const batch = await prisma.$transaction((tx) =>
+      tx.q_VisualMemory_Batch.create({
+        data: {
+          testId: req.params.testId,
+          order: req.body.order,
+          imageUrl: req.body.imageUrl,
+          displaySeconds: req.body.displaySeconds,
+          questions: {
+            create: questions.map((question) => ({
+              order: question.order,
+              questionText: question.questionText,
+              questionType: question.questionType,
+              correctBool: question.correctBool ?? null,
+              choices: question.choices ?? null,
+              correctIndex: question.correctIndex ?? null
+            }))
+          }
+        },
+        include: {
+          questions: {
+            orderBy: [{ order: 'asc' }, { id: 'asc' }]
+          }
+        }
+      })
+    );
+
+    res.status(201).json({
+      success: true,
+      data: serializeAssessmentQuestion({
+        req,
+        testType: 'VISUAL_MEMORY',
+        question: batch,
+        includeCorrect: true
+      })
+    });
+  } catch (error) {
+    if (handleKnownError(res, error)) return;
+    logger.error('Create visual memory batch error:', error);
+    next(error);
+  }
+};
+
+export const deleteVisualMemoryBatch = async (req, res, next) => {
+  try {
+    if (handleValidationErrors(req, res)) return;
+
+    await ensureTestForType({
+      prisma,
+      testId: req.params.testId,
+      expectedType: 'VISUAL_MEMORY'
+    });
+
+    await findScopedRecordOrThrow(
+      prisma.q_VisualMemory_Batch,
+      { id: req.params.batchId, testId: req.params.testId },
+      'BATCH_NOT_FOUND',
+      'Batch not found'
+    );
+    await prisma.q_VisualMemory_Batch.delete({
+      where: { id: req.params.batchId }
+    });
+
+    res.json({
+      success: true,
+      message: 'Batch deleted successfully'
+    });
+  } catch (error) {
+    if (handleKnownError(res, error)) return;
+    logger.error('Delete visual memory batch error:', error);
+    next(error);
+  }
+};
+
+export const createAuditoryMemoryQuestion = async (req, res, next) => {
+  try {
+    if (handleValidationErrors(req, res)) return;
+
+    await ensureTestForType({
+      prisma,
+      testId: req.params.testId,
+      expectedType: 'AUDITORY_MEMORY'
+    });
+
+    await ensureOrderAvailable(
+      prisma.q_AuditoryMemory,
+      { testId: req.params.testId, order: req.body.order },
+      'An auditory memory question with this order already exists in this test'
+    );
+
+    const question = await prisma.q_AuditoryMemory.create({
+      data: {
+        testId: req.params.testId,
+        order: req.body.order,
+        audioClipUrl: req.body.audioClipUrl,
+        questionText: parseMaybeJson(req.body.questionText),
+        modelAnswer: parseMaybeJson(req.body.modelAnswer)
+      }
+    });
+
+    res.status(201).json({
+      success: true,
+      data: serializeAssessmentQuestion({
+        req,
+        testType: 'AUDITORY_MEMORY',
+        question,
+        includeCorrect: true
+      })
+    });
+  } catch (error) {
+    if (handleKnownError(res, error)) return;
+    logger.error('Create auditory memory question error:', error);
+    next(error);
+  }
+};
+
+export const getHelpSkills = async (req, res, next) => {
+  try {
+    if (handleValidationErrors(req, res)) return;
+
+    const where = {};
+    if (req.query.domain) {
+      where.domain = req.query.domain;
+    }
+
+    const skills = await prisma.helpSkill.findMany({
+      where,
+      orderBy: [{ domain: 'asc' }, { skillNumber: 'asc' }, { id: 'asc' }]
+    });
+
+    res.json({
+      success: true,
+      data: skills
+    });
+  } catch (error) {
+    logger.error('Get HELP skills error:', error);
+    next(error);
+  }
+};
+
+export const createHelpSkill = async (req, res, next) => {
+  try {
+    if (handleValidationErrors(req, res)) return;
+
+    const skill = await prisma.helpSkill.create({
+      data: {
+        domain: req.body.domain,
+        skillNumber: req.body.skillNumber,
+        description: req.body.description,
+        ageRange: req.body.ageRange
+      }
+    });
+
+    res.status(201).json({
+      success: true,
+      data: skill
+    });
+  } catch (error) {
+    logger.error('Create HELP skill error:', error);
+    next(error);
+  }
+};
+
+export const deleteHelpSkill = async (req, res, next) => {
+  try {
+    if (handleValidationErrors(req, res)) return;
+
+    const skill = await prisma.helpSkill.findUnique({
+      where: { id: req.params.skillId },
+      include: {
+        _count: {
+          select: {
+            evaluations: true
+          }
+        }
+      }
+    });
+
+    if (!skill) {
+      return res.status(404).json({
+        success: false,
+        error: {
+          code: 'HELP_SKILL_NOT_FOUND',
+          message: 'Help skill not found'
+        }
+      });
+    }
+
+    if (skill._count.evaluations > 0) {
+      return res.status(409).json({
+        success: false,
+        error: {
+          code: 'HELP_SKILL_IN_USE',
+          message: 'Cannot delete a help skill that has linked evaluations'
+        }
+      });
+    }
+
+    await prisma.helpSkill.delete({
+      where: { id: req.params.skillId }
+    });
+
+    res.json({
+      success: true,
+      message: 'Help skill deleted successfully'
+    });
+  } catch (error) {
+    logger.error('Delete HELP skill error:', error);
+    next(error);
+  }
+};
+
+export const createGenericQuestion = async (req, res, next) => {
+  try {
+    if (handleValidationErrors(req, res)) return;
+
+    const test = await ensureTestForType({
+      prisma,
+      testId: req.params.testId,
+      allowedTypes: GENERIC_TEST_TYPES
+    });
+
+    await ensureOrderAvailable(
+      prisma.question,
+      { testId: req.params.testId, orderIndex: req.body.orderIndex },
+      'A generic question with this orderIndex already exists in this test'
+    );
+
+    const question = await prisma.question.create({
+      data: {
+        testId: req.params.testId,
+        orderIndex: req.body.orderIndex,
+        audioAssetPath: req.body.audioAssetPath || null,
+        imageAssetPath: req.body.imageAssetPath || null,
+        choices: req.body.choices === undefined ? null : parseMaybeJson(req.body.choices, null),
+        scoringGuide: req.body.scoringGuide,
+        maxScore: req.body.maxScore
+      }
+    });
+
+    res.status(201).json({
+      success: true,
+      data: serializeAssessmentQuestion({
+        req,
+        testType: test.testType,
+        question,
+        includeCorrect: true
+      })
+    });
+  } catch (error) {
+    if (handleKnownError(res, error)) return;
+    logger.error('Create generic assessment question error:', error);
     next(error);
   }
 };

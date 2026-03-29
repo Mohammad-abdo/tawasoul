@@ -1,0 +1,203 @@
+/public/pages:
+  get:
+    tags: [Public]
+    summary: Get all page contents
+    operationId: getPublicPages
+    security: []
+    responses:
+      "200":
+        description: List of page contents
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                  example: true
+                data:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/PageContent"
+
+/public/pages/{pageType}:
+  get:
+    tags: [Public]
+    summary: Get page content by type
+    operationId: getPublicPageByType
+    security: []
+    parameters:
+      - name: pageType
+        in: path
+        required: true
+        schema:
+          type: string
+          enum: [PRIVACY_POLICY, TERMS_AND_CONDITIONS, ABOUT_APP, COMMUNITY_GUIDELINES, HELP_CENTER]
+    responses:
+      "200":
+        description: Page content
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  $ref: "#/components/schemas/PageContent"
+      "404":
+        $ref: "#/components/schemas/ErrorResponse"
+
+/public/static-pages/{pageType}:
+  get:
+    tags: [Public]
+    summary: Get static page by type
+    operationId: getStaticPage
+    security: []
+    parameters:
+      - name: pageType
+        in: path
+        required: true
+        schema:
+          type: string
+          enum: [HOME_PAGE_1, HOME_PAGE_2, ABOUT_APP, FAQ, PRIVACY_POLICY, TERMS_AND_CONDITIONS, COMPANY_SECTOR]
+    responses:
+      "200":
+        description: Static page data
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  $ref: "#/components/schemas/StaticPage"
+
+/public/onboarding-slides:
+  get:
+    tags: [Public]
+    summary: Get onboarding slides
+    operationId: getOnboardingSlides
+    security: []
+    responses:
+      "200":
+        description: List of active onboarding slides ordered by display order
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/OnboardingSlide"
+
+/public/onboarding:
+  get:
+    tags: [Public]
+    summary: Get onboarding pages (legacy)
+    operationId: getOnboardingLegacy
+    deprecated: true
+    security: []
+    responses:
+      "200":
+        description: Onboarding pages
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/OnboardingSlide"
+
+/public/home-page-1:
+  get:
+    tags: [Public]
+    summary: Get Home Page 1 static content
+    operationId: getHomePage1
+    security: []
+    responses:
+      "200":
+        description: Home page 1 content
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  $ref: "#/components/schemas/StaticPage"
+
+/public/home-page-2:
+  get:
+    tags: [Public]
+    summary: Get Home Page 2 static content
+    operationId: getHomePage2
+    security: []
+    responses:
+      "200":
+        description: Home page 2 content
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  $ref: "#/components/schemas/StaticPage"
+
+/public/home-data:
+  get:
+    tags: [Public]
+    summary: Get full home page data for mobile app
+    operationId: getHomeData
+    security: []
+    description: Returns sliders, services, and featured articles in one request.
+    responses:
+      "200":
+        description: Aggregated home page data
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  $ref: "#/components/schemas/HomePageData"
+
+/public/faqs:
+  get:
+    tags: [Public]
+    summary: Get all FAQs
+    operationId: getPublicFAQs
+    security: []
+    parameters:
+      - name: category
+        in: query
+        schema:
+          type: string
+        description: Filter by FAQ category
+    responses:
+      "200":
+        description: List of active FAQs
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/FAQ"

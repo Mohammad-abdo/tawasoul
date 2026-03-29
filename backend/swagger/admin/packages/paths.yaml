@@ -1,0 +1,142 @@
+/admin/packages:
+  get:
+    tags: [Admin Packages]
+    summary: Get all packages
+    operationId: adminGetAllPackages
+    security:
+      - BearerAuth: []
+    responses:
+      "200":
+        description: List of packages
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/Package"
+  post:
+    tags: [Admin Packages]
+    summary: Create a package
+    operationId: adminCreatePackage
+    security:
+      - BearerAuth: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/CreatePackageRequest"
+    responses:
+      "201":
+        description: Package created
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  $ref: "#/components/schemas/Package"
+
+/admin/packages/{id}:
+  get:
+    tags: [Admin Packages]
+    summary: Get package by ID
+    operationId: adminGetPackageById
+    security:
+      - BearerAuth: []
+    parameters:
+      - $ref: "#/components/schemas/IdPathParam"
+    responses:
+      "200":
+        description: Package details
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  $ref: "#/components/schemas/Package"
+  put:
+    tags: [Admin Packages]
+    summary: Update a package
+    operationId: adminUpdatePackage
+    security:
+      - BearerAuth: []
+    parameters:
+      - $ref: "#/components/schemas/IdPathParam"
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/CreatePackageRequest"
+    responses:
+      "200":
+        description: Package updated
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  $ref: "#/components/schemas/Package"
+  delete:
+    tags: [Admin Packages]
+    summary: Delete a package
+    operationId: adminDeletePackage
+    security:
+      - BearerAuth: []
+    parameters:
+      - $ref: "#/components/schemas/IdPathParam"
+    responses:
+      "200":
+        description: Package deleted
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MessageResponse"
+
+/admin/packages/{id}/activate:
+  put:
+    tags: [Admin Packages]
+    summary: Activate a package
+    operationId: adminActivatePackage
+    security:
+      - BearerAuth: []
+    parameters:
+      - $ref: "#/components/schemas/IdPathParam"
+    responses:
+      "200":
+        description: Package activated
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MessageResponse"
+
+/admin/packages/{id}/deactivate:
+  put:
+    tags: [Admin Packages]
+    summary: Deactivate a package
+    operationId: adminDeactivatePackage
+    security:
+      - BearerAuth: []
+    parameters:
+      - $ref: "#/components/schemas/IdPathParam"
+    responses:
+      "200":
+        description: Package deactivated
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MessageResponse"

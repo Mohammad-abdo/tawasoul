@@ -1,0 +1,573 @@
+LocalizedText:
+  type: object
+  properties:
+    ar:
+      type: string
+    en:
+      type: string
+
+CARSChoiceSchema:
+  type: object
+  properties:
+    score:
+      type: integer
+      minimum: 1
+      maximum: 4
+    ar:
+      type: string
+    en:
+      type: string
+
+AnalogyChoiceSchema:
+  type: object
+  properties:
+    imagePath:
+      type: string
+
+VisualMemoryChoiceSchema:
+  type: object
+  properties:
+    text:
+      type: string
+
+AuditoryModelAnswerSchema:
+  type: object
+  properties:
+    items:
+      type: array
+      minItems: 1
+      items:
+        type: string
+    order:
+      type: boolean
+
+TestSummary:
+  type: object
+  properties:
+    id:
+      type: string
+      format: uuid
+    title:
+      type: string
+    titleAr:
+      type: string
+      nullable: true
+    testType:
+      type: string
+      enum: [CARS, ANALOGY, VISUAL_MEMORY, AUDITORY_MEMORY, HELP, SOUND_DISCRIMINATION, PRONUNCIATION_REPETITION, SOUND_IMAGE_LINKING, SEQUENCE_ORDER]
+    type:
+      type: string
+      enum: [AUDITORY, VISUAL]
+    description:
+      type: string
+      nullable: true
+    questionCount:
+      type: integer
+      nullable: true
+
+CARSQuestionSchema:
+  type: object
+  properties:
+    id:
+      type: string
+    testId:
+      type: string
+    order:
+      type: integer
+    questionText:
+      $ref: "#/components/schemas/LocalizedText"
+    choices:
+      type: array
+      items:
+        $ref: "#/components/schemas/CARSChoiceSchema"
+
+AnalogyQuestionSchema:
+  type: object
+  properties:
+    id:
+      type: string
+    testId:
+      type: string
+    order:
+      type: integer
+    questionImageUrl:
+      type: string
+    choices:
+      type: array
+      items:
+        $ref: "#/components/schemas/AnalogyChoiceSchema"
+    correctIndex:
+      type: integer
+      nullable: true
+
+VisualMemoryQuestionSchema:
+  type: object
+  properties:
+    id:
+      type: string
+    batchId:
+      type: string
+    order:
+      type: integer
+    questionText:
+      $ref: "#/components/schemas/LocalizedText"
+    questionType:
+      type: string
+      enum: [YES_NO, MCQ]
+    correctBool:
+      type: boolean
+      nullable: true
+    choices:
+      type: array
+      nullable: true
+      items:
+        $ref: "#/components/schemas/VisualMemoryChoiceSchema"
+    correctIndex:
+      type: integer
+      nullable: true
+
+VisualMemoryBatchSchema:
+  type: object
+  properties:
+    id:
+      type: string
+    testId:
+      type: string
+    order:
+      type: integer
+    imageUrl:
+      type: string
+    displaySeconds:
+      type: integer
+    questions:
+      type: array
+      items:
+        $ref: "#/components/schemas/VisualMemoryQuestionSchema"
+
+AuditoryMemoryQuestionSchema:
+  type: object
+  properties:
+    id:
+      type: string
+    testId:
+      type: string
+    order:
+      type: integer
+    audioClipUrl:
+      type: string
+    questionText:
+      $ref: "#/components/schemas/LocalizedText"
+    modelAnswer:
+      $ref: "#/components/schemas/AuditoryModelAnswerSchema"
+
+HelpSkillSchema:
+  type: object
+  properties:
+    id:
+      type: string
+      format: uuid
+    domain:
+      type: string
+      enum: [COGNITIVE, FINE_MOTOR, GROSS_MOTOR, SOCIAL]
+    skillNumber:
+      type: string
+    description:
+      type: string
+    ageRange:
+      type: string
+
+GenericQuestionSchema:
+  type: object
+  properties:
+    id:
+      type: string
+    testId:
+      type: string
+    orderIndex:
+      type: integer
+    audioAssetPath:
+      type: string
+      nullable: true
+    imageAssetPath:
+      type: string
+      nullable: true
+    choices:
+      type: array
+      nullable: true
+      items:
+        type: object
+        additionalProperties: true
+    scoringGuide:
+      type: string
+      nullable: true
+    maxScore:
+      type: integer
+      nullable: true
+
+AssessmentQuestionSchema:
+  oneOf:
+    - $ref: "#/components/schemas/CARSQuestionSchema"
+    - $ref: "#/components/schemas/AnalogyQuestionSchema"
+    - $ref: "#/components/schemas/VisualMemoryBatchSchema"
+    - $ref: "#/components/schemas/AuditoryMemoryQuestionSchema"
+    - $ref: "#/components/schemas/HelpSkillSchema"
+    - $ref: "#/components/schemas/GenericQuestionSchema"
+
+TestDetail:
+  allOf:
+    - $ref: "#/components/schemas/TestSummary"
+    - type: object
+      properties:
+        questionModel:
+          type: string
+        questions:
+          type: array
+          items:
+            $ref: "#/components/schemas/AssessmentQuestionSchema"
+
+HelpEvaluationSchema:
+  type: object
+  properties:
+    id:
+      type: string
+      format: uuid
+    assessmentId:
+      type: string
+      format: uuid
+    skillId:
+      type: string
+      format: uuid
+    score:
+      type: string
+      enum: [NOT_SUITABLE, NOT_PRESENT, INITIAL_ATTEMPTS, PARTIAL_LEVEL, SUCCESSFUL]
+    doctorNotes:
+      type: string
+      nullable: true
+    skill:
+      $ref: "#/components/schemas/HelpSkillSchema"
+
+HelpAssessmentSchema:
+  type: object
+  properties:
+    id:
+      type: string
+      format: uuid
+    childId:
+      type: string
+      format: uuid
+    doctorId:
+      type: string
+      format: uuid
+    assessmentResultId:
+      type: string
+      format: uuid
+      nullable: true
+    sessionId:
+      type: string
+    developmentalAge:
+      type: string
+    createdAt:
+      type: string
+      format: date-time
+    evaluations:
+      type: array
+      items:
+        $ref: "#/components/schemas/HelpEvaluationSchema"
+
+CARSAnswerDetailSchema:
+  type: object
+  properties:
+    id:
+      type: string
+    questionId:
+      type: string
+    chosenIndex:
+      type: integer
+    score:
+      type: integer
+    question:
+      $ref: "#/components/schemas/CARSQuestionSchema"
+
+AnalogyAnswerDetailSchema:
+  type: object
+  properties:
+    id:
+      type: string
+    questionId:
+      type: string
+    chosenIndex:
+      type: integer
+    score:
+      type: integer
+    question:
+      $ref: "#/components/schemas/AnalogyQuestionSchema"
+
+VisualMemoryAnswerDetailSchema:
+  type: object
+  properties:
+    id:
+      type: string
+    questionId:
+      type: string
+    answerBool:
+      type: boolean
+      nullable: true
+    chosenIndex:
+      type: integer
+      nullable: true
+    score:
+      type: integer
+    question:
+      type: object
+      properties:
+        id:
+          type: string
+        batch:
+          $ref: "#/components/schemas/VisualMemoryBatchSchema"
+        order:
+          type: integer
+        questionText:
+          $ref: "#/components/schemas/LocalizedText"
+        questionType:
+          type: string
+          enum: [YES_NO, MCQ]
+        correctBool:
+          type: boolean
+          nullable: true
+        choices:
+          type: array
+          nullable: true
+          items:
+            $ref: "#/components/schemas/VisualMemoryChoiceSchema"
+        correctIndex:
+          type: integer
+          nullable: true
+
+AuditoryMemoryAnswerDetailSchema:
+  type: object
+  properties:
+    id:
+      type: string
+    questionId:
+      type: string
+    recalledItems:
+      type: array
+      items:
+        type: string
+    itemScores:
+      type: array
+      items:
+        type: object
+        properties:
+          item:
+            type: string
+          recalled:
+            type: boolean
+          score:
+            type: integer
+    score:
+      type: integer
+    question:
+      $ref: "#/components/schemas/AuditoryMemoryQuestionSchema"
+
+AssessmentResultSummary:
+  type: object
+  properties:
+    id:
+      type: string
+      format: uuid
+    testId:
+      type: string
+      format: uuid
+      nullable: true
+    testType:
+      type: string
+      nullable: true
+      enum: [CARS, ANALOGY, VISUAL_MEMORY, AUDITORY_MEMORY, HELP, SOUND_DISCRIMINATION, PRONUNCIATION_REPETITION, SOUND_IMAGE_LINKING, SEQUENCE_ORDER]
+    totalScore:
+      type: integer
+      nullable: true
+    maxScore:
+      type: integer
+      nullable: true
+    scoreGiven:
+      type: integer
+      nullable: true
+    sessionId:
+      type: string
+      nullable: true
+    timestamp:
+      type: string
+      format: date-time
+
+AssessmentResultDetail:
+  allOf:
+    - $ref: "#/components/schemas/AssessmentResultSummary"
+    - type: object
+      properties:
+        childId:
+          type: string
+          format: uuid
+        test:
+          allOf:
+            - $ref: "#/components/schemas/TestSummary"
+          nullable: true
+        question:
+          allOf:
+            - $ref: "#/components/schemas/GenericQuestionSchema"
+          nullable: true
+        helpAssessment:
+          allOf:
+            - $ref: "#/components/schemas/HelpAssessmentSchema"
+          nullable: true
+        qCarsAnswers:
+          type: array
+          items:
+            $ref: "#/components/schemas/CARSAnswerDetailSchema"
+        qAnalogyAnswers:
+          type: array
+          items:
+            $ref: "#/components/schemas/AnalogyAnswerDetailSchema"
+        qVisualMemoryAnswers:
+          type: array
+          items:
+            $ref: "#/components/schemas/VisualMemoryAnswerDetailSchema"
+        qAuditoryMemoryAnswers:
+          type: array
+          items:
+            $ref: "#/components/schemas/AuditoryMemoryAnswerDetailSchema"
+
+SubmitCARSBody:
+  type: object
+  required: [childId, testId, sessionId, answers]
+  properties:
+    childId:
+      type: string
+    testId:
+      type: string
+    sessionId:
+      type: string
+    answers:
+      type: array
+      minItems: 1
+      items:
+        type: object
+        required: [questionId, chosenIndex]
+        properties:
+          questionId:
+            type: string
+          chosenIndex:
+            type: integer
+            minimum: 0
+
+SubmitAnalogyBody:
+  type: object
+  required: [childId, testId, sessionId, answers]
+  properties:
+    childId:
+      type: string
+    testId:
+      type: string
+    sessionId:
+      type: string
+    answers:
+      type: array
+      minItems: 1
+      items:
+        type: object
+        required: [questionId, chosenIndex]
+        properties:
+          questionId:
+            type: string
+          chosenIndex:
+            type: integer
+            minimum: 0
+
+SubmitVisualMemoryBody:
+  type: object
+  required: [childId, testId, sessionId, answers]
+  properties:
+    childId:
+      type: string
+    testId:
+      type: string
+    sessionId:
+      type: string
+    answers:
+      type: array
+      minItems: 1
+      items:
+        type: object
+        required: [questionId]
+        properties:
+          questionId:
+            type: string
+          answerBool:
+            type: boolean
+          chosenIndex:
+            type: integer
+            minimum: 0
+
+SubmitAuditoryMemoryBody:
+  type: object
+  required: [childId, testId, sessionId, answers]
+  properties:
+    childId:
+      type: string
+    testId:
+      type: string
+    sessionId:
+      type: string
+    answers:
+      type: array
+      minItems: 1
+      items:
+        type: object
+        required: [questionId, recalledItems]
+        properties:
+          questionId:
+            type: string
+          recalledItems:
+            type: array
+            items:
+              type: string
+
+GenericScoreBody:
+  type: object
+  required: [childId, testId, questionId, sessionId, scoreGiven]
+  properties:
+    childId:
+      type: string
+    testId:
+      type: string
+    questionId:
+      type: string
+    sessionId:
+      type: string
+    scoreGiven:
+      type: integer
+      minimum: 0
+
+HelpStartBody:
+  type: object
+  required: [childId, sessionId, developmentalAge]
+  properties:
+    childId:
+      type: string
+    sessionId:
+      type: string
+    developmentalAge:
+      type: string
+
+HelpEvaluateBody:
+  type: object
+  required: [skillId, score]
+  properties:
+    skillId:
+      type: string
+    score:
+      type: string
+      enum: [NOT_SUITABLE, NOT_PRESENT, INITIAL_ATTEMPTS, PARTIAL_LEVEL, SUCCESSFUL]
+    doctorNotes:
+      type: string
+      nullable: true

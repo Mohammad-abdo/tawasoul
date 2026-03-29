@@ -1,0 +1,73 @@
+/admin/auth/login:
+  post:
+    tags: [Admin Auth]
+    summary: Admin login
+    operationId: adminLogin
+    security: []
+    description: Rate-limited endpoint.
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [email, password]
+            properties:
+              email:
+                type: string
+                format: email
+              password:
+                type: string
+    responses:
+      "200":
+        description: Login successful
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  $ref: "#/components/schemas/AdminAuthResponse"
+      "401":
+        description: Invalid credentials
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+
+/admin/auth/logout:
+  post:
+    tags: [Admin Auth]
+    summary: Admin logout
+    operationId: adminLogout
+    security:
+      - BearerAuth: []
+    responses:
+      "200":
+        description: Logged out
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MessageResponse"
+
+/admin/auth/me:
+  get:
+    tags: [Admin Auth]
+    summary: Get current authenticated admin
+    operationId: adminGetMe
+    security:
+      - BearerAuth: []
+    responses:
+      "200":
+        description: Admin profile
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  $ref: "#/components/schemas/AdminProfile"
