@@ -43,6 +43,7 @@ async function clearDb() {
     'skillGroup', 'activityCategory',
     'q_VisualMemory_Answer', 'q_VisualMemory', 'q_VisualMemory_Batch',
     'q_AuditoryMemory_Answer', 'q_AuditoryMemory',
+    'q_SequenceOrder_Answer', 'q_SequenceOrder_Image', 'q_SequenceOrder',
     'q_Analogy_Answer', 'q_Analogy',
     'q_CARS_Answer', 'q_CARS',
     'helpEvaluation', 'helpAssessment', 'helpSkill',
@@ -303,51 +304,22 @@ async function main() {
 
   // ─── Tests ────────────────────────────────────────────────────────────────────
   const tests = [
-    await prisma.test.create({ data: { title: 'Sound Discrimination', titleAr: 'تمييز الأصوات', type: 'AUDITORY', testType: 'SOUND_DISCRIMINATION', description: 'Evaluate sound recognition.', questions: { create: [
-      { orderIndex: 1, audioAssetPath: 'assets/audio/tests/bird.mp3', imageAssetPath: 'assets/images/tests/bird.png', choices: [{ text: 'Bird', isCorrect: true }, { text: 'Car', isCorrect: false }], scoringGuide: 'Score for correct sound match.', maxScore: 10 },
-      { orderIndex: 2, audioAssetPath: 'assets/audio/tests/doorbell.mp3', imageAssetPath: 'assets/images/tests/doorbell.png', choices: [{ text: 'Doorbell', isCorrect: true }, { text: 'Drum', isCorrect: false }], scoringGuide: 'Score for speed and accuracy.', maxScore: 10 }
-    ] } }, include: { questions: true } }),
-    await prisma.test.create({ data: { title: 'Pronunciation and Repetition', titleAr: 'النطق والتكرار', type: 'AUDITORY', testType: 'PRONUNCIATION_REPETITION', description: 'Observe pronunciation.', questions: { create: [
-      { orderIndex: 1, audioAssetPath: 'assets/audio/tests/banana.mp3', scoringGuide: 'Assess articulation.', maxScore: 10 },
-      { orderIndex: 2, audioAssetPath: 'assets/audio/tests/sentence.mp3', scoringGuide: 'Assess clarity.', maxScore: 10 }
-    ] } }, include: { questions: true } }),
-    await prisma.test.create({ data: { title: 'Sound and Image Linking', titleAr: 'ربط الصوت بالصورة', type: 'AUDITORY', testType: 'SOUND_IMAGE_LINKING', description: 'Match sounds to images.', questions: { create: [
-      { orderIndex: 1, audioAssetPath: 'assets/audio/tests/cat.mp3', imageAssetPath: 'assets/images/tests/cat.png', choices: [{ text: 'Cat', imagePath: 'assets/images/tests/cat.png', isCorrect: true }, { text: 'Dog', imagePath: 'assets/images/tests/dog.png', isCorrect: false }], scoringGuide: 'Choose the matching image.', maxScore: 10 }
-    ] } }, include: { questions: true } }),
-    await prisma.test.create({ data: { title: 'Visual Sequence Ordering', titleAr: 'التسلسل والترتيب', type: 'VISUAL', testType: 'SEQUENCE_ORDER', description: 'Arrange story cards.', questions: { create: [
-      { orderIndex: 1, imageAssetPath: 'assets/images/tests/sequence-1.png', scoringGuide: 'Score sequence correctness.', maxScore: 10 },
-      { orderIndex: 2, imageAssetPath: 'assets/images/tests/sequence-2.png', scoringGuide: 'Observe attention and ordering.', maxScore: 10 }
-    ] } }, include: { questions: true } }),
-    await prisma.test.create({ data: { title: 'HELP Developmental Assessment', titleAr: 'تقييم HELP النمائي', type: 'VISUAL', testType: 'HELP', description: 'Doctor-led developmental assessment using HELP skills.' } }),
-    // CARS test
-    await prisma.test.create({ data: { title: 'CARS Autism Rating Scale', titleAr: 'مقياس CARS للتوحد', type: 'VISUAL', testType: 'CARS', description: 'Childhood Autism Rating Scale assessment.' } }),
-    // Analogy test
-    await prisma.test.create({ data: { title: 'Visual Analogy Test', titleAr: 'اختبار القياس البصري', type: 'VISUAL', testType: 'ANALOGY', description: 'Assess visual reasoning through analogies.' } }),
-    // Visual Memory test
-    await prisma.test.create({ data: { title: 'Visual Memory Assessment', titleAr: 'اختبار الذاكرة البصرية', type: 'VISUAL', testType: 'VISUAL_MEMORY', description: 'Evaluate short-term visual memory.' } }),
-    // Auditory Memory test
-    await prisma.test.create({ data: { title: 'Auditory Memory Assessment', titleAr: 'اختبار الذاكرة السمعية', type: 'AUDITORY', testType: 'AUDITORY_MEMORY', description: 'Evaluate auditory recall and sequence memory.' } })
+    await prisma.test.create({ data: { title: 'HELP Developmental Assessment', titleAr: 'HELP Developmental Assessment', type: 'VISUAL', testType: 'HELP', description: 'Doctor-led developmental assessment using HELP skills.' } }),
+    await prisma.test.create({ data: { title: 'CARS Autism Rating Scale', titleAr: 'CARS Autism Rating Scale', type: 'VISUAL', testType: 'CARS', description: 'Childhood Autism Rating Scale assessment.' } }),
+    await prisma.test.create({ data: { title: 'Visual Analogy Test', titleAr: 'Visual Analogy Test', type: 'VISUAL', testType: 'ANALOGY', description: 'Assess visual reasoning through analogies.' } }),
+    await prisma.test.create({ data: { title: 'Visual Memory Assessment', titleAr: 'Visual Memory Assessment', type: 'VISUAL', testType: 'VISUAL_MEMORY', description: 'Evaluate short-term visual memory.' } }),
+    await prisma.test.create({ data: { title: 'Auditory Memory Assessment', titleAr: 'Auditory Memory Assessment', type: 'AUDITORY', testType: 'AUDITORY_MEMORY', description: 'Evaluate auditory recall and sequence memory.' } }),
+    await prisma.test.create({ data: { title: 'Image Sequence Order Assessment', titleAr: 'Image Sequence Order Assessment', type: 'VISUAL', testType: 'IMAGE_SEQUENCE_ORDER', description: 'Arrange image cards into the correct order.' } })
   ];
 
-  // AssessmentResults for basic question-based tests (tests 0–3)
-  const assessmentResults = [];
-  for (let i = 0; i < children.length; i += 1) {
-    for (let t = 0; t < 4; t += 1) {
-      if (!tests[t].questions?.length) continue;
-      const result = await prisma.assessmentResult.create({ data: {
-        childId: children[i].id,
-        testId: tests[t].id,
-        questionId: tests[t].questions[0].id,
-        scoreGiven: 6 + ((i + t) % 5),
-        sessionId: `assessment-${i + 1}-${t + 1}`,
-        timestamp: plusDays(-(3 + i + t))
-      } });
-      assessmentResults.push(result);
-    }
-  }
+  const helpTest = tests.find((test) => test.testType === 'HELP');
+  const carsTest = tests.find((test) => test.testType === 'CARS');
+  const analogyTest = tests.find((test) => test.testType === 'ANALOGY');
+  const visualMemoryTest = tests.find((test) => test.testType === 'VISUAL_MEMORY');
+  const auditoryMemoryTest = tests.find((test) => test.testType === 'AUDITORY_MEMORY');
+  const imageSequenceOrderTest = tests.find((test) => test.testType === 'IMAGE_SEQUENCE_ORDER');
 
-  // ─── Q_CARS ───────────────────────────────────────────────────────────────────
-  const carsTest = tests[5];
+  // Q_CARS
   const carsQuestions = [];
   const carsQuestionSeeds = [
     {
@@ -422,7 +394,6 @@ async function main() {
   }
 
   // ─── Q_Analogy ────────────────────────────────────────────────────────────────
-  const analogyTest = tests[6];
   const analogyQuestions = [];
   const analogySeeds = [
     {
@@ -484,7 +455,6 @@ async function main() {
   }
 
   // ─── Q_VisualMemory ───────────────────────────────────────────────────────────
-  const visualMemoryTest = tests[7];
   const visualMemoryBatches = [];
 
   const vmBatchSeeds = [
@@ -537,7 +507,6 @@ async function main() {
   }
 
   // ─── Q_AuditoryMemory ─────────────────────────────────────────────────────────
-  const auditoryMemoryTest = tests[8];
   const auditoryMemoryQuestions = [];
 
   const amSeeds = [
@@ -588,6 +557,100 @@ async function main() {
   }
 
   // ─── HelpAssessment + HelpEvaluation ─────────────────────────────────────────
+  // Q_SequenceOrder
+  const sequenceOrderQuestions = [];
+  const sequenceOrderSeeds = [
+    {
+      order: 1,
+      images: [
+        { assetPath: 'assets/images/sequence-order/routine-1.png', position: 1 },
+        { assetPath: 'assets/images/sequence-order/routine-2.png', position: 2 },
+        { assetPath: 'assets/images/sequence-order/routine-3.png', position: 3 }
+      ]
+    },
+    {
+      order: 2,
+      images: [
+        { assetPath: 'assets/images/sequence-order/plant-1.png', position: 1 },
+        { assetPath: 'assets/images/sequence-order/plant-2.png', position: 2 },
+        { assetPath: 'assets/images/sequence-order/plant-3.png', position: 3 },
+        { assetPath: 'assets/images/sequence-order/plant-4.png', position: 4 }
+      ]
+    }
+  ];
+
+  for (const seed of sequenceOrderSeeds) {
+    sequenceOrderQuestions.push(await prisma.q_SequenceOrder.create({
+      data: {
+        testId: imageSequenceOrderTest.id,
+        order: seed.order,
+        images: {
+          create: seed.images
+        }
+      },
+      include: {
+        images: {
+          orderBy: [{ position: 'asc' }, { id: 'asc' }]
+        }
+      }
+    }));
+  }
+
+  for (let i = 0; i < 2; i += 1) {
+    let totalScore = 0;
+    let maxScore = 0;
+    const answerRows = [];
+
+    for (const question of sequenceOrderQuestions) {
+      const submittedOrder = question.images.map((image) => ({
+        imageId: image.id,
+        submittedPosition: i === 0 ? image.position : ((image.position % question.images.length) + 1)
+      }));
+      const itemScores = submittedOrder.map((item) => {
+        const image = question.images.find((candidate) => candidate.id === item.imageId);
+        const score = item.submittedPosition === image.position ? 1 : 0;
+
+        return {
+          imageId: item.imageId,
+          correctPosition: image.position,
+          submittedPosition: item.submittedPosition,
+          score
+        };
+      });
+      const score = itemScores.reduce((sum, item) => sum + item.score, 0);
+
+      totalScore += score;
+      maxScore += question.images.length;
+      answerRows.push({
+        questionId: question.id,
+        submittedOrder,
+        itemScores,
+        score
+      });
+    }
+
+    const result = await prisma.assessmentResult.create({
+      data: {
+        childId: children[i].id,
+        testId: imageSequenceOrderTest.id,
+        totalScore,
+        maxScore,
+        scoreGiven: totalScore,
+        sessionId: `sequence-order-session-${i + 1}`,
+        timestamp: plusDays(-(8 + i))
+      }
+    });
+
+    await prisma.q_SequenceOrder_Answer.createMany({
+      data: answerRows.map((answer) => ({
+        resultId: result.id,
+        questionId: answer.questionId,
+        submittedOrder: answer.submittedOrder,
+        itemScores: answer.itemScores,
+        score: answer.score
+      }))
+    });
+  }
   for (let i = 0; i < doctors.length; i += 1) {
     const targetChild = children[i % children.length];
     const helpAssessment = await prisma.helpAssessment.create({ data: {
@@ -655,6 +718,100 @@ async function main() {
   for (const booking of bookings.slice(0, 8).filter((b) => b.status !== 'CANCELLED')) {
     await prisma.payment.create({ data: { bookingId: booking.id, doctorId: booking.doctorId, amount: booking.price, method: booking.status === 'COMPLETED' ? 'INSTAPAY' : 'FAWRY', status: booking.status === 'COMPLETED' ? 'COMPLETED' : 'PENDING', transactionId: booking.status === 'COMPLETED' ? `txn-booking-${booking.id.slice(0, 8)}` : `txn-booking-init-${booking.id.slice(0, 8)}` } });
   }
+  // Q_SequenceOrder
+  const sequenceOrderQuestions = [];
+  const sequenceOrderSeeds = [
+    {
+      order: 1,
+      images: [
+        { assetPath: 'assets/images/sequence-order/routine-1.png', position: 1 },
+        { assetPath: 'assets/images/sequence-order/routine-2.png', position: 2 },
+        { assetPath: 'assets/images/sequence-order/routine-3.png', position: 3 }
+      ]
+    },
+    {
+      order: 2,
+      images: [
+        { assetPath: 'assets/images/sequence-order/plant-1.png', position: 1 },
+        { assetPath: 'assets/images/sequence-order/plant-2.png', position: 2 },
+        { assetPath: 'assets/images/sequence-order/plant-3.png', position: 3 },
+        { assetPath: 'assets/images/sequence-order/plant-4.png', position: 4 }
+      ]
+    }
+  ];
+
+  for (const seed of sequenceOrderSeeds) {
+    sequenceOrderQuestions.push(await prisma.q_SequenceOrder.create({
+      data: {
+        testId: imageSequenceOrderTest.id,
+        order: seed.order,
+        images: {
+          create: seed.images
+        }
+      },
+      include: {
+        images: {
+          orderBy: [{ position: 'asc' }, { id: 'asc' }]
+        }
+      }
+    }));
+  }
+
+  for (let i = 0; i < 2; i += 1) {
+    let totalScore = 0;
+    let maxScore = 0;
+    const answerRows = [];
+
+    for (const question of sequenceOrderQuestions) {
+      const submittedOrder = question.images.map((image) => ({
+        imageId: image.id,
+        submittedPosition: i === 0 ? image.position : ((image.position % question.images.length) + 1)
+      }));
+      const itemScores = submittedOrder.map((item) => {
+        const image = question.images.find((candidate) => candidate.id === item.imageId);
+        const score = item.submittedPosition === image.position ? 1 : 0;
+
+        return {
+          imageId: item.imageId,
+          correctPosition: image.position,
+          submittedPosition: item.submittedPosition,
+          score
+        };
+      });
+      const score = itemScores.reduce((sum, item) => sum + item.score, 0);
+
+      totalScore += score;
+      maxScore += question.images.length;
+      answerRows.push({
+        questionId: question.id,
+        submittedOrder,
+        itemScores,
+        score
+      });
+    }
+
+    const result = await prisma.assessmentResult.create({
+      data: {
+        childId: children[i].id,
+        testId: imageSequenceOrderTest.id,
+        totalScore,
+        maxScore,
+        scoreGiven: totalScore,
+        sessionId: `sequence-order-session-${i + 1}`,
+        timestamp: plusDays(-(8 + i))
+      }
+    });
+
+    await prisma.q_SequenceOrder_Answer.createMany({
+      data: answerRows.map((answer) => ({
+        resultId: result.id,
+        questionId: answer.questionId,
+        submittedOrder: answer.submittedOrder,
+        itemScores: answer.itemScores,
+        score: answer.score
+      }))
+    });
+  }
   for (let i = 0; i < doctors.length; i += 1) {
     await prisma.withdrawal.create({ data: {
       doctorId: doctors[i].id, amount: 800 + i * 150, method: i % 2 === 0 ? 'VODAFONE_CASH' : 'BANK_ACCOUNT',
@@ -709,3 +866,5 @@ main().catch((error) => {
 }).finally(async () => {
   await prisma.$disconnect();
 });
+
+

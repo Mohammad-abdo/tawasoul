@@ -11,10 +11,7 @@ const TEST_TYPES = [
   'VISUAL_MEMORY',
   'AUDITORY_MEMORY',
   'HELP',
-  'SOUND_DISCRIMINATION',
-  'PRONUNCIATION_REPETITION',
-  'SOUND_IMAGE_LINKING',
-  'SEQUENCE_ORDER'
+  'IMAGE_SEQUENCE_ORDER'
 ];
 
 const requiredParam = (name, label) =>
@@ -79,6 +76,16 @@ router.post(
   body('answers.*.recalledItems').isArray().withMessage('each answer.recalledItems must be an array'),
   body('answers.*.recalledItems.*').optional().isString().withMessage('each recalled item must be a string'),
   assessmentController.submitAuditoryMemoryAssessment
+);
+
+router.post(
+  '/image-sequence-order/submit',
+  authenticateUser,
+  submitBaseValidators,
+  body('answers.*.submittedOrder').isArray({ min: 1 }).withMessage('each answer.submittedOrder must be a non-empty array'),
+  body('answers.*.submittedOrder.*.imageId').isString().trim().notEmpty().withMessage('each submittedOrder.imageId is required'),
+  body('answers.*.submittedOrder.*.submittedPosition').isInt({ min: 1 }).withMessage('each submittedOrder.submittedPosition must be an integer greater than or equal to 1'),
+  assessmentController.submitImageSequenceOrderAssessment
 );
 
 router.get('/results/:childId', authenticateUser, requiredParam('childId', 'childId'), assessmentController.getAssessmentResultsByChild);

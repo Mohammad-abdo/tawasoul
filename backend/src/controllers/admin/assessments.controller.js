@@ -328,6 +328,15 @@ export const deleteTestQuestion = async (req, res, next) => {
           where: { id: req.params.questionId }
         });
         break;
+      case 'IMAGE_SEQUENCE_ORDER':
+        await findScopedRecordOrThrow(prisma.q_SequenceOrder, {
+          id: req.params.questionId,
+          testId: test.id
+        });
+        await prisma.q_SequenceOrder.delete({
+          where: { id: req.params.questionId }
+        });
+        break;
       case 'SOUND_DISCRIMINATION':
       case 'PRONUNCIATION_REPETITION':
       case 'SOUND_IMAGE_LINKING':
@@ -548,6 +557,152 @@ export const createAuditoryMemoryQuestion = async (req, res, next) => {
   } catch (error) {
     if (handleKnownError(res, error)) return;
     logger.error('Create auditory memory question error:', error);
+    next(error);
+  }
+};
+
+export const createImageSequenceOrderQuestion = async (req, res, next) => {
+  try {
+    if (handleValidationErrors(req, res)) return;
+
+    await ensureTestForType({
+      prisma,
+      testId: req.params.testId,
+      expectedType: 'IMAGE_SEQUENCE_ORDER'
+    });
+
+    await ensureOrderAvailable(
+      prisma.q_SequenceOrder,
+      { testId: req.params.testId, order: req.body.order },
+      'An image sequence order question with this order already exists in this test'
+    );
+
+    const images = parseMaybeJson(req.body.images, []);
+
+    const question = await prisma.q_SequenceOrder.create({
+      data: {
+        testId: req.params.testId,
+        order: req.body.order,
+        images: {
+          create: images.map((image) => ({
+            assetPath: image.assetPath,
+            position: image.position
+          }))
+        }
+      },
+      include: {
+        images: {
+          orderBy: [{ position: 'asc' }, { id: 'asc' }]
+        }
+      }
+    });
+
+    res.status(201).json({
+      success: true,
+      data: serializeAssessmentQuestion({
+        req,
+        testType: 'IMAGE_SEQUENCE_ORDER',
+        question,
+        includeCorrect: true
+      })
+    });
+  } catch (error) {
+    if (handleKnownError(res, error)) return;
+    logger.error('Create image sequence order question error:', error);
+    next(error);
+  }
+};
+
+export const updateImageSequenceOrderQuestion = async (req, res, next) => {
+  try {
+    if (handleValidationErrors(req, res)) return;
+
+    const existing = await prisma.q_SequenceOrder.findUnique({
+      where: { id: req.params.questionId },
+      include: {
+        test: true,
+        images: {
+          orderBy: [{ position: 'asc' }, { id: 'asc' }]
+        }
+      }
+    });
+
+    if (!existing) {
+      return res.status(404).json({
+        success: false,
+        error: {
+          code: 'QUESTION_NOT_FOUND',
+          message: 'Question not found'
+        }
+      });
+    }
+
+    if (existing.test.testType !== 'IMAGE_SEQUENCE_ORDER') {
+      return res.status(422).json({
+        success: false,
+        error: {
+          code: 'INVALID_TEST_TYPE',
+          message: 'Question does not belong to an IMAGE_SEQUENCE_ORDER test'
+        }
+      });
+    }
+
+    if (req.body.order !== undefined && req.body.order !== existing.order) {
+      await ensureOrderAvailable(
+        prisma.q_SequenceOrder,
+        { testId: existing.testId, order: req.body.order },
+        'An image sequence order question with this order already exists in this test'
+      );
+    }
+
+    const images = req.body.images === undefined ? undefined : parseMaybeJson(req.body.images, []);
+
+    const updated = await prisma.$transaction(async (tx) => {
+      await tx.q_SequenceOrder.update({
+        where: { id: existing.id },
+        data: {
+          ...(req.body.order !== undefined && { order: req.body.order })
+        }
+      });
+
+      if (images !== undefined) {
+        await tx.q_SequenceOrder_Image.deleteMany({
+          where: { questionId: existing.id }
+        });
+
+        if (images.length > 0) {
+          await tx.q_SequenceOrder_Image.createMany({
+            data: images.map((image) => ({
+              questionId: existing.id,
+              assetPath: image.assetPath,
+              position: image.position
+            }))
+          });
+        }
+      }
+
+      return tx.q_SequenceOrder.findUnique({
+        where: { id: existing.id },
+        include: {
+          images: {
+            orderBy: [{ position: 'asc' }, { id: 'asc' }]
+          }
+        }
+      });
+    });
+
+    res.json({
+      success: true,
+      data: serializeAssessmentQuestion({
+        req,
+        testType: 'IMAGE_SEQUENCE_ORDER',
+        question: updated,
+        includeCorrect: true
+      })
+    });
+  } catch (error) {
+    if (handleKnownError(res, error)) return;
+    logger.error('Update image sequence order question error:', error);
     next(error);
   }
 };

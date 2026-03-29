@@ -137,7 +137,7 @@
   post:
     tags: [Doctor Assessments]
     summary: Submit generic doctor score
-    description: Upserts a doctor-scored generic assessment result for one child question and session. The endpoint validates child access, test type, and maxScore bounds.
+    description: Legacy endpoint for doctor-scored generic assessment questions tied to older assessment test types. Keep this only for backward compatibility if those tests still exist in deployed data.
     security:
       - BearerAuth: []
     requestBody:

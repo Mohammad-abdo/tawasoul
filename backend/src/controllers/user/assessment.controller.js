@@ -59,6 +59,14 @@ const normalizeAuditoryModelItems = (modelAnswer) => {
   return [];
 };
 
+const normalizeSequenceOrderSubmission = (submittedOrder) => {
+  if (Array.isArray(submittedOrder)) {
+    return submittedOrder;
+  }
+
+  return [];
+};
+
 export const getTests = async (req, res, next) => {
   try {
     if (handleValidationErrors(req, res)) return;
@@ -488,6 +496,144 @@ export const submitAuditoryMemoryAssessment = async (req, res, next) => {
   } catch (error) {
     if (handleKnownError(res, error)) return;
     logger.error('Submit auditory memory assessment error:', error);
+    next(error);
+  }
+};
+
+export const submitImageSequenceOrderAssessment = async (req, res, next) => {
+  try {
+    if (handleValidationErrors(req, res)) return;
+
+    const { childId, testId, sessionId, answers } = req.body;
+
+    await ensureUserOwnsChild({ prisma, userId: req.user.id, childId });
+    const test = await ensureTestForType({ prisma, testId, expectedType: 'IMAGE_SEQUENCE_ORDER' });
+    ensureUniqueAnswerQuestionIds(answers);
+
+    const data = await prisma.$transaction(async (tx) => {
+      const questions = await tx.q_SequenceOrder.findMany({
+        where: {
+          id: { in: answers.map((answer) => answer.questionId) },
+          testId: test.id
+        },
+        include: {
+          images: {
+            orderBy: [{ position: 'asc' }, { id: 'asc' }]
+          }
+        }
+      });
+
+      if (questions.length !== answers.length) {
+        throw createHttpError(422, 'INVALID_QUESTION', 'One or more questions do not belong to this test');
+      }
+
+      const questionMap = new Map(questions.map((question) => [question.id, question]));
+      let totalScore = 0;
+      const answerRows = [];
+
+      for (const answer of answers) {
+        const question = questionMap.get(answer.questionId);
+
+        if (!question) {
+          throw createHttpError(422, 'INVALID_QUESTION', `Question ${answer.questionId} does not belong to this test`);
+        }
+
+        const images = Array.isArray(question.images) ? question.images : [];
+        const submittedOrder = normalizeSequenceOrderSubmission(answer.submittedOrder);
+
+        if (submittedOrder.length !== images.length) {
+          throw createHttpError(422, 'INVALID_ANSWER', `Question ${answer.questionId} requires one submitted position for each image`);
+        }
+
+        const validImageIds = new Set(images.map((image) => image.id));
+        const seenImageIds = new Set();
+        const seenPositions = new Set();
+
+        for (const item of submittedOrder) {
+          if (!item || typeof item !== 'object' || typeof item.imageId !== 'string' || !item.imageId.trim()) {
+            throw createHttpError(422, 'INVALID_ANSWER', `Question ${answer.questionId} requires submittedOrder items with imageId`);
+          }
+
+          if (!Number.isInteger(item.submittedPosition) || item.submittedPosition < 1 || item.submittedPosition > images.length) {
+            throw createHttpError(422, 'ANSWER_OUT_OF_BOUNDS', `submittedPosition is out of bounds for question ${answer.questionId}`);
+          }
+
+          if (!validImageIds.has(item.imageId)) {
+            throw createHttpError(422, 'INVALID_ANSWER', `Question ${answer.questionId} contains an image that does not belong to this question`);
+          }
+
+          if (seenImageIds.has(item.imageId)) {
+            throw createHttpError(422, 'DUPLICATE_ANSWER', `Question ${answer.questionId} contains duplicate image submissions`);
+          }
+
+          if (seenPositions.has(item.submittedPosition)) {
+            throw createHttpError(422, 'DUPLICATE_ANSWER', `Question ${answer.questionId} contains duplicate submitted positions`);
+          }
+
+          seenImageIds.add(item.imageId);
+          seenPositions.add(item.submittedPosition);
+        }
+
+        const submittedMap = new Map(submittedOrder.map((item) => [item.imageId, item.submittedPosition]));
+        const itemScores = images.map((image) => {
+          const submittedPosition = submittedMap.get(image.id) ?? null;
+          const score = submittedPosition === image.position ? 1 : 0;
+
+          return {
+            imageId: image.id,
+            correctPosition: image.position,
+            submittedPosition,
+            score
+          };
+        });
+
+        const score = itemScores.reduce((sum, item) => sum + item.score, 0);
+        totalScore += score;
+        answerRows.push({
+          questionId: question.id,
+          submittedOrder,
+          itemScores,
+          score
+        });
+      }
+
+      const maxScore = answerRows.reduce((sum, answer) => sum + answer.itemScores.length, 0);
+      const result = await tx.assessmentResult.create({
+        data: {
+          childId,
+          testId: test.id,
+          sessionId,
+          totalScore,
+          maxScore,
+          scoreGiven: totalScore
+        }
+      });
+
+      await tx.q_SequenceOrder_Answer.createMany({
+        data: answerRows.map((answer) => ({
+          resultId: result.id,
+          questionId: answer.questionId,
+          submittedOrder: answer.submittedOrder,
+          itemScores: answer.itemScores,
+          score: answer.score
+        }))
+      });
+
+      return {
+        assessmentResultId: result.id,
+        totalScore,
+        maxScore,
+        answers: answerRows
+      };
+    });
+
+    res.status(201).json({
+      success: true,
+      data
+    });
+  } catch (error) {
+    if (handleKnownError(res, error)) return;
+    logger.error('Submit image sequence order assessment error:', error);
     next(error);
   }
 };
