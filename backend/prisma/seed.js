@@ -104,8 +104,6 @@ async function main() {
     secondaryColor: '#0f172a', allowedFileTypes: j(['jpg', 'png', 'pdf', 'mp3', 'mp4']), paymentGateway: 'Manual', emailService: 'SMTP'
   } });
 
-
-
   for (const type of ['WELCOME', 'VERIFICATION', 'BOOKING_CONFIRMED', 'BOOKING_CANCELLED', 'PASSWORD_RESET', 'PAYMENT_RECEIVED', 'WITHDRAWAL_APPROVED', 'WITHDRAWAL_REJECTED', 'DOCTOR_APPROVED', 'DOCTOR_REJECTED', 'SUPPORT_REPLY', 'ANNOUNCEMENT']) {
     await prisma.emailTemplate.create({ data: {
       name: `${type.toLowerCase()} template`, type, subject: `${type} Subject`, subjectAr: `عنوان ${type}`,
@@ -113,14 +111,20 @@ async function main() {
     } });
   }
 
-  await prisma.helpSkill.createMany({
-    data: [
-      { domain: 'COGNITIVE', skillNumber: '1', description: 'Matches two identical objects.', ageRange: '3.0-3.6' },
-      { domain: 'FINE_MOTOR', skillNumber: '2', description: 'Uses pincer grasp to pick up small items.', ageRange: '3.0-3.6' },
-      { domain: 'GROSS_MOTOR', skillNumber: '3', description: 'Jumps forward with both feet together.', ageRange: '3.6-4.0' },
-      { domain: 'SOCIAL', skillNumber: '4', description: 'Initiates simple social interaction with peers.', ageRange: '4.0-4.6' }
-    ]
-  });
+  const helpSkills = [];
+  for (const data of [
+    { domain: 'COGNITIVE', skillNumber: '1', description: 'Matches two identical objects.', ageRange: '3.0-3.6' },
+    { domain: 'COGNITIVE', skillNumber: '2', description: 'Points to named pictures in a book.', ageRange: '3.0-3.6' },
+    { domain: 'COGNITIVE', skillNumber: '3', description: 'Sorts objects by color or shape.', ageRange: '3.6-4.0' },
+    { domain: 'FINE_MOTOR', skillNumber: '4', description: 'Uses pincer grasp to pick up small items.', ageRange: '3.0-3.6' },
+    { domain: 'FINE_MOTOR', skillNumber: '5', description: 'Strings large beads onto a lace.', ageRange: '3.6-4.0' },
+    { domain: 'GROSS_MOTOR', skillNumber: '6', description: 'Jumps forward with both feet together.', ageRange: '3.6-4.0' },
+    { domain: 'GROSS_MOTOR', skillNumber: '7', description: 'Stands on one foot for 3 seconds.', ageRange: '4.0-4.6' },
+    { domain: 'SOCIAL', skillNumber: '8', description: 'Initiates simple social interaction with peers.', ageRange: '4.0-4.6' },
+    { domain: 'SOCIAL', skillNumber: '9', description: 'Takes turns in a simple game with adult support.', ageRange: '3.6-4.0' }
+  ]) {
+    helpSkills.push(await prisma.helpSkill.create({ data }));
+  }
 
   for (const data of [
     { name: 'booking-confirmed', type: 'BOOKING_CONFIRMED', title: 'Booking confirmed', message: 'Your session is confirmed.' },
@@ -297,6 +301,7 @@ async function main() {
     ] });
   }
 
+  // ─── Tests ────────────────────────────────────────────────────────────────────
   const tests = [
     await prisma.test.create({ data: { title: 'Sound Discrimination', titleAr: 'تمييز الأصوات', type: 'AUDITORY', testType: 'SOUND_DISCRIMINATION', description: 'Evaluate sound recognition.', questions: { create: [
       { orderIndex: 1, audioAssetPath: 'assets/audio/tests/bird.mp3', imageAssetPath: 'assets/images/tests/bird.png', choices: [{ text: 'Bird', isCorrect: true }, { text: 'Car', isCorrect: false }], scoringGuide: 'Score for correct sound match.', maxScore: 10 },
@@ -313,15 +318,297 @@ async function main() {
       { orderIndex: 1, imageAssetPath: 'assets/images/tests/sequence-1.png', scoringGuide: 'Score sequence correctness.', maxScore: 10 },
       { orderIndex: 2, imageAssetPath: 'assets/images/tests/sequence-2.png', scoringGuide: 'Observe attention and ordering.', maxScore: 10 }
     ] } }, include: { questions: true } }),
-    await prisma.test.create({ data: { title: 'HELP Developmental Assessment', titleAr: 'تقييم HELP النمائي', type: 'VISUAL', testType: 'HELP', description: 'Doctor-led developmental assessment using HELP skills.' } })
+    await prisma.test.create({ data: { title: 'HELP Developmental Assessment', titleAr: 'تقييم HELP النمائي', type: 'VISUAL', testType: 'HELP', description: 'Doctor-led developmental assessment using HELP skills.' } }),
+    // CARS test
+    await prisma.test.create({ data: { title: 'CARS Autism Rating Scale', titleAr: 'مقياس CARS للتوحد', type: 'VISUAL', testType: 'CARS', description: 'Childhood Autism Rating Scale assessment.' } }),
+    // Analogy test
+    await prisma.test.create({ data: { title: 'Visual Analogy Test', titleAr: 'اختبار القياس البصري', type: 'VISUAL', testType: 'ANALOGY', description: 'Assess visual reasoning through analogies.' } }),
+    // Visual Memory test
+    await prisma.test.create({ data: { title: 'Visual Memory Assessment', titleAr: 'اختبار الذاكرة البصرية', type: 'VISUAL', testType: 'VISUAL_MEMORY', description: 'Evaluate short-term visual memory.' } }),
+    // Auditory Memory test
+    await prisma.test.create({ data: { title: 'Auditory Memory Assessment', titleAr: 'اختبار الذاكرة السمعية', type: 'AUDITORY', testType: 'AUDITORY_MEMORY', description: 'Evaluate auditory recall and sequence memory.' } })
   ];
+
+  // AssessmentResults for basic question-based tests (tests 0–3)
+  const assessmentResults = [];
   for (let i = 0; i < children.length; i += 1) {
-    for (let t = 0; t < tests.length; t += 1) {
+    for (let t = 0; t < 4; t += 1) {
       if (!tests[t].questions?.length) continue;
-      await prisma.assessmentResult.create({ data: { childId: children[i].id, questionId: tests[t].questions[0].id, scoreGiven: 6 + ((i + t) % 5), sessionId: `assessment-${i + 1}-${t + 1}`, timestamp: plusDays(-(3 + i + t)) } });
+      const result = await prisma.assessmentResult.create({ data: {
+        childId: children[i].id,
+        testId: tests[t].id,
+        questionId: tests[t].questions[0].id,
+        scoreGiven: 6 + ((i + t) % 5),
+        sessionId: `assessment-${i + 1}-${t + 1}`,
+        timestamp: plusDays(-(3 + i + t))
+      } });
+      assessmentResults.push(result);
     }
   }
 
+  // ─── Q_CARS ───────────────────────────────────────────────────────────────────
+  const carsTest = tests[5];
+  const carsQuestions = [];
+  const carsQuestionSeeds = [
+    {
+      order: 1,
+      questionText: { ar: 'العلاقات مع الناس', en: 'Relating to People' },
+      choices: [
+        { score: 1, ar: 'لا توجد صعوبة', en: 'No difficulty' },
+        { score: 2, ar: 'صعوبة خفيفة', en: 'Mild difficulty' },
+        { score: 3, ar: 'صعوبة متوسطة', en: 'Moderate difficulty' },
+        { score: 4, ar: 'صعوبة شديدة', en: 'Severe difficulty' }
+      ]
+    },
+    {
+      order: 2,
+      questionText: { ar: 'التقليد', en: 'Imitation' },
+      choices: [
+        { score: 1, ar: 'تقليد مناسب للعمر', en: 'Age-appropriate imitation' },
+        { score: 2, ar: 'تقليد خفيف القصور', en: 'Mildly abnormal imitation' },
+        { score: 3, ar: 'تقليد متوسط القصور', en: 'Moderately abnormal imitation' },
+        { score: 4, ar: 'تقليد شديد القصور', en: 'Severely abnormal imitation' }
+      ]
+    },
+    {
+      order: 3,
+      questionText: { ar: 'الاستجابة العاطفية', en: 'Emotional Response' },
+      choices: [
+        { score: 1, ar: 'استجابة عاطفية مناسبة', en: 'Age-appropriate emotional response' },
+        { score: 2, ar: 'استجابة خفيفة القصور', en: 'Mildly abnormal emotional response' },
+        { score: 3, ar: 'استجابة متوسطة القصور', en: 'Moderately abnormal emotional response' },
+        { score: 4, ar: 'استجابة شديدة القصور', en: 'Severely abnormal emotional response' }
+      ]
+    },
+    {
+      order: 4,
+      questionText: { ar: 'استخدام الجسم', en: 'Body Use' },
+      choices: [
+        { score: 1, ar: 'مناسب للعمر', en: 'Age-appropriate' },
+        { score: 2, ar: 'خفيف القصور', en: 'Mildly abnormal' },
+        { score: 3, ar: 'متوسط القصور', en: 'Moderately abnormal' },
+        { score: 4, ar: 'شديد القصور', en: 'Severely abnormal' }
+      ]
+    },
+    {
+      order: 5,
+      questionText: { ar: 'استخدام الأشياء', en: 'Object Use' },
+      choices: [
+        { score: 1, ar: 'استخدام مناسب للعمر', en: 'Age-appropriate use' },
+        { score: 2, ar: 'استخدام خفيف القصور', en: 'Mildly abnormal use' },
+        { score: 3, ar: 'استخدام متوسط القصور', en: 'Moderately abnormal use' },
+        { score: 4, ar: 'استخدام شديد القصور', en: 'Severely abnormal use' }
+      ]
+    }
+  ];
+  for (const seed of carsQuestionSeeds) {
+    carsQuestions.push(await prisma.q_CARS.create({ data: { testId: carsTest.id, order: seed.order, questionText: seed.questionText, choices: seed.choices } }));
+  }
+
+  // AssessmentResults for CARS + answers
+  for (let i = 0; i < 3; i += 1) {
+    const carsResult = await prisma.assessmentResult.create({ data: {
+      childId: children[i].id, testId: carsTest.id,
+      totalScore: 18 + i * 3, maxScore: 60,
+      sessionId: `cars-session-${i + 1}`, timestamp: plusDays(-(5 + i))
+    } });
+    for (const q of carsQuestions) {
+      const chosenIndex = (i + q.order) % 4;
+      await prisma.q_CARS_Answer.create({ data: {
+        resultId: carsResult.id, questionId: q.id,
+        chosenIndex, score: chosenIndex + 1
+      } });
+    }
+  }
+
+  // ─── Q_Analogy ────────────────────────────────────────────────────────────────
+  const analogyTest = tests[6];
+  const analogyQuestions = [];
+  const analogySeeds = [
+    {
+      order: 1,
+      questionImageUrl: 'assets/images/analogy/q1-stem.png',
+      correctIndex: 2,
+      choices: [
+        { imagePath: 'assets/images/analogy/q1-choice-0.png' },
+        { imagePath: 'assets/images/analogy/q1-choice-1.png' },
+        { imagePath: 'assets/images/analogy/q1-choice-2.png' },
+        { imagePath: 'assets/images/analogy/q1-choice-3.png' }
+      ]
+    },
+    {
+      order: 2,
+      questionImageUrl: 'assets/images/analogy/q2-stem.png',
+      correctIndex: 0,
+      choices: [
+        { imagePath: 'assets/images/analogy/q2-choice-0.png' },
+        { imagePath: 'assets/images/analogy/q2-choice-1.png' },
+        { imagePath: 'assets/images/analogy/q2-choice-2.png' },
+        { imagePath: 'assets/images/analogy/q2-choice-3.png' }
+      ]
+    },
+    {
+      order: 3,
+      questionImageUrl: 'assets/images/analogy/q3-stem.png',
+      correctIndex: 1,
+      choices: [
+        { imagePath: 'assets/images/analogy/q3-choice-0.png' },
+        { imagePath: 'assets/images/analogy/q3-choice-1.png' },
+        { imagePath: 'assets/images/analogy/q3-choice-2.png' },
+        { imagePath: 'assets/images/analogy/q3-choice-3.png' }
+      ]
+    }
+  ];
+  for (const seed of analogySeeds) {
+    analogyQuestions.push(await prisma.q_Analogy.create({ data: {
+      testId: analogyTest.id, order: seed.order,
+      questionImageUrl: seed.questionImageUrl, choices: seed.choices, correctIndex: seed.correctIndex
+    } }));
+  }
+
+  // AssessmentResults for Analogy + answers
+  for (let i = 0; i < 3; i += 1) {
+    const analogyResult = await prisma.assessmentResult.create({ data: {
+      childId: children[i + 1].id, testId: analogyTest.id,
+      totalScore: 2 + i, maxScore: analogyQuestions.length,
+      sessionId: `analogy-session-${i + 1}`, timestamp: plusDays(-(4 + i))
+    } });
+    for (const q of analogyQuestions) {
+      const chosenIndex = (i + q.order - 1) % 4;
+      const isCorrect = chosenIndex === q.correctIndex;
+      await prisma.q_Analogy_Answer.create({ data: {
+        resultId: analogyResult.id, questionId: q.id,
+        chosenIndex, score: isCorrect ? 1 : 0
+      } });
+    }
+  }
+
+  // ─── Q_VisualMemory ───────────────────────────────────────────────────────────
+  const visualMemoryTest = tests[7];
+  const visualMemoryBatches = [];
+
+  const vmBatchSeeds = [
+    { order: 1, imageUrl: 'assets/images/visual-memory/scene-1.png', displaySeconds: 5 },
+    { order: 2, imageUrl: 'assets/images/visual-memory/scene-2.png', displaySeconds: 5 }
+  ];
+  for (const batchSeed of vmBatchSeeds) {
+    const batch = await prisma.q_VisualMemory_Batch.create({ data: { testId: visualMemoryTest.id, ...batchSeed } });
+    // Each batch gets 2 questions: one YES_NO and one MCQ
+    await prisma.q_VisualMemory.create({ data: {
+      batchId: batch.id, order: 1,
+      questionText: { ar: 'هل كان هناك قطة في الصورة؟', en: 'Was there a cat in the image?' },
+      questionType: 'YES_NO', correctBool: batchSeed.order === 1
+    } });
+    await prisma.q_VisualMemory.create({ data: {
+      batchId: batch.id, order: 2,
+      questionText: { ar: 'كم عدد الأشياء التي رأيتها؟', en: 'How many objects did you see?' },
+      questionType: 'MCQ',
+      choices: [{ text: '2' }, { text: '3' }, { text: '4' }, { text: '5' }],
+      correctIndex: batchSeed.order === 1 ? 1 : 2
+    } });
+    visualMemoryBatches.push(batch);
+  }
+
+  // AssessmentResults for Visual Memory + answers
+  for (let i = 0; i < 2; i += 1) {
+    const vmResult = await prisma.assessmentResult.create({ data: {
+      childId: children[i].id, testId: visualMemoryTest.id,
+      totalScore: 3 + i, maxScore: 4,
+      sessionId: `vm-session-${i + 1}`, timestamp: plusDays(-(6 + i))
+    } });
+    for (const batch of visualMemoryBatches) {
+      const vmQuestions = await prisma.q_VisualMemory.findMany({ where: { batchId: batch.id } });
+      for (const vmQ of vmQuestions) {
+        if (vmQ.questionType === 'YES_NO') {
+          const answerBool = i % 2 === 0 ? vmQ.correctBool : !vmQ.correctBool;
+          await prisma.q_VisualMemory_Answer.create({ data: {
+            resultId: vmResult.id, questionId: vmQ.id,
+            answerBool, score: answerBool === vmQ.correctBool ? 1 : 0
+          } });
+        } else {
+          const chosenIndex = i === 0 ? vmQ.correctIndex : (vmQ.correctIndex + 1) % 4;
+          await prisma.q_VisualMemory_Answer.create({ data: {
+            resultId: vmResult.id, questionId: vmQ.id,
+            chosenIndex, score: chosenIndex === vmQ.correctIndex ? 1 : 0
+          } });
+        }
+      }
+    }
+  }
+
+  // ─── Q_AuditoryMemory ─────────────────────────────────────────────────────────
+  const auditoryMemoryTest = tests[8];
+  const auditoryMemoryQuestions = [];
+
+  const amSeeds = [
+    {
+      order: 1,
+      audioClipUrl: 'assets/audio/memory/sequence-1.mp3',
+      questionText: { ar: 'ما هي الكلمات التي سمعتها؟', en: 'What words did you hear?' },
+      modelAnswer: { items: ['apple', 'car', 'ball'], order: true }
+    },
+    {
+      order: 2,
+      audioClipUrl: 'assets/audio/memory/sequence-2.mp3',
+      questionText: { ar: 'رتّب ما سمعته بالترتيب الصحيح', en: 'Arrange what you heard in order' },
+      modelAnswer: { items: ['cat', 'tree', 'house', 'moon'], order: true }
+    },
+    {
+      order: 3,
+      audioClipUrl: 'assets/audio/memory/sequence-3.mp3',
+      questionText: { ar: 'اذكر الأرقام التي سمعتها', en: 'Recall the numbers you heard' },
+      modelAnswer: { items: ['3', '7', '1', '9', '5'], order: false }
+    }
+  ];
+  for (const seed of amSeeds) {
+    auditoryMemoryQuestions.push(await prisma.q_AuditoryMemory.create({ data: {
+      testId: auditoryMemoryTest.id, order: seed.order,
+      audioClipUrl: seed.audioClipUrl, questionText: seed.questionText, modelAnswer: seed.modelAnswer
+    } }));
+  }
+
+  // AssessmentResults for Auditory Memory + answers
+  for (let i = 0; i < 3; i += 1) {
+    const amResult = await prisma.assessmentResult.create({ data: {
+      childId: children[i + 2].id, testId: auditoryMemoryTest.id,
+      totalScore: 5 + i, maxScore: auditoryMemoryQuestions.length * 3,
+      sessionId: `am-session-${i + 1}`, timestamp: plusDays(-(7 + i))
+    } });
+    for (const amQ of auditoryMemoryQuestions) {
+      const modelItems = amQ.modelAnswer.items;
+      // Simulate child recalling some items correctly
+      const recalledItems = modelItems.slice(0, Math.max(1, modelItems.length - i));
+      const itemScores = modelItems.map((item) => ({ item, recalled: recalledItems.includes(item), score: recalledItems.includes(item) ? 1 : 0 }));
+      const totalItemScore = itemScores.reduce((sum, s) => sum + s.score, 0);
+      await prisma.q_AuditoryMemory_Answer.create({ data: {
+        resultId: amResult.id, questionId: amQ.id,
+        recalledItems, itemScores, score: totalItemScore
+      } });
+    }
+  }
+
+  // ─── HelpAssessment + HelpEvaluation ─────────────────────────────────────────
+  for (let i = 0; i < doctors.length; i += 1) {
+    const targetChild = children[i % children.length];
+    const helpAssessment = await prisma.helpAssessment.create({ data: {
+      childId: targetChild.id,
+      doctorId: doctors[i].id,
+      sessionId: `help-session-${i + 1}`,
+      developmentalAge: `${3 + i}.${i * 2}-${3 + i}.${i * 2 + 6}`
+    } });
+    // Evaluate all helpSkills for this assessment
+    for (const [si, skill] of helpSkills.entries()) {
+      const scoreOptions = ['NOT_SUITABLE', 'NOT_PRESENT', 'INITIAL_ATTEMPTS', 'PARTIAL_LEVEL', 'SUCCESSFUL'];
+      await prisma.helpEvaluation.create({ data: {
+        assessmentId: helpAssessment.id,
+        skillId: skill.id,
+        score: scoreOptions[(i + si) % scoreOptions.length],
+        doctorNotes: `Notes from ${doctors[i].name} on skill ${skill.skillNumber}: observed during session.`
+      } });
+    }
+  }
+
+  // ─── Activities ───────────────────────────────────────────────────────────────
   const activityCategories = {
     listening: await prisma.activityCategory.create({ data: { name: 'Listening Skills' } }),
     sequencing: await prisma.activityCategory.create({ data: { name: 'Sequencing Skills' } })
@@ -344,6 +631,7 @@ async function main() {
     }
   }
 
+  // ─── Bookings ─────────────────────────────────────────────────────────────────
   const bookings = [];
   for (let i = 0; i < 12; i += 1) {
     const status = i < 4 ? 'COMPLETED' : i < 8 ? 'CONFIRMED' : i < 10 ? 'PENDING' : 'CANCELLED';
@@ -421,4 +709,3 @@ main().catch((error) => {
 }).finally(async () => {
   await prisma.$disconnect();
 });
-
