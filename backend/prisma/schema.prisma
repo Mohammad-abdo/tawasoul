@@ -30,8 +30,6 @@ model User {
   children         Child[]
   comments         Comment[]
   likes            Like[]
-  receivedMessages Message[]       @relation("ReceiverMessages")
-  sentMessages     Message[]       @relation("SenderMessages")
   notifications    Notification[]
   orders           Order[]
   otpCodes         OtpCode[]
@@ -42,6 +40,7 @@ model User {
   coupons          UserCoupon[]
   interests        UserInterest[]
   userPackages     UserPackage[]
+  conversations    Conversation[]
 
   @@map("users")
 }
@@ -207,6 +206,7 @@ model Doctor {
   supportReplies SupportReply[]
   supportTickets SupportTicket[]
   withdrawals    Withdrawal[]
+  conversations  Conversation[]
 
   @@map("doctors")
 }
@@ -319,6 +319,7 @@ model Child {
   @@map("children")
 }
 
+
 model Booking {
   id                 String          @id @default(uuid())
   userId             String
@@ -355,25 +356,43 @@ model Booking {
 }
 
 model Message {
-  id            String      @id @default(uuid())
-  senderId      String
-  receiverId    String
-  content       String?     @db.Text
-  messageType   MessageType @default(TEXT)
-  imageUrl      String?
-  videoUrl      String?
-  fileUrl       String?
-  fileName      String?
-  voiceUrl      String?
-  voiceDuration Int?
-  isRead        Boolean     @default(false)
-  createdAt     DateTime    @default(now())
-  receiver      User        @relation("ReceiverMessages", fields: [receiverId], references: [id], onDelete: Cascade)
-  sender        User        @relation("SenderMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  id             String       @id @default(uuid())
+  conversationId String
+  senderId       String
+  senderRole     SenderRole
 
-  @@index([receiverId], map: "messages_receiverId_fkey")
-  @@index([senderId], map: "messages_senderId_fkey")
+  content        String?      @db.Text
+  messageType    MessageType  @default(TEXT)
+  imageUrl       String?
+  videoUrl       String?
+  fileUrl        String?
+  fileName       String?
+  voiceUrl       String?
+  voiceDuration  Int?
+  isRead         Boolean      @default(false)
+  createdAt      DateTime     @default(now())
+  
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
   @@map("messages")
+}
+
+model Conversation {
+  id        String   @id @default(uuid())
+  userId    String
+  doctorId  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  doctor    Doctor   @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  messages  Message[]
+
+  @@unique([userId, doctorId])
+  @@index([userId])
+  @@index([doctorId])
+  @@map("conversations")
 }
 
 model Payment {
@@ -1337,4 +1356,9 @@ enum ActivityType {
   MATCHING
   SEQUENCE_ORDER
   AUDIO_ASSOCIATION
+}
+
+enum SenderRole {
+  USER
+  DOCTOR
 }
