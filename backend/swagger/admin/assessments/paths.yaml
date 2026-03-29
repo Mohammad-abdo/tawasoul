@@ -1,0 +1,404 @@
+/admin/assessments/test-categories:
+  get:
+    tags: [Admin Assessments]
+    summary: Get all test categories
+    operationId: adminGetTestCategories
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: page
+        in: query
+        schema:
+          type: integer
+          default: 1
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          default: 20
+    responses:
+      "200":
+        description: Test categories list
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  type: object
+                  properties:
+                    testCategories:
+                      type: array
+                      items:
+                        $ref: "#/components/schemas/AdminTestCategory"
+                    pagination:
+                      $ref: "#/components/schemas/PaginationMeta"
+  post:
+    tags: [Admin Assessments]
+    summary: Create test category
+    operationId: adminCreateTestCategory
+    security:
+      - BearerAuth: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [name, nameAr]
+            properties:
+              name:
+                type: string
+              nameAr:
+                type: string
+    responses:
+      "201":
+        description: Category created
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  $ref: "#/components/schemas/AdminTestCategory"
+
+/admin/assessments/test-categories/{id}:
+  get:
+    tags: [Admin Assessments]
+    summary: Get test category by ID
+    operationId: adminGetTestCategoryById
+    security:
+      - BearerAuth: []
+    parameters:
+      - $ref: "#/components/schemas/IdPathParam"
+    responses:
+      "200":
+        description: Category details with tests
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  $ref: "#/components/schemas/AdminTestCategory"
+  put:
+    tags: [Admin Assessments]
+    summary: Update test category
+    operationId: adminUpdateTestCategory
+    security:
+      - BearerAuth: []
+    parameters:
+      - $ref: "#/components/schemas/IdPathParam"
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              name:
+                type: string
+              nameAr:
+                type: string
+    responses:
+      "200":
+        description: Category updated
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  $ref: "#/components/schemas/AdminTestCategory"
+  delete:
+    tags: [Admin Assessments]
+    summary: Delete test category
+    operationId: adminDeleteTestCategory
+    security:
+      - BearerAuth: []
+    parameters:
+      - $ref: "#/components/schemas/IdPathParam"
+    responses:
+      "200":
+        description: Category deleted
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MessageResponse"
+
+/admin/assessments/tests:
+  get:
+    tags: [Admin Assessments]
+    summary: Get all tests
+    operationId: adminGetAllTests
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: page
+        in: query
+        schema:
+          type: integer
+          default: 1
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          default: 20
+      - name: testCategoryId
+        in: query
+        schema:
+          type: string
+      - name: testType
+        in: query
+        schema:
+          type: string
+          enum: [CARS, ANALOGY, VISUAL_MEMORY, AUDITORY_MEMORY, HELP]
+    responses:
+      "200":
+        description: Tests list
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  type: object
+                  properties:
+                    tests:
+                      type: array
+                      items:
+                        $ref: "#/components/schemas/AdminTest"
+                    pagination:
+                      $ref: "#/components/schemas/PaginationMeta"
+  post:
+    tags: [Admin Assessments]
+    summary: Create test
+    operationId: adminCreateTest
+    security:
+      - BearerAuth: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/CreateTestRequest"
+    responses:
+      "201":
+        description: Test created
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  $ref: "#/components/schemas/AdminTest"
+
+/admin/assessments/tests/{id}:
+  get:
+    tags: [Admin Assessments]
+    summary: Get test by ID
+    operationId: adminGetTestById
+    security:
+      - BearerAuth: []
+    parameters:
+      - $ref: "#/components/schemas/IdPathParam"
+    responses:
+      "200":
+        description: Test with specialized question payloads
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  $ref: "#/components/schemas/AdminTest"
+  put:
+    tags: [Admin Assessments]
+    summary: Update test
+    operationId: adminUpdateTest
+    security:
+      - BearerAuth: []
+    parameters:
+      - $ref: "#/components/schemas/IdPathParam"
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/CreateTestRequest"
+    responses:
+      "200":
+        description: Test updated
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  $ref: "#/components/schemas/AdminTest"
+  delete:
+    tags: [Admin Assessments]
+    summary: Delete test
+    operationId: adminDeleteTest
+    security:
+      - BearerAuth: []
+    parameters:
+      - $ref: "#/components/schemas/IdPathParam"
+    responses:
+      "200":
+        description: Test deleted
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MessageResponse"
+
+/admin/assessments/tests/{testId}/questions:
+  get:
+    tags: [Admin Assessments]
+    summary: Get question payloads for a test
+    operationId: adminGetTestQuestions
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: testId
+        in: path
+        required: true
+        schema:
+          type: string
+    responses:
+      "200":
+        description: Test metadata and specialized question payloads
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  type: object
+                  properties:
+                    test:
+                      $ref: "#/components/schemas/AdminTest"
+                    questionModel:
+                      type: string
+                      enum: [Q_CARS, Q_Analogy, Q_VisualMemory_Batch, Q_AuditoryMemory, HelpSkill]
+                    questions:
+                      type: array
+                      items:
+                        $ref: "#/components/schemas/AdminQuestion"
+  post:
+    tags: [Admin Assessments]
+    summary: Create a question payload for a test
+    operationId: adminCreateQuestion
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: testId
+        in: path
+        required: true
+        schema:
+          type: string
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/AdminCreateQuestionRequest"
+        multipart/form-data:
+          schema:
+            $ref: "#/components/schemas/AdminCreateQuestionRequest"
+    responses:
+      "201":
+        description: Question payload created
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  $ref: "#/components/schemas/AdminQuestion"
+
+/admin/assessments/questions/{id}:
+  get:
+    tags: [Admin Assessments]
+    summary: Get one question payload by ID
+    operationId: adminGetQuestionById
+    security:
+      - BearerAuth: []
+    parameters:
+      - $ref: "#/components/schemas/IdPathParam"
+    responses:
+      "200":
+        description: Specialized question payload
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  $ref: "#/components/schemas/AdminQuestion"
+  put:
+    tags: [Admin Assessments]
+    summary: Update one question payload by ID
+    operationId: adminUpdateQuestion
+    security:
+      - BearerAuth: []
+    parameters:
+      - $ref: "#/components/schemas/IdPathParam"
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/AdminCreateQuestionRequest"
+        multipart/form-data:
+          schema:
+            $ref: "#/components/schemas/AdminCreateQuestionRequest"
+    responses:
+      "200":
+        description: Question payload updated
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  $ref: "#/components/schemas/AdminQuestion"
+  delete:
+    tags: [Admin Assessments]
+    summary: Delete a question payload by ID
+    operationId: adminDeleteQuestion
+    security:
+      - BearerAuth: []
+    parameters:
+      - $ref: "#/components/schemas/IdPathParam"
+    responses:
+      "200":
+        description: Question deleted
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MessageResponse"

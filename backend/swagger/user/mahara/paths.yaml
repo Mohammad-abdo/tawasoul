@@ -1,0 +1,108 @@
+/user/mahara/activities/current:
+  get:
+    tags: [User Mahara Kids]
+    summary: Get current (next incomplete) activity for a child
+    operationId: getCurrentActivity
+    security:
+      - BearerAuth: []
+    description: |
+      Returns the next activity the child should complete, based on sequential progression.
+      Activities are ordered by: category createdAt → skillGroup createdAt → levelOrder → activity createdAt.
+      Returns `null` when all activities are completed.
+    parameters:
+      - name: childId
+        in: query
+        required: true
+        schema:
+          type: string
+          format: uuid
+    responses:
+      "200":
+        description: Current activity or null if all completed
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  type: object
+                  properties:
+                    activity:
+                      nullable: true
+                      $ref: "#/components/schemas/MaharaActivityForUser"
+      "400":
+        description: childId is required
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "403":
+        description: Not your child
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "404":
+        description: Child not found
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+
+/user/mahara/activities/submit:
+  post:
+    tags: [User Mahara Kids]
+    summary: Submit an activity interaction
+    operationId: submitActivityInteraction
+    security:
+      - BearerAuth: []
+    description: |
+      Submit the child's response for the current activity.
+      Only the current (unlocked) activity can be submitted.
+      Submission logic differs by activity type:
+      - **LISTEN_WATCH / AUDIO_ASSOCIATION**: send `event: "audio_completed"`
+      - **LISTEN_CHOOSE_IMAGE**: send `selectedImageId`
+      - **MATCHING**: send `matches: [{imageId, audioId}]` — all pairs must be correct
+      - **SEQUENCE_ORDER**: send `sequence: [imageId, ...]` — must match correct order
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/SubmitActivityRequest"
+    responses:
+      "200":
+        description: Submission result
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ActivitySubmitResponse"
+      "400":
+        description: Missing fields or wrong event
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "403":
+        description: Activity is locked (not the current activity)
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                  example: false
+                error:
+                  type: object
+                  properties:
+                    code:
+                      type: string
+                      example: ACTIVITY_LOCKED
+                    message:
+                      type: string
+                    currentActivityId:
+                      type: string
+                      format: uuid

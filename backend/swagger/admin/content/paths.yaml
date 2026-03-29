@@ -1,0 +1,765 @@
+/admin/home-sliders:
+  get:
+    tags: [Admin Content]
+    summary: Get all home sliders
+    operationId: adminGetHomeSliders
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: isActive
+        in: query
+        schema:
+          type: boolean
+    responses:
+      "200":
+        description: Home sliders list
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/HomeSlider"
+  post:
+    tags: [Admin Content]
+    summary: Create home slider
+    operationId: adminCreateHomeSlider
+    security:
+      - BearerAuth: []
+    requestBody:
+      required: true
+      content:
+        multipart/form-data:
+          schema:
+            $ref: "#/components/schemas/HomeSliderRequest"
+    responses:
+      "201":
+        description: Slider created
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  $ref: "#/components/schemas/HomeSlider"
+
+/admin/home-sliders/reorder:
+  post:
+    tags: [Admin Content]
+    summary: Reorder home sliders
+    operationId: adminReorderHomeSliders
+    security:
+      - BearerAuth: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [items]
+            properties:
+              items:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                    order:
+                      type: integer
+    responses:
+      "200":
+        description: Sliders reordered
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MessageResponse"
+
+/admin/home-sliders/{id}:
+  get:
+    tags: [Admin Content]
+    summary: Get home slider by ID
+    operationId: adminGetHomeSliderById
+    security:
+      - BearerAuth: []
+    parameters:
+      - $ref: "#/components/schemas/IdPathParam"
+    responses:
+      "200":
+        description: Slider details
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  $ref: "#/components/schemas/HomeSlider"
+  put:
+    tags: [Admin Content]
+    summary: Update home slider
+    operationId: adminUpdateHomeSlider
+    security:
+      - BearerAuth: []
+    parameters:
+      - $ref: "#/components/schemas/IdPathParam"
+    requestBody:
+      required: true
+      content:
+        multipart/form-data:
+          schema:
+            $ref: "#/components/schemas/HomeSliderRequest"
+    responses:
+      "200":
+        description: Slider updated
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  $ref: "#/components/schemas/HomeSlider"
+  delete:
+    tags: [Admin Content]
+    summary: Delete home slider
+    operationId: adminDeleteHomeSlider
+    security:
+      - BearerAuth: []
+    parameters:
+      - $ref: "#/components/schemas/IdPathParam"
+    responses:
+      "200":
+        description: Slider deleted
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MessageResponse"
+
+/admin/home-services:
+  get:
+    tags: [Admin Content]
+    summary: Get all home services
+    operationId: adminGetHomeServices
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: isActive
+        in: query
+        schema:
+          type: boolean
+    responses:
+      "200":
+        description: Home services list
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/HomeService"
+  post:
+    tags: [Admin Content]
+    summary: Create home service
+    operationId: adminCreateHomeService
+    security:
+      - BearerAuth: []
+    requestBody:
+      required: true
+      content:
+        multipart/form-data:
+          schema:
+            $ref: "#/components/schemas/HomeServiceRequest"
+    responses:
+      "201":
+        description: Service created
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  $ref: "#/components/schemas/HomeService"
+
+/admin/home-services/{id}:
+  get:
+    tags: [Admin Content]
+    summary: Get home service by ID
+    operationId: adminGetHomeServiceById
+    security:
+      - BearerAuth: []
+    parameters:
+      - $ref: "#/components/schemas/IdPathParam"
+    responses:
+      "200":
+        description: Service details
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  $ref: "#/components/schemas/HomeService"
+  put:
+    tags: [Admin Content]
+    summary: Update home service
+    operationId: adminUpdateHomeService
+    security:
+      - BearerAuth: []
+    parameters:
+      - $ref: "#/components/schemas/IdPathParam"
+    requestBody:
+      required: true
+      content:
+        multipart/form-data:
+          schema:
+            $ref: "#/components/schemas/HomeServiceRequest"
+    responses:
+      "200":
+        description: Service updated
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  $ref: "#/components/schemas/HomeService"
+  delete:
+    tags: [Admin Content]
+    summary: Delete home service
+    operationId: adminDeleteHomeService
+    security:
+      - BearerAuth: []
+    parameters:
+      - $ref: "#/components/schemas/IdPathParam"
+    responses:
+      "200":
+        description: Service deleted
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MessageResponse"
+
+/admin/home-articles:
+  get:
+    tags: [Admin Content]
+    summary: Get all home articles
+    operationId: adminGetHomeArticles
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: isActive
+        in: query
+        schema:
+          type: boolean
+    responses:
+      "200":
+        description: Home articles list
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/HomeArticle"
+  post:
+    tags: [Admin Content]
+    summary: Create home article
+    operationId: adminCreateHomeArticle
+    security:
+      - BearerAuth: []
+    requestBody:
+      required: true
+      content:
+        multipart/form-data:
+          schema:
+            $ref: "#/components/schemas/HomeArticleRequest"
+    responses:
+      "201":
+        description: Article created
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  $ref: "#/components/schemas/HomeArticle"
+
+/admin/home-articles/{id}:
+  get:
+    tags: [Admin Content]
+    summary: Get home article by ID
+    operationId: adminGetHomeArticleById
+    security:
+      - BearerAuth: []
+    parameters:
+      - $ref: "#/components/schemas/IdPathParam"
+    responses:
+      "200":
+        description: Article details
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  $ref: "#/components/schemas/HomeArticle"
+  put:
+    tags: [Admin Content]
+    summary: Update home article
+    operationId: adminUpdateHomeArticle
+    security:
+      - BearerAuth: []
+    parameters:
+      - $ref: "#/components/schemas/IdPathParam"
+    requestBody:
+      required: true
+      content:
+        multipart/form-data:
+          schema:
+            $ref: "#/components/schemas/HomeArticleRequest"
+    responses:
+      "200":
+        description: Article updated
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  $ref: "#/components/schemas/HomeArticle"
+  delete:
+    tags: [Admin Content]
+    summary: Delete home article
+    operationId: adminDeleteHomeArticle
+    security:
+      - BearerAuth: []
+    parameters:
+      - $ref: "#/components/schemas/IdPathParam"
+    responses:
+      "200":
+        description: Article deleted
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MessageResponse"
+
+/admin/faqs:
+  get:
+    tags: [Admin Content]
+    summary: Get all FAQs
+    operationId: adminGetFAQs
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: isActive
+        in: query
+        schema:
+          type: boolean
+      - name: category
+        in: query
+        schema:
+          type: string
+    responses:
+      "200":
+        description: FAQs list
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/AdminFAQ"
+  post:
+    tags: [Admin Content]
+    summary: Create FAQ
+    operationId: adminCreateFAQ
+    security:
+      - BearerAuth: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/FAQRequest"
+    responses:
+      "201":
+        description: FAQ created
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  $ref: "#/components/schemas/AdminFAQ"
+
+/admin/faqs/{id}:
+  get:
+    tags: [Admin Content]
+    summary: Get FAQ by ID
+    operationId: adminGetFAQById
+    security:
+      - BearerAuth: []
+    parameters:
+      - $ref: "#/components/schemas/IdPathParam"
+    responses:
+      "200":
+        description: FAQ details
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  $ref: "#/components/schemas/AdminFAQ"
+  put:
+    tags: [Admin Content]
+    summary: Update FAQ
+    operationId: adminUpdateFAQ
+    security:
+      - BearerAuth: []
+    parameters:
+      - $ref: "#/components/schemas/IdPathParam"
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/FAQRequest"
+    responses:
+      "200":
+        description: FAQ updated
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  $ref: "#/components/schemas/AdminFAQ"
+  delete:
+    tags: [Admin Content]
+    summary: Delete FAQ
+    operationId: adminDeleteFAQ
+    security:
+      - BearerAuth: []
+    parameters:
+      - $ref: "#/components/schemas/IdPathParam"
+    responses:
+      "200":
+        description: FAQ deleted
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MessageResponse"
+
+/admin/onboarding:
+  get:
+    tags: [Admin Content]
+    summary: Get all onboarding items
+    operationId: adminGetOnboarding
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: platform
+        in: query
+        schema:
+          type: string
+          enum: [ALL, MOBILE, WEB]
+      - name: isActive
+        in: query
+        schema:
+          type: boolean
+    responses:
+      "200":
+        description: Onboarding items list
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/AdminOnboarding"
+  post:
+    tags: [Admin Content]
+    summary: Create onboarding item
+    operationId: adminCreateOnboarding
+    security:
+      - BearerAuth: []
+    requestBody:
+      required: true
+      content:
+        multipart/form-data:
+          schema:
+            $ref: "#/components/schemas/OnboardingRequest"
+    responses:
+      "201":
+        description: Onboarding item created
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  $ref: "#/components/schemas/AdminOnboarding"
+
+/admin/onboarding/reorder:
+  post:
+    tags: [Admin Content]
+    summary: Reorder onboarding items
+    operationId: adminReorderOnboarding
+    security:
+      - BearerAuth: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [items]
+            properties:
+              items:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                    order:
+                      type: integer
+    responses:
+      "200":
+        description: Items reordered
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MessageResponse"
+
+/admin/onboarding/{id}:
+  get:
+    tags: [Admin Content]
+    summary: Get onboarding item by ID
+    operationId: adminGetOnboardingById
+    security:
+      - BearerAuth: []
+    parameters:
+      - $ref: "#/components/schemas/IdPathParam"
+    responses:
+      "200":
+        description: Onboarding item
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  $ref: "#/components/schemas/AdminOnboarding"
+  put:
+    tags: [Admin Content]
+    summary: Update onboarding item
+    operationId: adminUpdateOnboarding
+    security:
+      - BearerAuth: []
+    parameters:
+      - $ref: "#/components/schemas/IdPathParam"
+    requestBody:
+      required: true
+      content:
+        multipart/form-data:
+          schema:
+            $ref: "#/components/schemas/OnboardingRequest"
+    responses:
+      "200":
+        description: Onboarding item updated
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  $ref: "#/components/schemas/AdminOnboarding"
+  delete:
+    tags: [Admin Content]
+    summary: Delete onboarding item
+    operationId: adminDeleteOnboarding
+    security:
+      - BearerAuth: []
+    parameters:
+      - $ref: "#/components/schemas/IdPathParam"
+    responses:
+      "200":
+        description: Item deleted
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MessageResponse"
+
+/admin/pages:
+  get:
+    tags: [Admin Content]
+    summary: Get all static pages
+    operationId: adminGetAllPages
+    security:
+      - BearerAuth: []
+    description: |
+      Returns all pages, auto-creating missing required pages with default content.
+      Required page types: PRIVACY_POLICY, TERMS_AND_CONDITIONS, ABOUT_APP, COMMUNITY_GUIDELINES, HELP_CENTER.
+    responses:
+      "200":
+        description: Pages list
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  type: object
+                  properties:
+                    pages:
+                      type: array
+                      items:
+                        $ref: "#/components/schemas/AdminPageContent"
+
+/admin/pages/initialize:
+  post:
+    tags: [Admin Content]
+    summary: Initialize missing pages
+    operationId: adminInitializePages
+    security:
+      - BearerAuth: []
+    responses:
+      "200":
+        description: Missing pages created
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                message:
+                  type: string
+                data:
+                  type: object
+                  properties:
+                    createdPages:
+                      type: array
+                      items:
+                        $ref: "#/components/schemas/AdminPageContent"
+
+/admin/pages/{pageType}:
+  get:
+    tags: [Admin Content]
+    summary: Get page by type
+    operationId: adminGetPageByType
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: pageType
+        in: path
+        required: true
+        schema:
+          type: string
+          enum: [PRIVACY_POLICY, TERMS_AND_CONDITIONS, ABOUT_APP, COMMUNITY_GUIDELINES, HELP_CENTER]
+    responses:
+      "200":
+        description: Page content
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  $ref: "#/components/schemas/AdminPageContent"
+  put:
+    tags: [Admin Content]
+    summary: Update page content
+    operationId: adminUpdatePageContent
+    security:
+      - BearerAuth: []
+    description: Creates the page if it doesn't exist.
+    parameters:
+      - name: pageType
+        in: path
+        required: true
+        schema:
+          type: string
+          enum: [PRIVACY_POLICY, TERMS_AND_CONDITIONS, ABOUT_APP, COMMUNITY_GUIDELINES, HELP_CENTER]
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              title:
+                type: string
+              titleAr:
+                type: string
+              content:
+                type: string
+              contentAr:
+                type: string
+    responses:
+      "200":
+        description: Page updated
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  $ref: "#/components/schemas/AdminPageContent"

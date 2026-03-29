@@ -1,0 +1,216 @@
+AdminTestCategory:
+  type: object
+  properties:
+    id:
+      type: string
+    name:
+      type: string
+    nameAr:
+      type: string
+    createdAt:
+      type: string
+      format: date-time
+    updatedAt:
+      type: string
+      format: date-time
+    _count:
+      type: object
+      nullable: true
+      properties:
+        tests:
+          type: integer
+
+AdminTest:
+  allOf:
+    - $ref: "#/components/schemas/AssessmentTest"
+    - type: object
+      properties:
+        questions:
+          type: array
+          nullable: true
+          items:
+            $ref: "#/components/schemas/AdminQuestion"
+
+AdminQuestionCars:
+  allOf:
+    - $ref: "#/components/schemas/AssessmentQuestionCars"
+
+AdminQuestionAnalogy:
+  allOf:
+    - $ref: "#/components/schemas/AssessmentQuestionAnalogy"
+    - type: object
+      properties:
+        correctIndex:
+          type: integer
+
+AdminVisualMemoryQuestion:
+  allOf:
+    - $ref: "#/components/schemas/AssessmentVisualMemoryQuestion"
+    - type: object
+      properties:
+        correctBool:
+          type: boolean
+          nullable: true
+        correctIndex:
+          type: integer
+          nullable: true
+
+AdminQuestionVisualMemoryBatch:
+  type: object
+  properties:
+    id:
+      type: string
+    testId:
+      type: string
+    order:
+      type: integer
+    imageUrl:
+      type: string
+    displaySeconds:
+      type: integer
+    questions:
+      type: array
+      items:
+        $ref: "#/components/schemas/AdminVisualMemoryQuestion"
+
+AdminQuestionAuditoryMemory:
+  allOf:
+    - $ref: "#/components/schemas/AssessmentQuestionAuditoryMemory"
+    - type: object
+      properties:
+        modelAnswer:
+          type: array
+          items:
+            type: string
+
+AdminQuestionHelpSkill:
+  allOf:
+    - $ref: "#/components/schemas/AssessmentQuestionHelpSkill"
+
+AdminQuestionLegacy:
+  type: object
+  properties:
+    id:
+      type: string
+    testId:
+      type: string
+    orderIndex:
+      type: integer
+    audioAssetPath:
+      type: string
+      nullable: true
+    imageAssetPath:
+      type: string
+      nullable: true
+    choices:
+      type: array
+      nullable: true
+      items:
+        type: object
+    scoringGuide:
+      type: string
+      nullable: true
+    maxScore:
+      type: integer
+      nullable: true
+
+AdminQuestion:
+  oneOf:
+    - $ref: "#/components/schemas/AdminQuestionCars"
+    - $ref: "#/components/schemas/AdminQuestionAnalogy"
+    - $ref: "#/components/schemas/AdminQuestionVisualMemoryBatch"
+    - $ref: "#/components/schemas/AdminQuestionAuditoryMemory"
+    - $ref: "#/components/schemas/AdminQuestionHelpSkill"
+    - $ref: "#/components/schemas/AdminQuestionLegacy"
+
+CreateTestRequest:
+  type: object
+  required: [title]
+  properties:
+    title:
+      type: string
+    titleAr:
+      type: string
+    testCategoryId:
+      type: string
+      nullable: true
+    type:
+      type: string
+      enum: [AUDITORY, VISUAL]
+    testType:
+      type: string
+      enum: [CARS, ANALOGY, VISUAL_MEMORY, AUDITORY_MEMORY, HELP]
+      default: CARS
+    description:
+      type: string
+      nullable: true
+
+AdminCreateQuestionRequest:
+  type: object
+  description: |
+    Payload shape depends on the parent test's `testType`.
+    - `CARS`: `order`, `questionText`, `choices`
+    - `ANALOGY`: `order`, `questionImageUrl` or uploaded `image`, `choices`, `correctIndex`
+    - `VISUAL_MEMORY`: `order`, `imageUrl` or uploaded `image`, `displaySeconds`, `questions[]`
+    - `AUDITORY_MEMORY`: `order`, `audioClipUrl` or uploaded `audio`, `questionText`, `modelAnswer`
+    - `HELP`: `domain`, `skillNumber`, `description`, `ageRange`
+    - Legacy generic tests still accept `orderIndex`, `choices`, `scoringGuide`, `maxScore`, `audio`, `image`
+  properties:
+    order:
+      type: integer
+    questionText:
+      oneOf:
+        - type: string
+        - $ref: "#/components/schemas/LocalizedText"
+    choices:
+      oneOf:
+        - type: string
+          description: JSON-encoded array
+        - type: array
+          items:
+            $ref: "#/components/schemas/LocalizedChoice"
+    correctIndex:
+      type: integer
+    questionImageUrl:
+      type: string
+    imageUrl:
+      type: string
+    displaySeconds:
+      type: integer
+    questions:
+      oneOf:
+        - type: string
+          description: JSON-encoded array for visual memory nested questions
+        - type: array
+          items:
+            $ref: "#/components/schemas/AdminVisualMemoryQuestion"
+    audioClipUrl:
+      type: string
+    modelAnswer:
+      oneOf:
+        - type: string
+          description: JSON-encoded array
+        - type: array
+          items:
+            type: string
+    domain:
+      type: string
+      enum: [COGNITIVE, FINE_MOTOR, GROSS_MOTOR, SOCIAL]
+    skillNumber:
+      type: string
+    description:
+      type: string
+    ageRange:
+      type: string
+    orderIndex:
+      type: integer
+    scoringGuide:
+      type: string
+    maxScore:
+      type: integer
+    audio:
+      type: string
+      format: binary
+    image:
+      type: string
+      format: binary

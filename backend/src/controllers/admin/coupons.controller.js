@@ -41,7 +41,6 @@ export const getAllCoupons = async (req, res, next) => {
         include: {
           _count: {
             select: {
-              doctorCoupons: true,
               userCoupons: true
             }
           }
@@ -78,16 +77,6 @@ export const getCouponById = async (req, res, next) => {
     const coupon = await prisma.coupon.findUnique({
       where: { id },
       include: {
-        doctorCoupons: {
-          include: {
-            doctor: {
-              select: {
-                id: true,
-                name: true
-              }
-            }
-          }
-        },
         userCoupons: {
           include: {
             user: {
@@ -136,8 +125,6 @@ export const createCoupon = async (req, res, next) => {
       usageLimitPerUser,
       validFrom,
       validUntil,
-      applicableTo = 'ALL',
-      doctorIds = [],
       userIds = [],
       isActive = true
     } = req.body;
@@ -179,22 +166,11 @@ export const createCoupon = async (req, res, next) => {
         usageLimitPerUser,
         validFrom: new Date(validFrom),
         validUntil: new Date(validUntil),
-        applicableTo,
         isActive
       }
     });
 
-    // Add doctor/user associations if applicable
-    if (applicableTo === 'SPECIFIC_DOCTORS' && doctorIds.length > 0) {
-      await prisma.doctorCoupon.createMany({
-        data: doctorIds.map(doctorId => ({
-          couponId: coupon.id,
-          doctorId
-        }))
-      });
-    }
-
-    if (applicableTo === 'SPECIFIC_USERS' && userIds.length > 0) {
+    if (userIds.length > 0) {
       await prisma.userCoupon.createMany({
         data: userIds.map(userId => ({
           couponId: coupon.id,
@@ -417,7 +393,6 @@ export const getCouponUsage = async (req, res, next) => {
       include: {
         _count: {
           select: {
-            doctorCoupons: true,
             userCoupons: true
           }
         }
@@ -442,8 +417,6 @@ export const getCouponUsage = async (req, res, next) => {
           usedCount: coupon.usedCount,
           usageLimit: coupon.usageLimit,
           usageLimitPerUser: coupon.usageLimitPerUser,
-          applicableTo: coupon.applicableTo,
-          doctorsCount: coupon._count.doctorCoupons,
           usersCount: coupon._count.userCoupons
         }
       }

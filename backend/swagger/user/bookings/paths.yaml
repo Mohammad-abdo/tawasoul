@@ -1,0 +1,198 @@
+/user/bookings:
+  get:
+    tags: [User Bookings]
+    summary: Get authenticated user's bookings
+    operationId: getUserBookings
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: status
+        in: query
+        schema:
+          type: string
+          enum: [PENDING, CONFIRMED, COMPLETED, CANCELLED]
+      - name: page
+        in: query
+        schema:
+          type: integer
+          default: 1
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          default: 20
+    responses:
+      "200":
+        description: Paginated list of bookings
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  type: object
+                  properties:
+                    bookings:
+                      type: array
+                      items:
+                        $ref: "#/components/schemas/BookingSummary"
+                    pagination:
+                      $ref: "#/components/schemas/PaginationMeta"
+  post:
+    tags: [User Bookings]
+    summary: Create a new booking
+    operationId: createBooking
+    security:
+      - BearerAuth: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/CreateBookingRequest"
+    responses:
+      "201":
+        description: Booking created
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  $ref: "#/components/schemas/BookingCreatedResponse"
+      "400":
+        description: Validation error
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "403":
+        description: Doctor not available
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "404":
+        description: Doctor or child not found
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+
+/user/bookings/{id}:
+  get:
+    tags: [User Bookings]
+    summary: Get booking details by ID
+    operationId: getBookingById
+    security:
+      - BearerAuth: []
+    parameters:
+      - $ref: "#/components/schemas/IdPathParam"
+    responses:
+      "200":
+        description: Booking details
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  $ref: "#/components/schemas/BookingDetail"
+      "403":
+        description: Not your booking
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "404":
+        description: Booking not found
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+
+/user/bookings/{id}/cancel:
+  put:
+    tags: [User Bookings]
+    summary: Cancel a booking
+    operationId: cancelUserBooking
+    security:
+      - BearerAuth: []
+    parameters:
+      - $ref: "#/components/schemas/IdPathParam"
+    requestBody:
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              reason:
+                type: string
+                example: Schedule conflict
+    responses:
+      "200":
+        description: Booking cancelled
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                    status:
+                      type: string
+                      example: CANCELLED
+                    cancelledAt:
+                      type: string
+                      format: date-time
+      "400":
+        description: Already cancelled or completed
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+
+/user/bookings/{id}/reschedule:
+  put:
+    tags: [User Bookings]
+    summary: Reschedule a booking
+    operationId: rescheduleBooking
+    security:
+      - BearerAuth: []
+    parameters:
+      - $ref: "#/components/schemas/IdPathParam"
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/RescheduleBookingRequest"
+    responses:
+      "200":
+        description: Booking rescheduled — status reset to PENDING
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  $ref: "#/components/schemas/BookingDetail"
+      "400":
+        description: Cannot reschedule cancelled/completed booking
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"

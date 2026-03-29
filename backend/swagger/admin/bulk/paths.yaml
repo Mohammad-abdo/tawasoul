@@ -1,0 +1,176 @@
+/admin/bulk/users/approve:
+  post:
+    tags: [Admin Bulk Operations]
+    summary: Bulk approve users
+    operationId: adminBulkApproveUsers
+    security:
+      - BearerAuth: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [userIds]
+            properties:
+              userIds:
+                type: array
+                items:
+                  type: string
+    responses:
+      "200":
+        description: Users approved
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BulkOperationResult"
+
+/admin/bulk/users/reject:
+  post:
+    tags: [Admin Bulk Operations]
+    summary: Bulk reject users
+    operationId: adminBulkRejectUsers
+    security:
+      - BearerAuth: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [userIds]
+            properties:
+              userIds:
+                type: array
+                items:
+                  type: string
+              reason:
+                type: string
+    responses:
+      "200":
+        description: Users rejected
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BulkOperationResult"
+
+/admin/bulk/doctors/approve:
+  post:
+    tags: [Admin Bulk Operations]
+    summary: Bulk approve doctors
+    operationId: adminBulkApproveDoctors
+    security:
+      - BearerAuth: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [doctorIds]
+            properties:
+              doctorIds:
+                type: array
+                items:
+                  type: string
+              notes:
+                type: string
+    responses:
+      "200":
+        description: Doctors approved
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BulkOperationResult"
+
+/admin/bulk/doctors/reject:
+  post:
+    tags: [Admin Bulk Operations]
+    summary: Bulk reject doctors
+    operationId: adminBulkRejectDoctors
+    security:
+      - BearerAuth: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [doctorIds, reason]
+            properties:
+              doctorIds:
+                type: array
+                items:
+                  type: string
+              reason:
+                type: string
+    responses:
+      "200":
+        description: Doctors rejected
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BulkOperationResult"
+
+/admin/bulk/bookings/cancel:
+  post:
+    tags: [Admin Bulk Operations]
+    summary: Bulk cancel bookings
+    operationId: adminBulkCancelBookings
+    security:
+      - BearerAuth: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [bookingIds, reason]
+            properties:
+              bookingIds:
+                type: array
+                items:
+                  type: string
+              reason:
+                type: string
+              refund:
+                type: boolean
+                default: true
+                description: Whether to process refunds for completed payments
+    responses:
+      "200":
+        description: Bookings cancelled
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BulkOperationResult"
+
+/admin/bulk/orders/status:
+  post:
+    tags: [Admin Bulk Operations]
+    summary: Bulk update order status
+    operationId: adminBulkUpdateOrderStatus
+    security:
+      - BearerAuth: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [orderIds, status]
+            properties:
+              orderIds:
+                type: array
+                items:
+                  type: string
+              status:
+                type: string
+                enum: [PENDING, CONFIRMED, PROCESSING, SHIPPED, DELIVERED, CANCELLED]
+    responses:
+      "200":
+        description: Orders updated
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BulkOperationResult"

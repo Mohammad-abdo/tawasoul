@@ -25,17 +25,9 @@ class NetworkUtils {
     return AppConfig.baseUrl;
   }
   
-  /// Check if running on emulator
+  /// Legacy helper kept for compatibility. The app now uses a single backend URL.
   static Future<bool> isEmulator() async {
-    try {
-      // Try to connect to emulator URL
-      final response = await http.get(
-        Uri.parse('http://10.0.2.2:3000/health'),
-      ).timeout(const Duration(seconds: 2));
-      return response.statusCode == 200;
-    } catch (e) {
-      return false;
-    }
+    return false;
   }
 }
 

@@ -1,0 +1,113 @@
+/user/assessments/tests:
+  get:
+    tags: [User Assessments]
+    summary: Get all assessment tests
+    operationId: getAssessmentTests
+    security: []
+    parameters:
+      - name: testCategory
+        in: query
+        schema:
+          type: string
+      - name: testType
+        in: query
+        schema:
+          type: string
+          enum: [CARS, ANALOGY, VISUAL_MEMORY, AUDITORY_MEMORY, HELP]
+    responses:
+      "200":
+        description: List of tests
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/AssessmentTest"
+
+/user/assessments/tests/{testId}/questions:
+  get:
+    tags: [User Assessments]
+    summary: Get questions for a specific test
+    operationId: getTestQuestions
+    security: []
+    parameters:
+      - name: testId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    responses:
+      "200":
+        description: Test metadata and specialized question payloads
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  type: object
+                  properties:
+                    test:
+                      $ref: "#/components/schemas/AssessmentTest"
+                    questionModel:
+                      type: string
+                      enum: [Q_CARS, Q_Analogy, Q_VisualMemory_Batch, Q_AuditoryMemory, HelpSkill]
+                    questions:
+                      type: array
+                      items:
+                        $ref: "#/components/schemas/AssessmentQuestion"
+      "404":
+        description: Test not found
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+
+/user/assessments/submit-result:
+  post:
+    tags: [User Assessments]
+    summary: Submit one completed assessment session
+    operationId: submitAssessmentResult
+    security:
+      - BearerAuth: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/SubmitAssessmentResultRequest"
+    responses:
+      "201":
+        description: Session result submitted
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  type: object
+                  properties:
+                    result:
+                      $ref: "#/components/schemas/AssessmentResult"
+                    helpAssessment:
+                      allOf:
+                        - $ref: "#/components/schemas/HelpAssessment"
+                      nullable: true
+                    recommendation:
+                      $ref: "#/components/schemas/AssessmentRecommendation"
+      "400":
+        description: Validation error
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"

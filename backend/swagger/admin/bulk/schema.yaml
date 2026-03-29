@@ -1,0 +1,13 @@
+BulkOperationResult:
+  type: object
+  properties:
+    success:
+      type: boolean
+    data:
+      type: object
+      properties:
+        count:
+          type: integer
+          description: Number of records affected
+    message:
+      type: string
