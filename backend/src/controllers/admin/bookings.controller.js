@@ -1,6 +1,32 @@
 import { prisma } from '../../config/database.js';
 import { logger } from '../../utils/logger.js';
 
+const bookingDoctorSelect = {
+  id: true,
+  name: true,
+  avatar: true,
+  specialties: {
+    select: {
+      specialty: true
+    },
+    take: 1
+  }
+};
+
+const serializeBookingDoctor = (doctor) => {
+  if (!doctor) return doctor;
+
+  return {
+    ...doctor,
+    specialization: doctor.specialties?.[0]?.specialty || null
+  };
+};
+
+const serializeBooking = (booking) => ({
+  ...booking,
+  doctor: serializeBookingDoctor(booking.doctor)
+});
+
 /**
  * Get All Bookings
  */
@@ -46,12 +72,7 @@ export const getAllBookings = async (req, res, next) => {
         orderBy: { [sort]: 'desc' },
         include: {
           doctor: {
-            select: {
-              id: true,
-              name: true,
-              specialization: true,
-              avatar: true
-            }
+            select: bookingDoctorSelect
           },
           user: {
             select: {
@@ -68,7 +89,7 @@ export const getAllBookings = async (req, res, next) => {
     res.json({
       success: true,
       data: {
-        bookings,
+        bookings: bookings.map(serializeBooking),
         pagination: {
           page: parseInt(page),
           limit: parseInt(limit),
@@ -93,7 +114,11 @@ export const getBookingById = async (req, res, next) => {
     const booking = await prisma.booking.findUnique({
       where: { id },
       include: {
-        doctor: true,
+        doctor: {
+          include: {
+            specialties: true
+          }
+        },
         user: true,
         payment: true
       }
@@ -111,7 +136,7 @@ export const getBookingById = async (req, res, next) => {
 
     res.json({
       success: true,
-      data: booking
+      data: serializeBooking(booking)
     });
   } catch (error) {
     logger.error('Get booking error:', error);
