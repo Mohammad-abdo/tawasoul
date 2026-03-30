@@ -52,7 +52,7 @@ async function clearDb() {
     'orderItem', 'order', 'cartItem', 'productReview', 'product', 'productCategory', 'userPackage', 'package', 'address', 'otpCode',
     'fAQ', 'homeArticle', 'homeService', 'homeSlider', 'staticPage', 'onboarding', 'appSettings',
     'notificationTemplate', 'emailTemplate', 'userCoupon', 'coupon',
-    'report', 'pageContent', 'supportReply', 'supportTicket', 'notification', 'message',
+    'report', 'pageContent', 'supportReply', 'supportTicket', 'notification', 'message', 'conversation',
     'payment', 'withdrawal', 'booking', 'article',
     'availability', 'education', 'certificate',
     'experience', 'doctorSpecialty', 'child', 'doctor', 'user', 'admin'
@@ -719,100 +719,7 @@ async function main() {
   for (const booking of bookings.slice(0, 8).filter((b) => b.status !== 'CANCELLED')) {
     await prisma.payment.create({ data: { bookingId: booking.id, doctorId: booking.doctorId, amount: booking.price, method: booking.status === 'COMPLETED' ? 'INSTAPAY' : 'FAWRY', status: booking.status === 'COMPLETED' ? 'COMPLETED' : 'PENDING', transactionId: booking.status === 'COMPLETED' ? `txn-booking-${booking.id.slice(0, 8)}` : `txn-booking-init-${booking.id.slice(0, 8)}` } });
   }
-  // Q_SequenceOrder
-  const sequenceOrderQuestions = [];
-  const sequenceOrderSeeds = [
-    {
-      order: 1,
-      images: [
-        { assetPath: 'assets/images/sequence-order/routine-1.png', position: 1 },
-        { assetPath: 'assets/images/sequence-order/routine-2.png', position: 2 },
-        { assetPath: 'assets/images/sequence-order/routine-3.png', position: 3 }
-      ]
-    },
-    {
-      order: 2,
-      images: [
-        { assetPath: 'assets/images/sequence-order/plant-1.png', position: 1 },
-        { assetPath: 'assets/images/sequence-order/plant-2.png', position: 2 },
-        { assetPath: 'assets/images/sequence-order/plant-3.png', position: 3 },
-        { assetPath: 'assets/images/sequence-order/plant-4.png', position: 4 }
-      ]
-    }
-  ];
 
-  for (const seed of sequenceOrderSeeds) {
-    sequenceOrderQuestions.push(await prisma.q_SequenceOrder.create({
-      data: {
-        testId: imageSequenceOrderTest.id,
-        order: seed.order,
-        images: {
-          create: seed.images
-        }
-      },
-      include: {
-        images: {
-          orderBy: [{ position: 'asc' }, { id: 'asc' }]
-        }
-      }
-    }));
-  }
-
-  for (let i = 0; i < 2; i += 1) {
-    let totalScore = 0;
-    let maxScore = 0;
-    const answerRows = [];
-
-    for (const question of sequenceOrderQuestions) {
-      const submittedOrder = question.images.map((image) => ({
-        imageId: image.id,
-        submittedPosition: i === 0 ? image.position : ((image.position % question.images.length) + 1)
-      }));
-      const itemScores = submittedOrder.map((item) => {
-        const image = question.images.find((candidate) => candidate.id === item.imageId);
-        const score = item.submittedPosition === image.position ? 1 : 0;
-
-        return {
-          imageId: item.imageId,
-          correctPosition: image.position,
-          submittedPosition: item.submittedPosition,
-          score
-        };
-      });
-      const score = itemScores.reduce((sum, item) => sum + item.score, 0);
-
-      totalScore += score;
-      maxScore += question.images.length;
-      answerRows.push({
-        questionId: question.id,
-        submittedOrder,
-        itemScores,
-        score
-      });
-    }
-
-    const result = await prisma.assessmentResult.create({
-      data: {
-        childId: children[i].id,
-        testId: imageSequenceOrderTest.id,
-        totalScore,
-        maxScore,
-        scoreGiven: totalScore,
-        sessionId: `sequence-order-session-${i + 1}`,
-        timestamp: plusDays(-(8 + i))
-      }
-    });
-
-    await prisma.q_SequenceOrder_Answer.createMany({
-      data: answerRows.map((answer) => ({
-        resultId: result.id,
-        questionId: answer.questionId,
-        submittedOrder: answer.submittedOrder,
-        itemScores: answer.itemScores,
-        score: answer.score
-      }))
-    });
-  }
   for (let i = 0; i < doctors.length; i += 1) {
     await prisma.withdrawal.create({ data: {
       doctorId: doctors[i].id, amount: 800 + i * 150, method: i % 2 === 0 ? 'VODAFONE_CASH' : 'BANK_ACCOUNT',
@@ -826,12 +733,17 @@ async function main() {
     } });
   }
 
+  // ─── Conversations & Messages ────────────────────────────────────────────────
+  const conv1 = await prisma.conversation.create({ data: { userId: users[0].id, doctorId: doctors[0].id } });
+  const conv2 = await prisma.conversation.create({ data: { userId: users[1].id, doctorId: doctors[1].id } });
+
   await prisma.message.createMany({ data: [
-    { senderId: users[0].id, receiverId: users[1].id, content: 'Have you tried the new sensory cards yet?', messageType: 'TEXT', isRead: true },
-    { senderId: users[1].id, receiverId: users[0].id, content: 'Yes, they worked well during practice time.', messageType: 'TEXT', isRead: true },
-    { senderId: users[2].id, receiverId: users[3].id, imageUrl: '/uploads/messages/therapy-tools-share.png', messageType: 'IMAGE', isRead: false },
-    { senderId: users[4].id, receiverId: users[5].id, voiceUrl: '/uploads/messages/progress-update-voice.mp3', voiceDuration: 22, messageType: 'VOICE', isRead: false }
+    { conversationId: conv1.id, senderId: users[0].id, senderRole: 'USER', content: 'Have you tried the new sensory cards yet?', messageType: 'TEXT', isRead: true },
+    { conversationId: conv1.id, senderId: doctors[0].id, senderRole: 'DOCTOR', content: 'Yes, they worked well during practice time.', messageType: 'TEXT', isRead: true },
+    { conversationId: conv2.id, senderId: users[1].id, senderRole: 'USER', imageUrl: '/uploads/messages/therapy-tools-share.png', messageType: 'IMAGE', isRead: false },
+    { conversationId: conv2.id, senderId: doctors[1].id, senderRole: 'DOCTOR', voiceUrl: '/uploads/messages/progress-update-voice.mp3', voiceDuration: 22, messageType: 'VOICE', isRead: false }
   ] });
+
   for (const [i, user] of users.entries()) {
     await prisma.notification.createMany({ data: [
       { userId: user.id, type: 'BOOKING_CONFIRMED', title: 'Booking confirmed', message: 'Your upcoming session has been confirmed.', isRead: i % 2 === 0, data: j({ bookingId: bookings[i].id }) },
@@ -867,5 +779,3 @@ main().catch((error) => {
 }).finally(async () => {
   await prisma.$disconnect();
 });
-
-
