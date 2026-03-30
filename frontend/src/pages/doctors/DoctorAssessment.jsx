@@ -1,51 +1,61 @@
-import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { useQuery, useMutation } from '@tanstack/react-query';
-import apiClient from '../../api/client';
-import { 
-  Play, 
-  Pause, 
-  Volume2, 
-  Image as ImageIcon, 
-  CheckCircle, 
-  ChevronLeft, 
-  ChevronRight,
-  Save,
+import { useEffect, useState } from 'react';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { useNavigate, useParams } from 'react-router-dom';
+import {
   AlertCircle,
-  Clock
+  ChevronLeft,
+  ChevronRight,
+  Info,
+  Save,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { doctorAssessments } from '../../api/doctor';
+import AssessmentQuestionRenderer from '../../features/assessments/AssessmentQuestionRenderer';
+import { getAssessmentConfig } from '../../features/assessments/assessmentRegistry';
+import {
+  getManualScoreOptions,
+  getTestDisplayDescription,
+  getTestDisplayTitle,
+} from '../../features/assessments/assessmentUiUtils';
 
 const DoctorAssessment = () => {
   const { testId, childId } = useParams();
   const navigate = useNavigate();
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [scores, setScores] = useState({});
+  const [questionResponses, setQuestionResponses] = useState({});
   const [audio, setAudio] = useState(null);
-  const [isPlaying, setIsPlaying] = useState(false);
 
-  // Get test details and questions
-  const { data: test, isLoading } = useQuery({
-    queryKey: ['assessment-test', testId],
+  const {
+    data: test,
+    isLoading,
+    isError,
+    error,
+  } = useQuery({
+    queryKey: ['assessment-test-detail', testId],
     queryFn: async () => {
-      const response = await apiClient.get(`/assessments/tests/${testId}/questions`);
+      const response = await doctorAssessments.getTestById(testId);
       return response.data.data;
     },
   });
 
   const submitMutation = useMutation({
-    mutationFn: (data) => apiClient.post('/assessments/submit-result', data),
-    onSuccess: () => {
-      toast.success('تم حفظ نتيجة الاختبار بنجاح');
-      navigate(-1);
-    },
+    mutationFn: (data) => doctorAssessments.submitResult(data),
   });
 
-  const questions = test || [];
-  const currentQuestion = questions[currentQuestionIndex];
+  const questions = test?.questions || [];
+  const currentQuestion = questions[currentQuestionIndex] || null;
+  const config = getAssessmentConfig(test?.testType);
+  const supportsManualScoring = config.supportsManualScoring;
+  const scoreOptions = getManualScoreOptions(currentQuestion);
 
   useEffect(() => {
-    // Cleanup audio on unmount
+    setCurrentQuestionIndex(0);
+    setScores({});
+    setQuestionResponses({});
+  }, [test?.id]);
+
+  useEffect(() => {
     return () => {
       if (audio) {
         audio.pause();
@@ -53,179 +63,217 @@ const DoctorAssessment = () => {
     };
   }, [audio]);
 
-  const playAudio = (path) => {
+  const playAudio = (url) => {
+    if (!url) return;
     if (audio) audio.pause();
-    // In a real app, this would be a full URL
-    const newAudio = new Audio(`http://localhost:3000/${path}`);
-    newAudio.play();
-    setAudio(newAudio);
-    setIsPlaying(true);
-    newAudio.onended = () => setIsPlaying(false);
+
+    const nextAudio = new Audio(url);
+    nextAudio.play();
+    setAudio(nextAudio);
+    nextAudio.onended = () => setAudio(null);
   };
 
   const handleScoreChange = (score) => {
-    setScores({
-      ...scores,
-      [currentQuestion.id]: score
-    });
+    if (!currentQuestion || !supportsManualScoring) {
+      return;
+    }
+
+    setScores((previousScores) => ({
+      ...previousScores,
+      [currentQuestion.id]: score,
+    }));
+  };
+
+  const handleQuestionResponseChange = (nextResponse) => {
+    if (!currentQuestion) {
+      return;
+    }
+
+    setQuestionResponses((previousResponses) => ({
+      ...previousResponses,
+      [currentQuestion.id]: nextResponse,
+    }));
   };
 
   const handleNext = () => {
     if (currentQuestionIndex < questions.length - 1) {
-      setCurrentQuestionIndex(prev => prev + 1);
-      setIsPlaying(false);
+      setCurrentQuestionIndex((previousIndex) => previousIndex + 1);
     }
   };
 
   const handlePrev = () => {
     if (currentQuestionIndex > 0) {
-      setCurrentQuestionIndex(prev => prev - 1);
-      setIsPlaying(false);
+      setCurrentQuestionIndex((previousIndex) => previousIndex - 1);
     }
   };
 
-  const handleFinish = () => {
-    const results = Object.keys(scores).map(qId => ({
-      questionId: qId,
-      scoreGiven: scores[qId]
+  const handleFinish = async () => {
+    if (!test) return;
+
+    if (!supportsManualScoring) {
+      toast.success('تمت معاينة محتوى الاختبار بنجاح');
+      navigate(-1);
+      return;
+    }
+
+    const results = Object.entries(scores).map(([questionId, scoreGiven]) => ({
+      childId,
+      testId: test.id,
+      questionId,
+      scoreGiven,
+      sessionId: `doctor-${test.id}-${Date.now()}`,
     }));
 
-    if (results.length < questions.length) {
-      if (!window.confirm('لم يتم تقييم جميع الأسئلة، هل تريد الحفظ على أي حال؟')) return;
+    if (results.length === 0) {
+      toast.error('يرجى إدخال درجة واحدة على الأقل قبل الحفظ');
+      return;
     }
 
-    // Since our backend submitAssessmentResult takes one result at a time, 
-    // we'll loop or update the API to take multiple. 
-    // For now, let's just submit them.
-    results.forEach(res => {
-      submitMutation.mutate({
-        childId,
-        questionId: res.questionId,
-        scoreGiven: res.scoreGiven,
-        sessionId: `session-${Date.now()}` // Mock session ID
-      });
-    });
+    if (results.length < questions.length) {
+      const shouldContinue = window.confirm('لم يتم تقييم جميع الأسئلة، هل تريد الحفظ على أي حال؟');
+      if (!shouldContinue) return;
+    }
+
+    try {
+      await Promise.all(results.map((result) => submitMutation.mutateAsync(result)));
+      toast.success('تم حفظ نتيجة الاختبار بنجاح');
+      navigate(-1);
+    } catch (submitError) {
+      toast.error(submitError.response?.data?.error?.message || 'فشل حفظ نتيجة الاختبار');
+    }
   };
 
-  if (isLoading) return <div className="flex justify-center p-12"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div></div>;
-
-  return (
-    <div className="max-w-4xl mx-auto space-y-6 pb-20">
-      <div className="flex items-center justify-between">
-        <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-gray-600 hover:text-primary-600">
-          <ChevronRight size={20} /> إلغاء الاختبار
-        </button>
-        <div className="flex items-center gap-4">
-          <span className="text-sm font-bold text-gray-500">سؤال {currentQuestionIndex + 1} من {questions.length}</span>
-          <div className="w-48 h-2 bg-gray-100 rounded-full overflow-hidden">
-            <div 
-              className="h-full bg-primary-600 transition-all duration-500" 
-              style={{ width: `${((currentQuestionIndex + 1) / questions.length) * 100}%` }}
-            ></div>
-          </div>
-        </div>
+  if (isLoading) {
+    return (
+      <div className="flex justify-center p-12">
+        <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-primary-600" />
       </div>
+    );
+  }
 
-      <div className="glass-card rounded-[2.5rem] p-8 md:p-12 border border-gray-200 shadow-2xl bg-white text-center">
-        <h2 className="text-2xl font-bold text-gray-900 mb-8">تقييم استجابة الطفل</h2>
-
-        {/* Media Content Section */}
-        <div className="mb-12 p-8 bg-gray-50 rounded-[2rem] border-2 border-dashed border-gray-200 flex flex-col items-center justify-center min-h-[300px]">
-          {currentQuestion?.audioAssetPath && (
-            <div className="space-y-6">
-              <div className="w-24 h-24 rounded-full bg-blue-100 flex items-center justify-center mx-auto shadow-inner">
-                <Volume2 size={48} className="text-blue-600" />
-              </div>
-              <button 
-                onClick={() => playAudio(currentQuestion.audioAssetPath)}
-                className={`px-8 py-4 rounded-2xl flex items-center gap-3 font-bold transition-all ${
-                  isPlaying ? 'bg-orange-500 text-white animate-pulse' : 'bg-primary-600 text-white hover:scale-105'
-                }`}
-              >
-                {isPlaying ? <Pause size={24} /> : <Play size={24} />}
-                {isPlaying ? 'جاري التشغيل...' : 'تشغيل الصوت للمحاكاة'}
-              </button>
-            </div>
-          )}
-
-          {currentQuestion?.imageAssetPath && (
-            <div className="space-y-6">
-              <div className="w-64 h-64 rounded-3xl overflow-hidden border-4 border-white shadow-xl">
-                <img 
-                  src={`http://localhost:3000/${currentQuestion.imageAssetPath}`} 
-                  alt="Question Asset" 
-                  className="w-full h-full object-cover" 
-                />
-              </div>
-              <p className="text-gray-500 font-medium flex items-center gap-2 justify-center">
-                <ImageIcon size={18} /> تم عرض الصورة للطفل
-              </p>
-            </div>
-          )}
-
-          {!currentQuestion?.audioAssetPath && !currentQuestion?.imageAssetPath && (
-            <div className="text-gray-400">
-              <AlertCircle size={48} className="mx-auto mb-4" />
-              <p>لا يوجد وسائط لهذا السؤال</p>
-            </div>
-          )}
-        </div>
-
-        {/* Scoring Guide */}
-        <div className="bg-primary-50 p-6 rounded-2xl border border-primary-100 mb-10 text-right">
-          <h4 className="font-bold text-primary-800 mb-2 flex items-center gap-2">
-            <CheckCircle size={18} /> دليل التقييم:
-          </h4>
-          <p className="text-sm text-primary-700 leading-relaxed">
-            {currentQuestion?.scoringGuide || 'قم بتقييم استجابة الطفل بناءً على الملاحظة المباشرة.'}
+  if (isError) {
+    return (
+      <div className="mx-auto max-w-4xl p-8">
+        <div className="rounded-2xl border border-red-100 bg-red-50 p-6 text-center">
+          <AlertCircle className="mx-auto mb-4 text-red-500" size={42} />
+          <p className="font-semibold text-red-700">
+            {error?.response?.data?.error?.message || 'تعذر تحميل بيانات الاختبار'}
           </p>
         </div>
+      </div>
+    );
+  }
 
-        {/* Scoring Buttons */}
-        <div className="space-y-4">
-          <p className="text-sm font-bold text-gray-500 uppercase tracking-widest">اختر درجة الاستجابة</p>
-          <div className="flex flex-wrap items-center justify-center gap-3">
-            {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
-              <button
-                key={num}
-                onClick={() => handleScoreChange(num)}
-                className={`w-12 h-12 rounded-xl font-black text-lg transition-all transform hover:scale-110 ${
-                  scores[currentQuestion?.id] === num 
-                    ? 'bg-primary-600 text-white shadow-xl scale-110 rotate-3' 
-                    : 'bg-white text-gray-400 border-2 border-gray-100 hover:border-primary-200'
-                }`}
-              >
-                {num}
-              </button>
-            ))}
+  return (
+    <div className="mx-auto max-w-5xl space-y-6 pb-20">
+      <div className="flex items-center justify-between">
+        <button
+          onClick={() => navigate(-1)}
+          className="flex items-center gap-2 text-gray-600 transition-colors hover:text-primary-600"
+        >
+          <ChevronRight size={20} />
+          إلغاء الاختبار
+        </button>
+        <div className="flex items-center gap-4">
+          <span className="text-sm font-bold text-gray-500">
+            {config.stepLabel} {Math.min(currentQuestionIndex + 1, Math.max(questions.length, 1))} من {questions.length}
+          </span>
+          <div className="h-2 w-48 overflow-hidden rounded-full bg-gray-100">
+            <div
+              className="h-full bg-primary-600 transition-all duration-500"
+              style={{
+                width: `${questions.length > 0 ? ((currentQuestionIndex + 1) / questions.length) * 100 : 0}%`,
+              }}
+            />
           </div>
         </div>
       </div>
 
-      {/* Navigation Footer */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-md border-t border-gray-200 p-4 z-50">
-        <div className="max-w-4xl mx-auto flex items-center justify-between gap-4">
-          <button 
-            onClick={handlePrev} 
-            disabled={currentQuestionIndex === 0}
+      <div className="glass-card rounded-[2.5rem] border border-gray-200 bg-white p-8 text-center shadow-2xl md:p-12">
+        <h2 className="mb-2 text-2xl font-bold text-gray-900">{getTestDisplayTitle(test)}</h2>
+        {getTestDisplayDescription(test) ? (
+          <p className="mb-8 text-sm leading-relaxed text-gray-500">{getTestDisplayDescription(test)}</p>
+        ) : null}
+
+        {currentQuestion ? (
+          <AssessmentQuestionRenderer
+            test={test}
+            question={currentQuestion}
+            questionIndex={currentQuestionIndex}
+            totalQuestions={questions.length}
+            onPlayAudio={playAudio}
+            response={questionResponses[currentQuestion.id]}
+            selectedChoiceIndex={questionResponses[currentQuestion.id]}
+            onSelectChoice={handleQuestionResponseChange}
+            onResponseChange={handleQuestionResponseChange}
+          />
+        ) : (
+          <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50 p-10 text-center text-gray-500">
+            لا توجد عناصر متاحة لهذا الاختبار حالياً.
+          </div>
+        )}
+
+        <div className="mt-8">
+          {supportsManualScoring && currentQuestion ? (
+            <div className="space-y-4">
+              <p className="text-sm font-bold uppercase tracking-widest text-gray-500">
+                اختر درجة الاستجابة
+              </p>
+              <div className="flex flex-wrap items-center justify-center gap-3">
+                {scoreOptions.map((scoreOption) => (
+                  <button
+                    key={scoreOption}
+                    onClick={() => handleScoreChange(scoreOption)}
+                    className={`h-12 w-12 rounded-xl text-lg font-black transition-all hover:scale-110 ${
+                      scores[currentQuestion.id] === scoreOption
+                        ? 'scale-110 rotate-3 bg-primary-600 text-white shadow-xl'
+                        : 'border-2 border-gray-100 bg-white text-gray-400 hover:border-primary-200'
+                    }`}
+                  >
+                    {scoreOption}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-blue-100 bg-blue-50 p-5 text-right">
+              <div className="mb-2 flex items-center gap-2 text-sm font-bold text-blue-800">
+                <Info size={16} />
+                طريقة التنفيذ
+              </div>
+              <p className="text-sm leading-relaxed text-blue-700">{config.scoreNotice}</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-gray-200 bg-white/80 p-4 backdrop-blur-md">
+        <div className="mx-auto flex max-w-5xl items-center justify-between gap-4">
+          <button
+            onClick={handlePrev}
+            disabled={currentQuestionIndex === 0 || questions.length === 0}
             className="btn-secondary flex items-center gap-2 px-6 disabled:opacity-30"
           >
-            <ChevronRight size={20} /> السابق
+            <ChevronRight size={20} />
+            السابق
           </button>
 
-          {currentQuestionIndex === questions.length - 1 ? (
-            <button 
+          {currentQuestionIndex === questions.length - 1 || questions.length === 0 ? (
+            <button
               onClick={handleFinish}
-              className="btn-primary flex items-center gap-2 px-12 bg-green-600 hover:bg-green-700 shadow-green-200 shadow-lg"
+              disabled={submitMutation.isPending}
+              className="btn-primary flex items-center gap-2 px-12"
             >
-              <Save size={20} /> إنهاء وحفظ النتائج
+              <Save size={20} />
+              {submitMutation.isPending ? 'جارٍ الحفظ...' : config.completionLabel}
             </button>
           ) : (
-            <button 
+            <button
               onClick={handleNext}
-              className="btn-primary flex items-center gap-2 px-8 shadow-primary-200 shadow-lg"
+              className="btn-primary flex items-center gap-2 px-8 shadow-lg shadow-primary-200"
             >
-              التالي <ChevronLeft size={20} />
+              التالي
+              <ChevronLeft size={20} />
             </button>
           )}
         </div>
