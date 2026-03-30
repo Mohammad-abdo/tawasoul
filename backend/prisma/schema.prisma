@@ -196,7 +196,40 @@ model Child {
   @@map("children")
 }
 
+model Booking {
+  id                 String          @id @default(uuid())
+  userId             String
+  doctorId           String
+  childId            String?
+  category           SessionCategory @default(INDIVIDUAL)
+  duration           Int
+  price              Float
+  status             BookingStatus   @default(PENDING)
+  scheduledAt        DateTime
+  scheduledMonth     Int?
+  scheduledDay       Int?
+  scheduledTime      String?
+  notes              String?         @db.Text
+  completedAt        DateTime?
+  cancelledAt        DateTime?
+  cancellationReason String?         @db.Text
+  paymentId          String?         @unique
+  rating             Int?
+  review             String?         @db.Text
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+  videoLink          String?
+  child              Child?          @relation(fields: [childId], references: [id])
+  doctor             Doctor          @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  user               User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  payment            Payment?
+  vbMappSession      VbMappSession?
 
+  @@index([childId], map: "bookings_childId_fkey")
+  @@index([doctorId], map: "bookings_doctorId_fkey")
+  @@index([userId], map: "bookings_userId_fkey")
+  @@map("bookings")
+}
 
 model Message {
   id             String       @id @default(uuid())
@@ -1398,7 +1431,8 @@ enum TestType {
   AUDITORY_MEMORY
   VERBAL_NONSENSE
   HELP
-  IMAGE_SEQUENCE_ORDER    
+  IMAGE_SEQUENCE_ORDER
+  VB_MAPP
 }
 
 enum HelpScore {

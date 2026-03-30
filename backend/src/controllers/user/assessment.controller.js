@@ -83,7 +83,9 @@ export const getTests = async (req, res, next) => {
 
     res.json({
       success: true,
-      data: tests.map((test) => buildTestSummary({ test }))
+      data: tests
+        .filter((test) => test.testType !== 'VB_MAPP')
+        .map((test) => buildTestSummary({ test }))
     });
   } catch (error) {
     logger.error('Get user assessment tests error:', error);
@@ -105,6 +107,16 @@ export const getTestById = async (req, res, next) => {
         error: {
           code: 'TEST_NOT_FOUND',
           message: 'Test not found'
+        }
+      });
+    }
+
+    if (test.testType === 'VB_MAPP') {
+      return res.status(422).json({
+        success: false,
+        error: {
+          code: 'INVALID_TEST_TYPE',
+          message: 'VB-MAPP is available through the dedicated VB-MAPP workflow'
         }
       });
     }

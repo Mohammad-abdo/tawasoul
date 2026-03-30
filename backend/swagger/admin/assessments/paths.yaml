@@ -11,7 +11,7 @@
         required: false
         schema:
           type: string
-          enum: [CARS, ANALOGY, VISUAL_MEMORY, AUDITORY_MEMORY, VERBAL_NONSENSE, HELP, IMAGE_SEQUENCE_ORDER]
+          enum: [CARS, ANALOGY, VISUAL_MEMORY, AUDITORY_MEMORY, VERBAL_NONSENSE, HELP, IMAGE_SEQUENCE_ORDER, VB_MAPP]
     responses:
       "200":
         description: Tests
@@ -73,7 +73,7 @@
                 enum: [AUDITORY, VISUAL]
               testType:
                 type: string
-                enum: [CARS, ANALOGY, VISUAL_MEMORY, AUDITORY_MEMORY, VERBAL_NONSENSE, HELP, IMAGE_SEQUENCE_ORDER]
+                enum: [CARS, ANALOGY, VISUAL_MEMORY, AUDITORY_MEMORY, VERBAL_NONSENSE, HELP, IMAGE_SEQUENCE_ORDER, VB_MAPP]
               description:
                 type: string
                 nullable: true
@@ -197,7 +197,7 @@
                 enum: [AUDITORY, VISUAL]
               testType:
                 type: string
-                enum: [CARS, ANALOGY, VISUAL_MEMORY, AUDITORY_MEMORY, VERBAL_NONSENSE, HELP, IMAGE_SEQUENCE_ORDER]
+                enum: [CARS, ANALOGY, VISUAL_MEMORY, AUDITORY_MEMORY, VERBAL_NONSENSE, HELP, IMAGE_SEQUENCE_ORDER, VB_MAPP]
               description:
                 type: string
                 nullable: true

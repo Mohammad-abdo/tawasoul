@@ -5,7 +5,8 @@ const TEST_TYPES = {
   AUDITORY_MEMORY: 'AUDITORY_MEMORY',
   VERBAL_NONSENSE: 'VERBAL_NONSENSE',
   IMAGE_SEQUENCE_ORDER: 'IMAGE_SEQUENCE_ORDER',
-  HELP: 'HELP'
+  HELP: 'HELP',
+  VB_MAPP: 'VB_MAPP'
 };
 
 const HELP_SCORE_VALUES = {
@@ -66,6 +67,8 @@ export const getQuestionModelForTestType = (testType) => {
       return 'Q_SequenceOrder';
     case TEST_TYPES.HELP:
       return 'HelpSkill';
+    case TEST_TYPES.VB_MAPP:
+      return 'VbMappSession';
     default:
       return 'Question';
   }
@@ -263,6 +266,9 @@ export const fetchAssessmentQuestions = async ({ prisma, test, req, includeCorre
       return skills.map((question) => serializeAssessmentQuestion({ req, testType: test.testType, question, includeCorrect }));
     }
 
+    case TEST_TYPES.VB_MAPP:
+      return [];
+
     default: {
       const questions = await prisma.question.findMany({
         where: { testId: test.id },
@@ -300,6 +306,8 @@ export const countAssessmentQuestions = async ({ prisma, test }) => {
       return prisma.q_SequenceOrder.count({ where: { testId: test.id } });
     case TEST_TYPES.HELP:
       return prisma.helpSkill.count();
+    case TEST_TYPES.VB_MAPP:
+      return 0;
     default:
       return prisma.question.count({ where: { testId: test.id } });
   }
@@ -641,6 +649,8 @@ export const buildAssessmentSubmission = async ({ prisma, test, answers, resultI
 
     case TEST_TYPES.HELP:
       throw createAssessmentValidationError('HELP submissions must be handled through the dedicated HELP assessment flow');
+    case TEST_TYPES.VB_MAPP:
+      throw createAssessmentValidationError('VB-MAPP is managed through the dedicated VB-MAPP workflow');
 
     default:
       throw createAssessmentValidationError(`Unsupported test type: ${test.testType}`);

@@ -42,8 +42,11 @@ async function clearDb() {
   const tables = [
     'childActivityProgress', 'activitySequenceItem', 'activityMatchPair', 'activityAudio', 'activityImage', 'activity',
     'skillGroup', 'activityCategory',
+    'vbMappIEPGoal', 'vbMappTransitionScores', 'vbMappBarrierScores', 'vbMappTaskStepScore', 'vbMappMilestoneScore',
+    'vbMappSession', 'vbMappTaskStep', 'vbMappMilestone', 'vbMappTransitionCriteria', 'vbMappBarrier', 'vbMappSkillArea',
     'q_VisualMemory_Answer', 'q_VisualMemory', 'q_VisualMemory_Batch',
     'q_AuditoryMemory_Answer', 'q_AuditoryMemory',
+    'q_VerbalNonsense_Answer', 'q_VerbalNonsense',
     'q_SequenceOrder_Answer', 'q_SequenceOrder_Image', 'q_SequenceOrder',
     'q_Analogy_Answer', 'q_Analogy',
     'q_CARS_Answer', 'q_CARS',
@@ -310,7 +313,9 @@ async function main() {
     await prisma.test.create({ data: { title: 'Visual Analogy Test', titleAr: 'Visual Analogy Test', type: 'VISUAL', testType: 'ANALOGY', description: 'Assess visual reasoning through analogies.' } }),
     await prisma.test.create({ data: { title: 'Visual Memory Assessment', titleAr: 'Visual Memory Assessment', type: 'VISUAL', testType: 'VISUAL_MEMORY', description: 'Evaluate short-term visual memory.' } }),
     await prisma.test.create({ data: { title: 'Auditory Memory Assessment', titleAr: 'Auditory Memory Assessment', type: 'AUDITORY', testType: 'AUDITORY_MEMORY', description: 'Evaluate auditory recall and sequence memory.' } }),
-    await prisma.test.create({ data: { title: 'Image Sequence Order Assessment', titleAr: 'Image Sequence Order Assessment', type: 'VISUAL', testType: 'IMAGE_SEQUENCE_ORDER', description: 'Arrange image cards into the correct order.' } })
+    await prisma.test.create({ data: { title: 'Verbal Nonsense Test', titleAr: 'اختبار الجمل غير المنطقية', type: 'AUDITORY', testType: 'VERBAL_NONSENSE', description: 'Doctor listens to the child explain the contradiction in each sentence and marks the response manually.' } }),
+    await prisma.test.create({ data: { title: 'Image Sequence Order Assessment', titleAr: 'Image Sequence Order Assessment', type: 'VISUAL', testType: 'IMAGE_SEQUENCE_ORDER', description: 'Arrange image cards into the correct order.' } }),
+    await prisma.test.create({ data: { title: 'VB-MAPP Assessment', titleAr: 'VB-MAPP Assessment', type: 'VISUAL', testType: 'VB_MAPP', description: 'Read-only VB-MAPP entry for admin visibility. Assessment sessions are managed through the dedicated VB-MAPP workflow.' } })
   ];
 
   const helpTest = tests.find((test) => test.testType === 'HELP');
@@ -318,6 +323,7 @@ async function main() {
   const analogyTest = tests.find((test) => test.testType === 'ANALOGY');
   const visualMemoryTest = tests.find((test) => test.testType === 'VISUAL_MEMORY');
   const auditoryMemoryTest = tests.find((test) => test.testType === 'AUDITORY_MEMORY');
+  const verbalNonsenseTest = tests.find((test) => test.testType === 'VERBAL_NONSENSE');
   const imageSequenceOrderTest = tests.find((test) => test.testType === 'IMAGE_SEQUENCE_ORDER');
 
   // Q_CARS
@@ -657,6 +663,70 @@ async function main() {
     }
   }
 
+  // Q_VerbalNonsense
+  const verbalNonsenseQuestions = [];
+  const verbalNonsenseSeeds = [
+    {
+      order: 1,
+      sentenceAr: 'الشمس تخرج في الليل ثم نذهب إلى المدرسة.',
+      sentenceEn: 'The sun comes out at night and then we go to school.'
+    },
+    {
+      order: 2,
+      sentenceAr: 'وضعت السمكة حذاءها وذهبت لتطير في السماء.',
+      sentenceEn: 'The fish put on its shoes and went to fly in the sky.'
+    },
+    {
+      order: 3,
+      sentenceAr: 'أكلت النار قطعة ثلج فازدادت برودة.',
+      sentenceEn: 'The fire ate an ice cube and became colder.'
+    },
+    {
+      order: 4,
+      sentenceAr: 'شرب الطفل الكتاب قبل أن يقرأ كوب الماء.',
+      sentenceEn: 'The child drank the book before reading the cup of water.'
+    }
+  ];
+
+  for (const seed of verbalNonsenseSeeds) {
+    verbalNonsenseQuestions.push(await prisma.q_VerbalNonsense.create({
+      data: {
+        testId: verbalNonsenseTest.id,
+        order: seed.order,
+        sentenceAr: seed.sentenceAr,
+        sentenceEn: seed.sentenceEn
+      }
+    }));
+  }
+
+  for (let i = 0; i < 2; i += 1) {
+    const vnResult = await prisma.assessmentResult.create({
+      data: {
+        childId: children[i].id,
+        testId: verbalNonsenseTest.id,
+        totalScore: i === 0 ? 3 : 2,
+        maxScore: verbalNonsenseQuestions.length,
+        scoreGiven: i === 0 ? 3 : 2,
+        sessionId: `verbal-nonsense-session-${i + 1}`,
+        timestamp: plusDays(-(9 + i))
+      }
+    });
+
+    for (const question of verbalNonsenseQuestions) {
+      const isCorrect = i === 0 ? question.order !== 4 : question.order <= 2;
+      await prisma.q_VerbalNonsense_Answer.create({
+        data: {
+          resultId: vnResult.id,
+          questionId: question.id,
+          isCorrect,
+          doctorNote: isCorrect
+            ? 'Child identified the contradiction with prompting.'
+            : 'Child described the sentence but did not explain the contradiction.'
+        }
+      });
+    }
+  }
+
   // ─── HelpAssessment + HelpEvaluation ─────────────────────────────────────────
   // Q_SequenceOrder
   const sequenceOrderQuestions = [];
@@ -771,6 +841,186 @@ async function main() {
       } });
     }
   }
+
+  const vbMappSkillAreas = [];
+  const vbMappSkillAreaSeeds = [
+    { code: 'MAND', nameAr: 'الطلبات', nameEn: 'Mand', level: 'LEVEL_1', order: 1 },
+    { code: 'TACT', nameAr: 'التسمية', nameEn: 'Tact', level: 'LEVEL_1', order: 2 },
+    { code: 'LISTENER', nameAr: 'استجابة المستمع', nameEn: 'Listener Responding', level: 'LEVEL_1', order: 3 },
+    { code: 'PLAY', nameAr: 'اللعب', nameEn: 'Play', level: 'LEVEL_2', order: 4 }
+  ];
+
+  for (const seed of vbMappSkillAreaSeeds) {
+    vbMappSkillAreas.push(await prisma.vbMappSkillArea.create({ data: seed }));
+  }
+
+  const vbMappMilestones = [];
+  const vbMappMilestoneSeeds = [
+    {
+      skillAreaCode: 'MAND',
+      milestoneNumber: 1,
+      level: 'LEVEL_1',
+      descriptionAr: 'يطلب الطفل شيئين مرغوبين بشكل تلقائي باستخدام كلمة أو إشارة واضحة.',
+      assessmentMethod: 'DIRECT',
+      order: 1,
+      taskSteps: [
+        { stepCode: '1-A', descriptionAr: 'يطلب الطعام المفضل عند عرضه.', assessmentMethod: 'DIRECT', order: 1 },
+        { stepCode: '1-B', descriptionAr: 'يطلب لعبة مفضلة دون تلميح مباشر.', assessmentMethod: 'OBSERVATION', order: 2 }
+      ]
+    },
+    {
+      skillAreaCode: 'TACT',
+      milestoneNumber: 1,
+      level: 'LEVEL_1',
+      descriptionAr: 'يسمي الطفل أشياء مألوفة في البيئة المباشرة عند عرضها عليه.',
+      assessmentMethod: 'DIRECT',
+      order: 2,
+      taskSteps: [
+        { stepCode: '1-A', descriptionAr: 'يسمي ثلاثة أشياء شائعة في الغرفة.', assessmentMethod: 'DIRECT', order: 1 }
+      ]
+    },
+    {
+      skillAreaCode: 'LISTENER',
+      milestoneNumber: 1,
+      level: 'LEVEL_1',
+      descriptionAr: 'يستجيب الطفل لتعليمات بسيطة من خطوة واحدة مرتبطة بأشياء مألوفة.',
+      assessmentMethod: 'BOTH',
+      order: 3,
+      taskSteps: [
+        { stepCode: '1-A', descriptionAr: 'يعطي المعالج الشيء المطلوب عند سماع اسمه.', assessmentMethod: 'DIRECT', order: 1 }
+      ]
+    },
+    {
+      skillAreaCode: 'PLAY',
+      milestoneNumber: 1,
+      level: 'LEVEL_2',
+      descriptionAr: 'يشارك الطفل في لعب وظيفي مستقل لعدة دقائق باستخدام أدوات مألوفة.',
+      assessmentMethod: 'OBSERVATION',
+      timedDuration: 180,
+      order: 4,
+      taskSteps: [
+        { stepCode: '1-A', descriptionAr: 'يلعب بلعبة سببية بشكل مستقل لمدة دقيقتين.', assessmentMethod: 'TIMED', timedDuration: 120, order: 1 }
+      ]
+    }
+  ];
+
+  for (const seed of vbMappMilestoneSeeds) {
+    const skillArea = vbMappSkillAreas.find((area) => area.code === seed.skillAreaCode);
+    const milestone = await prisma.vbMappMilestone.create({
+      data: {
+        skillAreaId: skillArea.id,
+        milestoneNumber: seed.milestoneNumber,
+        level: seed.level,
+        descriptionAr: seed.descriptionAr,
+        assessmentMethod: seed.assessmentMethod,
+        timedDuration: seed.timedDuration || null,
+        order: seed.order
+      }
+    });
+    vbMappMilestones.push({ ...milestone, skillAreaCode: seed.skillAreaCode });
+
+    for (const step of seed.taskSteps) {
+      await prisma.vbMappTaskStep.create({
+        data: {
+          milestoneId: milestone.id,
+          stepCode: step.stepCode,
+          descriptionAr: step.descriptionAr,
+          assessmentMethod: step.assessmentMethod,
+          timedDuration: step.timedDuration || null,
+          order: step.order
+        }
+      });
+    }
+  }
+
+  const vbMappBarriers = [];
+  for (const barrier of [
+    { nameAr: 'السلوكيات المعيقة', nameEn: 'Behavior Problems', order: 1 },
+    { nameAr: 'ضعف المهارات الاجتماعية', nameEn: 'Weak Social Skills', order: 2 },
+    { nameAr: 'الاعتماد على التلقين', nameEn: 'Prompt Dependency', order: 3 }
+  ]) {
+    vbMappBarriers.push(await prisma.vbMappBarrier.create({ data: barrier }));
+  }
+
+  const vbMappTransitionCriteria = [];
+  for (const criteria of [
+    { nameAr: 'الجلوس والمشاركة في نشاط جماعي', descriptionAr: 'يجلس مع المجموعة ويشارك في نشاط منظم لفترة مناسبة.', order: 1 },
+    { nameAr: 'الاستقلالية في الروتين', descriptionAr: 'يتبع روتين الصف أو الجلسة مع حد أدنى من المساعدة.', order: 2 },
+    { nameAr: 'التفاعل مع الأقران', descriptionAr: 'يبادر أو يستجيب لتفاعل بسيط مع طفل آخر.', order: 3 }
+  ]) {
+    vbMappTransitionCriteria.push(await prisma.vbMappTransitionCriteria.create({ data: criteria }));
+  }
+
+  const seededVbMappSession = await prisma.vbMappSession.create({
+    data: {
+      childId: children[0].id,
+      evaluatorId: doctors[0].id,
+      sessionNumber: 'FIRST',
+      assessmentDate: plusDays(-12),
+      colorCode: 'yellow',
+      notes: 'Initial VB-MAPP baseline session seeded for dashboard and API testing.',
+      totalScore: 2.5
+    }
+  });
+
+  for (const [index, milestone] of vbMappMilestones.slice(0, 3).entries()) {
+    await prisma.vbMappMilestoneScore.create({
+      data: {
+        sessionId: seededVbMappSession.id,
+        milestoneId: milestone.id,
+        score: ['ACHIEVED', 'PARTIAL', 'NOT_ACHIEVED'][index],
+        notes: 'Seeded milestone score.'
+      }
+    });
+  }
+
+  const seededTaskSteps = await prisma.vbMappTaskStep.findMany({
+    orderBy: [{ milestoneId: 'asc' }, { order: 'asc' }]
+  });
+
+  for (const [index, step] of seededTaskSteps.slice(0, 3).entries()) {
+    await prisma.vbMappTaskStepScore.create({
+      data: {
+        sessionId: seededVbMappSession.id,
+        stepId: step.id,
+        score: index === 0 ? 'ACHIEVED' : index === 1 ? 'PARTIAL' : 'NOT_ACHIEVED',
+        notes: 'Seeded task step score.'
+      }
+    });
+  }
+
+  for (const [index, barrier] of vbMappBarriers.entries()) {
+    await prisma.vbMappBarrierScores.create({
+      data: {
+        sessionId: seededVbMappSession.id,
+        barrierId: barrier.id,
+        score: ['ONE', 'TWO', 'ONE'][index],
+        notes: 'Seeded barrier score.'
+      }
+    });
+  }
+
+  for (const [index, criteria] of vbMappTransitionCriteria.entries()) {
+    await prisma.vbMappTransitionScores.create({
+      data: {
+        sessionId: seededVbMappSession.id,
+        criteriaId: criteria.id,
+        score: index === 0 ? 'PARTIAL' : index === 1 ? 'ACHIEVED' : 'NOT_TESTED',
+        notes: 'Seeded transition score.'
+      }
+    });
+  }
+
+  await prisma.vbMappIEPGoal.create({
+    data: {
+      childId: children[0].id,
+      sessionId: seededVbMappSession.id,
+      milestoneId: vbMappMilestones[0]?.id || null,
+      goalDescription: 'Increase spontaneous requesting for preferred items across home and clinic settings.',
+      targetDate: plusMonths(2),
+      status: 'ACTIVE'
+    }
+  });
 
   // ─── Activities ───────────────────────────────────────────────────────────────
   const activityCategories = {
