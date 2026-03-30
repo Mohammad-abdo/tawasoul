@@ -29,7 +29,6 @@ import {
   Trash2,
   CheckCheck,
   Activity,
-  FileQuestion,
   Brain
 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
@@ -146,8 +145,7 @@ const Layout = ({ children = null }) => {
     { path: '/home-services', icon: FileText, label: 'خدمات الصفحة الرئيسية' },
     { path: '/home-articles', icon: FileText, label: 'مقالات الصفحة الرئيسية' },
     { path: '/faqs', icon: FileText, label: 'الأسئلة الشائعة' },
-    { path: '/assessments/categories', icon: Layers, label: 'فئات المقاييس' },
-    { path: '/assessments', icon: FileQuestion, label: 'المقاييس والاختبارات' },
+    { path: '/dashboard/tests', icon: Brain, label: 'Tests' },
     { path: '/notifications', icon: Bell, label: 'الإشعارات' },
     ...(user?.role === 'SUPER_ADMIN' ? [{ path: '/admins', icon: Shield, label: 'إدارة الأدمن' }] : []),
     { path: '/settings', icon: Settings, label: 'الإعدادات' },
@@ -165,7 +163,11 @@ const Layout = ({ children = null }) => {
 
   const menuItems = (role === 'admin' || role?.includes('ADMIN')) ? adminMenuItems : doctorMenuItems;
 
-  const isActive = (path) => location.pathname === path;
+  const isActive = (path) => (
+    location.pathname === path ||
+    (path !== '/dashboard' && location.pathname.startsWith(`${path}/`))
+  );
+  const currentMenuItem = menuItems.find((item) => isActive(item.path));
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -282,7 +284,7 @@ const Layout = ({ children = null }) => {
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-xl font-semibold text-gray-900">
-                {menuItems.find(item => item.path === location.pathname)?.label || 'لوحة التحكم'}
+                {currentMenuItem?.label || 'لوحة التحكم'}
               </h2>
               <p className="text-sm text-gray-600 mt-1">
                 {new Date().toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}

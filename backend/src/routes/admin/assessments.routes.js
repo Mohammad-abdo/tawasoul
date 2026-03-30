@@ -59,6 +59,31 @@ const carsQuestionValidators = [
   })
 ];
 
+const patchCarsQuestionValidators = [
+  body('order').optional().isInt({ min: 1 }).withMessage('order must be an integer greater than or equal to 1'),
+  body('questionText').optional().isObject().withMessage('questionText must be an object'),
+  body('questionText.ar').optional().isString().trim().notEmpty().withMessage('questionText.ar must be a non-empty string'),
+  body('questionText.en').optional().isString().trim().notEmpty().withMessage('questionText.en must be a non-empty string'),
+  body('choices').optional().isArray({ min: 4, max: 4 }).withMessage('choices must be an array of exactly 4 items'),
+  body('choices.*.score').optional().isInt({ min: 1, max: 4 }).withMessage('each choice score must be an integer between 1 and 4'),
+  body('choices.*.ar').optional().isString().trim().notEmpty().withMessage('each choice ar value is required'),
+  body('choices.*.en').optional().isString().trim().notEmpty().withMessage('each choice en value is required'),
+  body().custom((value) => {
+    if (value.order === undefined && value.questionText === undefined && value.choices === undefined) {
+      throw new Error('At least one of order, questionText, or choices must be provided');
+    }
+
+    if (Array.isArray(value.choices)) {
+      const scores = value.choices.map((choice) => choice.score);
+      if (new Set(scores).size !== scores.length) {
+        throw new Error('choice scores must be unique within the array');
+      }
+    }
+
+    return true;
+  })
+];
+
 const analogyQuestionValidators = [
   body('order').isInt({ min: 1 }).withMessage('order must be an integer greater than or equal to 1'),
   body('questionImageUrl').isString().trim().notEmpty().withMessage('questionImageUrl is required'),
@@ -69,6 +94,28 @@ const analogyQuestionValidators = [
     if (!Array.isArray(req.body.choices) || correctIndex >= req.body.choices.length) {
       throw new Error('correctIndex must be within choices bounds');
     }
+    return true;
+  })
+];
+
+const patchAnalogyQuestionValidators = [
+  body('order').optional().isInt({ min: 1 }).withMessage('order must be an integer greater than or equal to 1'),
+  body('questionImageUrl').optional().isString().trim().notEmpty().withMessage('questionImageUrl must be a non-empty string'),
+  body('choices').optional().isArray({ min: 2 }).withMessage('choices must be an array with at least 2 items'),
+  body('choices.*.imagePath').optional().isString().trim().notEmpty().withMessage('each choice.imagePath is required'),
+  body('correctIndex').optional().isInt({ min: 0 }).withMessage('correctIndex must be an integer greater than or equal to 0'),
+  body().custom((value) => {
+    if (value.order === undefined && value.questionImageUrl === undefined && value.choices === undefined && value.correctIndex === undefined) {
+      throw new Error('At least one of order, questionImageUrl, choices, or correctIndex must be provided');
+    }
+
+    if (value.correctIndex !== undefined) {
+      const choices = value.choices;
+      if (Array.isArray(choices) && value.correctIndex >= choices.length) {
+        throw new Error('correctIndex must be within choices bounds');
+      }
+    }
+
     return true;
   })
 ];
@@ -116,6 +163,54 @@ const visualMemoryBatchValidators = [
   })
 ];
 
+const patchVisualMemoryBatchValidators = [
+  body('order').optional().isInt({ min: 1 }).withMessage('order must be an integer greater than or equal to 1'),
+  body('imageUrl').optional().isString().trim().notEmpty().withMessage('imageUrl must be a non-empty string'),
+  body('displaySeconds').optional().isInt({ min: 1 }).withMessage('displaySeconds must be an integer greater than or equal to 1'),
+  body('questions').optional().isArray({ min: 1 }).withMessage('questions must be a non-empty array'),
+  body().custom((value) => {
+    if (value.order === undefined && value.imageUrl === undefined && value.displaySeconds === undefined && value.questions === undefined) {
+      throw new Error('At least one of order, imageUrl, displaySeconds, or questions must be provided');
+    }
+
+    if (Array.isArray(value.questions)) {
+      for (const question of value.questions) {
+        if (!Number.isInteger(question.order) || question.order < 1) {
+          throw new Error('each visual memory question order must be an integer greater than or equal to 1');
+        }
+        if (!question.questionText || typeof question.questionText !== 'object') {
+          throw new Error('each visual memory question must include questionText');
+        }
+        if (typeof question.questionText.ar !== 'string' || !question.questionText.ar.trim()) {
+          throw new Error('each visual memory question requires questionText.ar');
+        }
+        if (typeof question.questionText.en !== 'string' || !question.questionText.en.trim()) {
+          throw new Error('each visual memory question requires questionText.en');
+        }
+        if (!VISUAL_MEMORY_TYPES.includes(question.questionType)) {
+          throw new Error(`questionType must be one of: ${VISUAL_MEMORY_TYPES.join(', ')}`);
+        }
+        if (question.questionType === 'YES_NO' && typeof question.correctBool !== 'boolean') {
+          throw new Error('YES_NO questions require correctBool as a boolean');
+        }
+        if (question.questionType === 'MCQ') {
+          if (!Array.isArray(question.choices) || question.choices.length === 0) {
+            throw new Error('MCQ questions require a non-empty choices array');
+          }
+          if (question.choices.some((choice) => typeof choice?.text !== 'string' || !choice.text.trim())) {
+            throw new Error('each MCQ choice must include a non-empty text field');
+          }
+          if (!Number.isInteger(question.correctIndex) || question.correctIndex < 0 || question.correctIndex >= question.choices.length) {
+            throw new Error('MCQ questions require correctIndex within choices bounds');
+          }
+        }
+      }
+    }
+
+    return true;
+  })
+];
+
 const auditoryMemoryValidators = [
   body('order').isInt({ min: 1 }).withMessage('order must be an integer greater than or equal to 1'),
   body('audioClipUrl').isString().trim().notEmpty().withMessage('audioClipUrl is required'),
@@ -128,10 +223,42 @@ const auditoryMemoryValidators = [
   body('modelAnswer.order').isBoolean().withMessage('modelAnswer.order must be a boolean')
 ];
 
+const patchAuditoryMemoryValidators = [
+  body('order').optional().isInt({ min: 1 }).withMessage('order must be an integer greater than or equal to 1'),
+  body('audioClipUrl').optional().isString().trim().notEmpty().withMessage('audioClipUrl must be a non-empty string'),
+  body('questionText').optional().isObject().withMessage('questionText must be an object'),
+  body('questionText.ar').optional().isString().trim().notEmpty().withMessage('questionText.ar must be a non-empty string'),
+  body('questionText.en').optional().isString().trim().notEmpty().withMessage('questionText.en must be a non-empty string'),
+  body('modelAnswer').optional().isObject().withMessage('modelAnswer must be an object'),
+  body('modelAnswer.items').optional().isArray({ min: 1 }).withMessage('modelAnswer.items must be a non-empty array'),
+  body('modelAnswer.items.*').optional().isString().trim().notEmpty().withMessage('modelAnswer.items must contain non-empty strings'),
+  body('modelAnswer.order').optional().isBoolean().withMessage('modelAnswer.order must be a boolean'),
+  body().custom((value) => {
+    if (value.order === undefined && value.audioClipUrl === undefined && value.questionText === undefined && value.modelAnswer === undefined) {
+      throw new Error('At least one of order, audioClipUrl, questionText, or modelAnswer must be provided');
+    }
+
+    return true;
+  })
+];
+
 const verbalNonsenseValidators = [
   body('order').isInt({ min: 1 }).withMessage('order must be an integer greater than or equal to 1'),
   body('sentenceAr').isString().trim().notEmpty().withMessage('sentenceAr is required'),
   body('sentenceEn').optional({ nullable: true }).isString().withMessage('sentenceEn must be a string')
+];
+
+const patchVerbalNonsenseValidators = [
+  body('order').optional().isInt({ min: 1 }).withMessage('order must be an integer greater than or equal to 1'),
+  body('sentenceAr').optional().isString().trim().notEmpty().withMessage('sentenceAr must be a non-empty string'),
+  body('sentenceEn').optional({ nullable: true }).isString().withMessage('sentenceEn must be a string'),
+  body().custom((value) => {
+    if (value.order === undefined && value.sentenceAr === undefined && value.sentenceEn === undefined) {
+      throw new Error('At least one of order, sentenceAr, or sentenceEn must be provided');
+    }
+
+    return true;
+  })
 ];
 
 const sequenceOrderValidators = [
@@ -220,14 +347,19 @@ router.patch('/tests/:testId', authenticateAdmin, requiredIdParam('testId', 'tes
 router.delete('/tests/:testId', authenticateAdmin, requiredIdParam('testId', 'testId'), assessmentsController.deleteTest);
 
 router.post('/cars/:testId/questions', authenticateAdmin, requiredIdParam('testId', 'testId'), carsQuestionValidators, assessmentsController.createCarsQuestion);
+router.patch('/cars/questions/:questionId', authenticateAdmin, requiredIdParam('questionId', 'questionId'), patchCarsQuestionValidators, assessmentsController.updateCarsQuestion);
 
 router.post('/analogy/:testId/questions', authenticateAdmin, requiredIdParam('testId', 'testId'), analogyQuestionValidators, assessmentsController.createAnalogyQuestion);
+router.patch('/analogy/questions/:questionId', authenticateAdmin, requiredIdParam('questionId', 'questionId'), patchAnalogyQuestionValidators, assessmentsController.updateAnalogyQuestion);
 
 router.post('/visual-memory/:testId/batches', authenticateAdmin, requiredIdParam('testId', 'testId'), visualMemoryBatchValidators, assessmentsController.createVisualMemoryBatch);
+router.patch('/visual-memory/batches/:batchId', authenticateAdmin, requiredIdParam('batchId', 'batchId'), patchVisualMemoryBatchValidators, assessmentsController.updateVisualMemoryBatch);
 router.delete('/tests/:testId/batches/:batchId', authenticateAdmin, requiredIdParam('testId', 'testId'), requiredIdParam('batchId', 'batchId'), assessmentsController.deleteVisualMemoryBatch);
 
 router.post('/auditory-memory/:testId/questions', authenticateAdmin, requiredIdParam('testId', 'testId'), auditoryMemoryValidators, assessmentsController.createAuditoryMemoryQuestion);
+router.patch('/auditory-memory/questions/:questionId', authenticateAdmin, requiredIdParam('questionId', 'questionId'), patchAuditoryMemoryValidators, assessmentsController.updateAuditoryMemoryQuestion);
 router.post('/verbal-nonsense/:testId/questions', authenticateAdmin, requiredIdParam('testId', 'testId'), verbalNonsenseValidators, assessmentsController.createVerbalNonsenseQuestion);
+router.patch('/verbal-nonsense/questions/:questionId', authenticateAdmin, requiredIdParam('questionId', 'questionId'), patchVerbalNonsenseValidators, assessmentsController.updateVerbalNonsenseQuestion);
 router.post('/image-sequence-order/:testId/questions', authenticateAdmin, requiredIdParam('testId', 'testId'), sequenceOrderValidators, assessmentsController.createImageSequenceOrderQuestion);
 router.patch('/image-sequence-order/questions/:questionId', authenticateAdmin, requiredIdParam('questionId', 'questionId'), patchSequenceOrderValidators, assessmentsController.updateImageSequenceOrderQuestion);
 

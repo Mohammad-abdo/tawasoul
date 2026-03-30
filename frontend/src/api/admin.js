@@ -511,6 +511,9 @@ export const assessments = {
   deleteCategory: (id) => apiClient.delete(`/admin/assessments/categories/${id}`),
 
   // Tests
+  getTests: (params) =>
+    apiClient.get('/admin/assessments/tests', { params }),
+
   getAllTests: (params) =>
     apiClient.get('/admin/assessments/tests', { params }),
 
@@ -521,30 +524,53 @@ export const assessments = {
     apiClient.post('/admin/assessments/tests', data),
 
   updateTest: (id, data) =>
-    apiClient.put(`/admin/assessments/tests/${id}`, data),
+    apiClient.patch(`/admin/assessments/tests/${id}`, data),
 
   deleteTest: (id) =>
     apiClient.delete(`/admin/assessments/tests/${id}`),
 
-  // Questions
-  getTestQuestions: (testId) =>
-    apiClient.get(`/admin/assessments/tests/${testId}/questions`),
+  // Specialized question management
+  createCarsQuestion: (testId, data) =>
+    apiClient.post(`/admin/assessments/cars/${testId}/questions`, data),
 
-  getQuestionById: (id) =>
-    apiClient.get(`/admin/assessments/questions/${id}`),
+  updateCarsQuestion: (questionId, data) =>
+    apiClient.patch(`/admin/assessments/cars/questions/${questionId}`, data),
 
-  createQuestion: (testId, formData) =>
-    apiClient.post(`/admin/assessments/tests/${testId}/questions`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
-    }),
+  createAnalogyQuestion: (testId, data) =>
+    apiClient.post(`/admin/assessments/analogy/${testId}/questions`, data),
 
-  updateQuestion: (id, formData) =>
-    apiClient.put(`/admin/assessments/questions/${id}`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
-    }),
+  updateAnalogyQuestion: (questionId, data) =>
+    apiClient.patch(`/admin/assessments/analogy/questions/${questionId}`, data),
 
-  deleteQuestion: (id) =>
-    apiClient.delete(`/admin/assessments/questions/${id}`),
+  createVisualMemoryBatch: (testId, data) =>
+    apiClient.post(`/admin/assessments/visual-memory/${testId}/batches`, data),
+
+  updateVisualMemoryBatch: (batchId, data) =>
+    apiClient.patch(`/admin/assessments/visual-memory/batches/${batchId}`, data),
+
+  deleteVisualMemoryBatch: (testId, batchId) =>
+    apiClient.delete(`/admin/assessments/tests/${testId}/batches/${batchId}`),
+
+  createAuditoryMemoryQuestion: (testId, data) =>
+    apiClient.post(`/admin/assessments/auditory-memory/${testId}/questions`, data),
+
+  updateAuditoryMemoryQuestion: (questionId, data) =>
+    apiClient.patch(`/admin/assessments/auditory-memory/questions/${questionId}`, data),
+
+  createVerbalNonsenseQuestion: (testId, data) =>
+    apiClient.post(`/admin/assessments/verbal-nonsense/${testId}/questions`, data),
+
+  updateVerbalNonsenseQuestion: (questionId, data) =>
+    apiClient.patch(`/admin/assessments/verbal-nonsense/questions/${questionId}`, data),
+
+  createImageSequenceOrderQuestion: (testId, data) =>
+    apiClient.post(`/admin/assessments/image-sequence-order/${testId}/questions`, data),
+
+  updateImageSequenceOrderQuestion: (questionId, data) =>
+    apiClient.patch(`/admin/assessments/image-sequence-order/questions/${questionId}`, data),
+
+  deleteTestQuestion: (testId, questionId) =>
+    apiClient.delete(`/admin/assessments/tests/${testId}/questions/${questionId}`),
 };
 
 // Mahara Kids Activities

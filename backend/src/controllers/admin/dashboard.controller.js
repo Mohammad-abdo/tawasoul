@@ -101,15 +101,21 @@ export const getDashboardStats = async (req, res, next) => {
     ]);
 
     // Get recent activity
-    const recentActivity = await prisma.activityLog.findMany({
-      take: 10,
-      orderBy: { createdAt: 'desc' },
-      include: {
-        admin: {
-          select: { name: true }
-        }
-      }
-    });
+    const recentActivity = typeof prisma.activityLog?.findMany === 'function'
+      ? await prisma.activityLog.findMany({
+          take: 10,
+          orderBy: { createdAt: 'desc' },
+          include: {
+            admin: {
+              select: { name: true }
+            }
+          }
+        })
+      : [];
+
+    if (typeof prisma.activityLog?.findMany !== 'function') {
+      logger.warn('ActivityLog Prisma delegate is unavailable; returning empty recentActivity for dashboard stats');
+    }
 
     res.json({
       success: true,

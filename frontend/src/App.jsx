@@ -51,6 +51,8 @@ import SessionPage from './pages/sessions/SessionPage';
 import Assessments from './pages/assessments/Assessments';
 import AssessmentCategories from './pages/assessments/AssessmentCategories';
 import TestQuestions from './pages/assessments/TestQuestions';
+import TestsList from './pages/tests/TestsList';
+import TestDetail from './pages/tests/TestDetail';
 import Layout from './components/layout/Layout';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 
@@ -119,6 +121,8 @@ function App() {
         <Route path="/assessments" element={<Assessments />} />
         <Route path="/assessments/categories" element={<AssessmentCategories />} />
         <Route path="/assessments/:id/questions" element={<TestQuestions />} />
+        <Route path="/dashboard/tests" element={<TestsList />} />
+        <Route path="/dashboard/tests/:testId" element={<TestDetail />} />
         <Route path="/notifications" element={<Notifications />} />
         <Route path="/notifications/:id" element={<NotificationDetails />} />
 

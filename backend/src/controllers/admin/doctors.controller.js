@@ -2,6 +2,31 @@ import bcrypt from 'bcryptjs';
 import { prisma } from '../../config/database.js';
 import { logger } from '../../utils/logger.js';
 
+const doctorSummarySelect = {
+  id: true,
+  name: true,
+  email: true,
+  phone: true,
+  avatar: true,
+  rating: true,
+  isVerified: true,
+  isActive: true,
+  isApproved: true,
+  approvalNotes: true,
+  createdAt: true,
+  specialties: {
+    select: {
+      specialty: true
+    },
+    take: 1
+  }
+};
+
+const serializeDoctorSummary = (doctor) => ({
+  ...doctor,
+  specialization: doctor.specialties?.[0]?.specialty || null
+});
+
 /**
  * Get All Doctors
  */
@@ -25,7 +50,7 @@ export const getAllDoctors = async (req, res, next) => {
         { name: { contains: search, mode: 'insensitive' } },
         { email: { contains: search, mode: 'insensitive' } },
         { phone: { contains: search, mode: 'insensitive' } },
-        { specialization: { contains: search, mode: 'insensitive' } }
+        { specialties: { some: { specialty: { contains: search, mode: 'insensitive' } } } }
       ];
     }
 
@@ -47,20 +72,7 @@ export const getAllDoctors = async (req, res, next) => {
         skip,
         take: parseInt(limit),
         orderBy: { [sort]: 'desc' },
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          phone: true,
-          specialization: true,
-          avatar: true,
-          rating: true,
-          isVerified: true,
-          isActive: true,
-          isApproved: true,
-          approvalNotes: true,
-          createdAt: true
-        }
+        select: doctorSummarySelect
       }),
       prisma.doctor.count({ where })
     ]);
@@ -68,7 +80,7 @@ export const getAllDoctors = async (req, res, next) => {
     res.json({
       success: true,
       data: {
-        doctors,
+        doctors: doctors.map(serializeDoctorSummary),
         pagination: {
           page: parseInt(page),
           limit: parseInt(limit),
@@ -200,6 +212,7 @@ export const getDoctorById = async (req, res, next) => {
       success: true,
       data: {
         ...doctor,
+        specialization: doctor.specialties?.[0]?.specialty || null,
         walletBalance,
         totalEarnings: totalEarnings._sum.amount || 0,
         totalWithdrawals: totalWithdrawals._sum.amount || 0,
@@ -254,20 +267,17 @@ export const createDoctor = async (req, res, next) => {
         email,
         phone,
         password: hashedPassword,
-        specialization,
+        ...(specialization
+          ? {
+              specialties: {
+                create: [{ specialty: specialization }]
+              }
+            }
+          : {}),
         isVerified: isVerified !== undefined ? isVerified : false,
         isApproved: isApproved !== undefined ? isApproved : false
       },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        phone: true,
-        specialization: true,
-        isVerified: true,
-        isApproved: true,
-        createdAt: true
-      }
+      select: doctorSummarySelect
     });
 
     // Log activity
@@ -285,7 +295,7 @@ export const createDoctor = async (req, res, next) => {
 
     res.status(201).json({
       success: true,
-      data: doctor,
+      data: serializeDoctorSummary(doctor),
       message: 'Doctor created successfully'
     });
   } catch (error) {
@@ -314,17 +324,38 @@ export const updateDoctor = async (req, res, next) => {
       });
     }
 
+    const specializationValue = typeof specialization === 'string' ? specialization.trim() : specialization;
+
     const updatedDoctor = await prisma.doctor.update({
       where: { id },
       data: {
         ...(name && { name }),
         ...(email && { email }),
         ...(phone && { phone }),
-        ...(specialization && { specialization }),
         ...(bio !== undefined && { bio }),
         ...(isVerified !== undefined && { isVerified }),
         ...(isApproved !== undefined && { isApproved }),
-        ...(isActive !== undefined && { isActive })
+        ...(isActive !== undefined && { isActive }),
+        ...(specialization !== undefined
+          ? {
+              specialties: {
+                deleteMany: {},
+                ...(specializationValue
+                  ? {
+                      create: [{ specialty: specializationValue }]
+                    }
+                  : {})
+              }
+            }
+          : {})
+      },
+      include: {
+        specialties: {
+          select: {
+            specialty: true
+          },
+          take: 1
+        }
       }
     });
 
@@ -344,7 +375,7 @@ export const updateDoctor = async (req, res, next) => {
 
     res.json({
       success: true,
-      data: updatedDoctor,
+      data: serializeDoctorSummary(updatedDoctor),
       message: 'Doctor updated successfully'
     });
   } catch (error) {

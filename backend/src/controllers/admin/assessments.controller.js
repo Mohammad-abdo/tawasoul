@@ -45,13 +45,13 @@ const handleKnownError = (res, error) => {
   return true;
 };
 
-const ensureOrderAvailable = async (delegate, where, message) => {
+const ensureOrderAvailable = async (delegate, where, message, excludeId = null) => {
   const existing = await delegate.findFirst({
     where,
     select: { id: true }
   });
 
-  if (existing) {
+  if (existing && existing.id !== excludeId) {
     throw createHttpError(409, 'ORDER_CONFLICT', message);
   }
 };
@@ -281,6 +281,58 @@ export const createCarsQuestion = async (req, res, next) => {
   }
 };
 
+export const updateCarsQuestion = async (req, res, next) => {
+  try {
+    if (handleValidationErrors(req, res)) return;
+
+    const existing = await prisma.q_CARS.findUnique({
+      where: { id: req.params.questionId }
+    });
+
+    if (!existing) {
+      return res.status(404).json({
+        success: false,
+        error: {
+          code: 'QUESTION_NOT_FOUND',
+          message: 'Question not found'
+        }
+      });
+    }
+
+    if (req.body.order !== undefined && req.body.order !== existing.order) {
+      await ensureOrderAvailable(
+        prisma.q_CARS,
+        { testId: existing.testId, order: req.body.order },
+        'A CARS question with this order already exists in this test',
+        existing.id
+      );
+    }
+
+    const updated = await prisma.q_CARS.update({
+      where: { id: existing.id },
+      data: {
+        ...(req.body.order !== undefined && { order: req.body.order }),
+        ...(req.body.questionText !== undefined && { questionText: parseMaybeJson(req.body.questionText) }),
+        ...(req.body.choices !== undefined && { choices: parseMaybeJson(req.body.choices, []) })
+      }
+    });
+
+    res.json({
+      success: true,
+      data: serializeAssessmentQuestion({
+        req,
+        testType: 'CARS',
+        question: updated,
+        includeCorrect: true
+      })
+    });
+  } catch (error) {
+    if (handleKnownError(res, error)) return;
+    logger.error('Update CARS question error:', error);
+    next(error);
+  }
+};
+
 export const deleteTestQuestion = async (req, res, next) => {
   try {
     if (handleValidationErrors(req, res)) return;
@@ -437,6 +489,66 @@ export const createAnalogyQuestion = async (req, res, next) => {
   }
 };
 
+export const updateAnalogyQuestion = async (req, res, next) => {
+  try {
+    if (handleValidationErrors(req, res)) return;
+
+    const existing = await prisma.q_Analogy.findUnique({
+      where: { id: req.params.questionId }
+    });
+
+    if (!existing) {
+      return res.status(404).json({
+        success: false,
+        error: {
+          code: 'QUESTION_NOT_FOUND',
+          message: 'Question not found'
+        }
+      });
+    }
+
+    if (req.body.order !== undefined && req.body.order !== existing.order) {
+      await ensureOrderAvailable(
+        prisma.q_Analogy,
+        { testId: existing.testId, order: req.body.order },
+        'An analogy question with this order already exists in this test',
+        existing.id
+      );
+    }
+
+    const nextChoices = req.body.choices === undefined ? existing.choices : parseMaybeJson(req.body.choices, []);
+    const nextCorrectIndex = req.body.correctIndex ?? existing.correctIndex;
+
+    if (nextCorrectIndex >= nextChoices.length) {
+      throw createHttpError(422, 'VALIDATION_ERROR', 'correctIndex must be within choices bounds');
+    }
+
+    const updated = await prisma.q_Analogy.update({
+      where: { id: existing.id },
+      data: {
+        ...(req.body.order !== undefined && { order: req.body.order }),
+        ...(req.body.questionImageUrl !== undefined && { questionImageUrl: req.body.questionImageUrl }),
+        ...(req.body.choices !== undefined && { choices: nextChoices }),
+        ...(req.body.correctIndex !== undefined && { correctIndex: req.body.correctIndex })
+      }
+    });
+
+    res.json({
+      success: true,
+      data: serializeAssessmentQuestion({
+        req,
+        testType: 'ANALOGY',
+        question: updated,
+        includeCorrect: true
+      })
+    });
+  } catch (error) {
+    if (handleKnownError(res, error)) return;
+    logger.error('Update analogy question error:', error);
+    next(error);
+  }
+};
+
 export const createVisualMemoryBatch = async (req, res, next) => {
   try {
     if (handleValidationErrors(req, res)) return;
@@ -493,6 +605,96 @@ export const createVisualMemoryBatch = async (req, res, next) => {
   } catch (error) {
     if (handleKnownError(res, error)) return;
     logger.error('Create visual memory batch error:', error);
+    next(error);
+  }
+};
+
+export const updateVisualMemoryBatch = async (req, res, next) => {
+  try {
+    if (handleValidationErrors(req, res)) return;
+
+    const existing = await prisma.q_VisualMemory_Batch.findUnique({
+      where: { id: req.params.batchId },
+      include: {
+        questions: {
+          orderBy: [{ order: 'asc' }, { id: 'asc' }]
+        }
+      }
+    });
+
+    if (!existing) {
+      return res.status(404).json({
+        success: false,
+        error: {
+          code: 'BATCH_NOT_FOUND',
+          message: 'Batch not found'
+        }
+      });
+    }
+
+    if (req.body.order !== undefined && req.body.order !== existing.order) {
+      await ensureOrderAvailable(
+        prisma.q_VisualMemory_Batch,
+        { testId: existing.testId, order: req.body.order },
+        'A visual memory batch with this order already exists in this test',
+        existing.id
+      );
+    }
+
+    const questions = req.body.questions === undefined ? undefined : parseMaybeJson(req.body.questions, []);
+
+    const updated = await prisma.$transaction(async (tx) => {
+      await tx.q_VisualMemory_Batch.update({
+        where: { id: existing.id },
+        data: {
+          ...(req.body.order !== undefined && { order: req.body.order }),
+          ...(req.body.imageUrl !== undefined && { imageUrl: req.body.imageUrl }),
+          ...(req.body.displaySeconds !== undefined && { displaySeconds: req.body.displaySeconds })
+        }
+      });
+
+      if (questions !== undefined) {
+        await tx.q_VisualMemory.deleteMany({
+          where: { batchId: existing.id }
+        });
+
+        if (questions.length > 0) {
+          await tx.q_VisualMemory.createMany({
+            data: questions.map((question) => ({
+              batchId: existing.id,
+              order: question.order,
+              questionText: question.questionText,
+              questionType: question.questionType,
+              correctBool: question.correctBool ?? null,
+              choices: question.choices ?? null,
+              correctIndex: question.correctIndex ?? null
+            }))
+          });
+        }
+      }
+
+      return tx.q_VisualMemory_Batch.findUnique({
+        where: { id: existing.id },
+        include: {
+          questions: {
+            orderBy: [{ order: 'asc' }, { id: 'asc' }]
+          }
+        }
+      });
+    });
+
+    res.json({
+      success: true,
+      data: serializeAssessmentQuestion({
+        req,
+        testType: 'VISUAL_MEMORY',
+        question: updated,
+        includeCorrect: true
+      })
+    });
+  } catch (error) {
+    if (handleKnownError(res, error)) return;
+    logger.error('Update visual memory batch error:', error);
     next(error);
   }
 };
@@ -570,6 +772,59 @@ export const createAuditoryMemoryQuestion = async (req, res, next) => {
   }
 };
 
+export const updateAuditoryMemoryQuestion = async (req, res, next) => {
+  try {
+    if (handleValidationErrors(req, res)) return;
+
+    const existing = await prisma.q_AuditoryMemory.findUnique({
+      where: { id: req.params.questionId }
+    });
+
+    if (!existing) {
+      return res.status(404).json({
+        success: false,
+        error: {
+          code: 'QUESTION_NOT_FOUND',
+          message: 'Question not found'
+        }
+      });
+    }
+
+    if (req.body.order !== undefined && req.body.order !== existing.order) {
+      await ensureOrderAvailable(
+        prisma.q_AuditoryMemory,
+        { testId: existing.testId, order: req.body.order },
+        'An auditory memory question with this order already exists in this test',
+        existing.id
+      );
+    }
+
+    const updated = await prisma.q_AuditoryMemory.update({
+      where: { id: existing.id },
+      data: {
+        ...(req.body.order !== undefined && { order: req.body.order }),
+        ...(req.body.audioClipUrl !== undefined && { audioClipUrl: req.body.audioClipUrl }),
+        ...(req.body.questionText !== undefined && { questionText: parseMaybeJson(req.body.questionText) }),
+        ...(req.body.modelAnswer !== undefined && { modelAnswer: parseMaybeJson(req.body.modelAnswer) })
+      }
+    });
+
+    res.json({
+      success: true,
+      data: serializeAssessmentQuestion({
+        req,
+        testType: 'AUDITORY_MEMORY',
+        question: updated,
+        includeCorrect: true
+      })
+    });
+  } catch (error) {
+    if (handleKnownError(res, error)) return;
+    logger.error('Update auditory memory question error:', error);
+    next(error);
+  }
+};
+
 export const createVerbalNonsenseQuestion = async (req, res, next) => {
   try {
     if (handleValidationErrors(req, res)) return;
@@ -607,6 +862,58 @@ export const createVerbalNonsenseQuestion = async (req, res, next) => {
   } catch (error) {
     if (handleKnownError(res, error)) return;
     logger.error('Create verbal nonsense question error:', error);
+    next(error);
+  }
+};
+
+export const updateVerbalNonsenseQuestion = async (req, res, next) => {
+  try {
+    if (handleValidationErrors(req, res)) return;
+
+    const existing = await prisma.q_VerbalNonsense.findUnique({
+      where: { id: req.params.questionId }
+    });
+
+    if (!existing) {
+      return res.status(404).json({
+        success: false,
+        error: {
+          code: 'QUESTION_NOT_FOUND',
+          message: 'Question not found'
+        }
+      });
+    }
+
+    if (req.body.order !== undefined && req.body.order !== existing.order) {
+      await ensureOrderAvailable(
+        prisma.q_VerbalNonsense,
+        { testId: existing.testId, order: req.body.order },
+        'A verbal nonsense question with this order already exists in this test',
+        existing.id
+      );
+    }
+
+    const updated = await prisma.q_VerbalNonsense.update({
+      where: { id: existing.id },
+      data: {
+        ...(req.body.order !== undefined && { order: req.body.order }),
+        ...(req.body.sentenceAr !== undefined && { sentenceAr: req.body.sentenceAr }),
+        ...(req.body.sentenceEn !== undefined && { sentenceEn: req.body.sentenceEn || null })
+      }
+    });
+
+    res.json({
+      success: true,
+      data: serializeAssessmentQuestion({
+        req,
+        testType: 'VERBAL_NONSENSE',
+        question: updated,
+        includeCorrect: true
+      })
+    });
+  } catch (error) {
+    if (handleKnownError(res, error)) return;
+    logger.error('Update verbal nonsense question error:', error);
     next(error);
   }
 };
@@ -701,7 +1008,8 @@ export const updateImageSequenceOrderQuestion = async (req, res, next) => {
       await ensureOrderAvailable(
         prisma.q_SequenceOrder,
         { testId: existing.testId, order: req.body.order },
-        'An image sequence order question with this order already exists in this test'
+        'An image sequence order question with this order already exists in this test',
+        existing.id
       );
     }
 
