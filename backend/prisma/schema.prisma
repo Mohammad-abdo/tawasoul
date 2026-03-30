@@ -851,6 +851,8 @@ model HelpSkill {
   skillNumber String
   description String
   ageRange    String
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
   evaluations HelpEvaluation[]
 
   @@map("help_skills")
@@ -1018,6 +1020,7 @@ model Q_CARS {
   answers      Q_CARS_Answer[]
 
   @@index([testId], map: "q_cars_testId_fkey")
+  @@map("q_cars")
 }
 
 model Q_CARS_Answer {
@@ -1032,6 +1035,7 @@ model Q_CARS_Answer {
   @@unique([resultId, questionId])
   @@index([resultId], map: "q_cars_answers_resultId_fkey")
   @@index([questionId], map: "q_cars_answers_questionId_fkey")
+  @@map("q_cars_answers")
 }
 
 model Q_Analogy {
@@ -1045,6 +1049,7 @@ model Q_Analogy {
   answers          Q_Analogy_Answer[]
 
   @@index([testId], map: "q_analogy_testId_fkey")
+  @@map("q_analogy")
 }
 
 model Q_Analogy_Answer {
@@ -1059,6 +1064,7 @@ model Q_Analogy_Answer {
   @@unique([resultId, questionId])
   @@index([resultId], map: "q_analogy_answers_resultId_fkey")
   @@index([questionId], map: "q_analogy_answers_questionId_fkey")
+  @@map("q_analogy_answers")
 }
 
 model Q_VisualMemory_Batch {
@@ -1071,6 +1077,7 @@ model Q_VisualMemory_Batch {
   questions      Q_VisualMemory[]
 
   @@index([testId], map: "q_visual_memory_batches_testId_fkey")
+  @@map("q_visual_memory_batches")
 }
 
 model Q_VisualMemory {
@@ -1086,6 +1093,7 @@ model Q_VisualMemory {
   answers      Q_VisualMemory_Answer[]
 
   @@index([batchId], map: "q_visual_memory_batchId_fkey")
+  @@map("q_visual_memory")
 }
 
 model Q_VisualMemory_Answer {
@@ -1101,6 +1109,7 @@ model Q_VisualMemory_Answer {
   @@unique([resultId, questionId])
   @@index([resultId], map: "q_visual_memory_answers_resultId_fkey")
   @@index([questionId], map: "q_visual_memory_answers_questionId_fkey")
+  @@map("q_visual_memory_answers")
 }
 
 model Q_AuditoryMemory {
@@ -1114,6 +1123,7 @@ model Q_AuditoryMemory {
   answers      Q_AuditoryMemory_Answer[]
 
   @@index([testId], map: "q_auditory_memory_testId_fkey")
+  @@map("q_auditory_memory")
 }
 
 model Q_AuditoryMemory_Answer {
@@ -1129,6 +1139,7 @@ model Q_AuditoryMemory_Answer {
   @@unique([resultId, questionId])
   @@index([resultId], map: "q_auditory_memory_answers_resultId_fkey")
   @@index([questionId], map: "q_auditory_memory_answers_questionId_fkey")
+  @@map("q_auditory_memory_answers")
 }
 
 enum VisualMemoryQType {
