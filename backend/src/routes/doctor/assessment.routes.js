@@ -54,10 +54,26 @@ router.post(
   authenticateDoctor,
   body('childId').isString().trim().notEmpty().withMessage('childId is required'),
   body('testId').isString().trim().notEmpty().withMessage('testId is required'),
-  body('questionId').isString().trim().notEmpty().withMessage('questionId is required'),
   body('sessionId').isString().trim().notEmpty().withMessage('sessionId is required'),
-  body('scoreGiven').isInt({ min: 0 }).withMessage('scoreGiven must be an integer greater than or equal to 0'),
+  body('answers').isArray({ min: 1 }).withMessage('answers must be a non-empty array'),
+  body('answers.*.questionId').isString().trim().notEmpty(),
+  body('answers.*.scoreGiven').isFloat({ min: 0 }).withMessage('scoreGiven must be a number'),
   assessmentController.submitGenericAssessment
+);
+
+// ضيف ده في assessment.routes.js
+router.post(
+  '/cars/submit',
+  authenticateDoctor,
+  body('childId').isString().trim().notEmpty().withMessage('childId is required'),
+  body('testId').isString().trim().notEmpty().withMessage('testId is required'),
+  body('sessionId').isString().trim().notEmpty().withMessage('sessionId is required'),
+  // كارز لازم يكون 15 سؤال بالظبط
+  body('answers').isArray({ min: 15, max: 15 }).withMessage('اختبار كارز يتطلب 15 إجابة بالضبط'),
+  body('answers.*.questionId').isString().trim().notEmpty(),
+  // درجات كارز بتكون من 1 لـ 4 (وممكن أنصاص)
+  body('answers.*.scoreGiven').isFloat({ min: 1, max: 4 }).withMessage('الدرجة يجب أن تكون بين 1 و 4'),
+  assessmentController.submitCarsAssessment
 );
 
 router.post(

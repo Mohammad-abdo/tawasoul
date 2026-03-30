@@ -67,6 +67,9 @@ export const doctorAssessments = {
   
   submitResult: (data) =>
     apiClient.post('/doctor/assessments/generic/submit', data),
+
+  submitCarsResult: (data) =>
+    apiClient.post('/doctor/assessments/cars/submit', data),
   
   getChildResults: (childId) => 
     apiClient.get(`/doctor/assessments/children/${childId}/results`),

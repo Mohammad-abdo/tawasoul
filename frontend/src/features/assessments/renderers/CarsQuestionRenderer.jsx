@@ -1,7 +1,12 @@
 import { CheckCircle2 } from 'lucide-react';
 import { formatLocalizedText, normalizeChoices } from '../assessmentUiUtils';
 
-const CarsQuestionRenderer = ({ question, selectedChoiceIndex, onSelectChoice }) => {
+const CarsQuestionRenderer = ({ 
+  question, 
+  selectedChoiceIndex, 
+  onSelectChoice, 
+  onScoreChange 
+}) => {
   const choices = normalizeChoices(question?.choices);
 
   return (
@@ -20,7 +25,15 @@ const CarsQuestionRenderer = ({ question, selectedChoiceIndex, onSelectChoice })
           <button
             key={`${choice.score || index}-${index}`}
             type="button"
-            onClick={() => onSelectChoice?.(index)}
+            onClick={() => {
+              // 1. تحديث الـ UI باختيار الاندكس
+              onSelectChoice?.(index);
+              
+              // 2. إرسال الدرجة الفعلية للأب عشان تتحفظ في الـ scores
+              if (onScoreChange && choice.score) {
+                onScoreChange(parseFloat(choice.score));
+              }
+            }}
             className={`rounded-2xl border p-5 text-right shadow-sm transition-all ${
               selectedChoiceIndex === index
                 ? 'border-primary-500 bg-primary-50 ring-2 ring-primary-200'

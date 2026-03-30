@@ -17,9 +17,9 @@ const assessmentRegistry = {
   CARS: {
     component: CarsQuestionRenderer,
     stepLabel: 'سؤال',
-    supportsManualScoring: false,
-    completionLabel: 'إنهاء المعاينة',
-    scoreNotice: 'هذا الاختبار يعتمد على اختيارات الطفل ويتم احتساب نتيجته تلقائياً.'
+    supportsManualScoring: true,
+    completionLabel: 'إنهاء وحفظ النتائج',
+    scoreNotice: 'يرجى إدخال الدرجة لكل سؤال ثم حفظ النتائج في نهاية الاختبار.'
   },
   ANALOGY: {
     component: AnalogyQuestionRenderer,

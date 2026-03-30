@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'; // أضفنا useQueryClient هنا
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   AlertCircle,
@@ -21,6 +21,7 @@ import {
 const DoctorAssessment = () => {
   const { testId, childId } = useParams();
   const navigate = useNavigate();
+  const queryClient = useQueryClient(); // تعريف queryClient لمسح الكاش
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [scores, setScores] = useState({});
   const [questionResponses, setQuestionResponses] = useState({});
@@ -39,8 +40,16 @@ const DoctorAssessment = () => {
     },
   });
 
+  // تعديل الـ Mutation عشان يوجه الريكويست حسب نوع الاختبار
   const submitMutation = useMutation({
-    mutationFn: (data) => doctorAssessments.submitResult(data),
+    mutationFn: (payload) => {
+      if (test?.testType === 'CARS') {
+        // تأكد إن الدالة دي متعرفة في ملف api/doctor.js
+        return doctorAssessments.submitCarsResult(payload); 
+      }
+      // مسار افتراضي لأي اختبارات تانية مستقبلاً
+      return doctorAssessments.submitResult(payload); 
+    },
   });
 
   const questions = test?.questions || [];
@@ -48,6 +57,8 @@ const DoctorAssessment = () => {
   const config = getAssessmentConfig(test?.testType);
   const supportsManualScoring = config.supportsManualScoring;
   const scoreOptions = getManualScoreOptions(currentQuestion);
+  const isCars = test?.testType === 'CARS';
+  const isCarsQuestionSetInvalid = isCars && questions.length > 0 && questions.length !== 15;
 
   useEffect(() => {
     setCurrentQuestionIndex(0);
@@ -116,27 +127,52 @@ const DoctorAssessment = () => {
       return;
     }
 
-    const results = Object.entries(scores).map(([questionId, scoreGiven]) => ({
-      childId,
-      testId: test.id,
+    if (isCarsQuestionSetInvalid) {
+      toast.error('اختبار كارز غير مكتمل (يجب أن يحتوي على 15 سؤال). تواصل مع الإدارة لإكمال بيانات الاختبار.');
+      return;
+    }
+
+    // تجهيز الإجابات في Array زي ما الباك إند طالب
+    const answers = Object.entries(scores).map(([questionId, scoreGiven]) => ({
       questionId,
-      scoreGiven,
-      sessionId: `doctor-${test.id}-${Date.now()}`,
+      scoreGiven: parseFloat(scoreGiven),
     }));
 
-    if (results.length === 0) {
+    if (answers.length === 0) {
       toast.error('يرجى إدخال درجة واحدة على الأقل قبل الحفظ');
       return;
     }
 
-    if (results.length < questions.length) {
+    // Validation خاص بكارز: لازم كل الأسئلة (المفروض 15)
+    if (test.testType === 'CARS' && answers.length < questions.length) {
+      toast.error('يجب الإجابة على جميع أسئلة مقياس كارز قبل الحفظ');
+      return;
+    }
+
+    // Validation لأي اختبارات تانية
+    if (test.testType !== 'CARS' && answers.length < questions.length) {
       const shouldContinue = window.confirm('لم يتم تقييم جميع الأسئلة، هل تريد الحفظ على أي حال؟');
       if (!shouldContinue) return;
     }
 
+    // تجهيز الـ Payload الشامل
+    const payload = {
+      childId,
+      testId: test.id,
+      sessionId: `doctor-${test.id}-${Date.now()}`,
+      answers,
+    };
+
     try {
-      await Promise.all(results.map((result) => submitMutation.mutateAsync(result)));
-      toast.success('تم حفظ نتيجة الاختبار بنجاح');
+      // إرسال ريكويست واحد فقط بالـ Payload
+      await submitMutation.mutateAsync(payload);
+      
+      toast.success('تم حفظ نتيجة الاختبار وتحديث حالة الطفل بنجاح');
+      
+      // مسح الكاش عشان البروفايل يقرأ الداتا الجديدة فوراً
+      queryClient.invalidateQueries({ queryKey: ['doctor-child-details', childId] });
+      queryClient.invalidateQueries({ queryKey: ['doctor-children'] });
+
       navigate(-1);
     } catch (submitError) {
       toast.error(submitError.response?.data?.error?.message || 'فشل حفظ نتيجة الاختبار');
@@ -195,6 +231,12 @@ const DoctorAssessment = () => {
           <p className="mb-8 text-sm leading-relaxed text-gray-500">{getTestDisplayDescription(test)}</p>
         ) : null}
 
+        {isCarsQuestionSetInvalid ? (
+          <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-right text-sm font-semibold text-amber-800">
+            هذا الاختبار يجب أن يحتوي على 15 سؤال، لكن الموجود حالياً {questions.length}. لن يتم السماح بالحفظ قبل اكتمال بيانات الاختبار.
+          </div>
+        ) : null}
+
         {currentQuestion ? (
           <AssessmentQuestionRenderer
             test={test}
@@ -206,6 +248,7 @@ const DoctorAssessment = () => {
             selectedChoiceIndex={questionResponses[currentQuestion.id]}
             onSelectChoice={handleQuestionResponseChange}
             onResponseChange={handleQuestionResponseChange}
+            onScoreChange={handleScoreChange}
           />
         ) : (
           <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50 p-10 text-center text-gray-500">
@@ -214,28 +257,7 @@ const DoctorAssessment = () => {
         )}
 
         <div className="mt-8">
-          {supportsManualScoring && currentQuestion ? (
-            <div className="space-y-4">
-              <p className="text-sm font-bold uppercase tracking-widest text-gray-500">
-                اختر درجة الاستجابة
-              </p>
-              <div className="flex flex-wrap items-center justify-center gap-3">
-                {scoreOptions.map((scoreOption) => (
-                  <button
-                    key={scoreOption}
-                    onClick={() => handleScoreChange(scoreOption)}
-                    className={`h-12 w-12 rounded-xl text-lg font-black transition-all hover:scale-110 ${
-                      scores[currentQuestion.id] === scoreOption
-                        ? 'scale-110 rotate-3 bg-primary-600 text-white shadow-xl'
-                        : 'border-2 border-gray-100 bg-white text-gray-400 hover:border-primary-200'
-                    }`}
-                  >
-                    {scoreOption}
-                  </button>
-                ))}
-              </div>
-            </div>
-          ) : (
+          {isCars ? null : (
             <div className="rounded-2xl border border-blue-100 bg-blue-50 p-5 text-right">
               <div className="mb-2 flex items-center gap-2 text-sm font-bold text-blue-800">
                 <Info size={16} />
@@ -261,7 +283,7 @@ const DoctorAssessment = () => {
           {currentQuestionIndex === questions.length - 1 || questions.length === 0 ? (
             <button
               onClick={handleFinish}
-              disabled={submitMutation.isPending}
+              disabled={submitMutation.isPending || isCarsQuestionSetInvalid}
               className="btn-primary flex items-center gap-2 px-12"
             >
               <Save size={20} />

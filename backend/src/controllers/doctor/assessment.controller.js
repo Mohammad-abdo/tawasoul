@@ -250,7 +250,7 @@ export const submitGenericAssessment = async (req, res, next) => {
   try {
     if (handleValidationErrors(req, res)) return;
 
-    const { childId, testId, questionId, sessionId, scoreGiven } = req.body;
+    const { childId, testId, questionId, sessionId, scoreGiven, answers } = req.body;
 
     await ensureDoctorCanAccessChild({
       prisma,
@@ -264,6 +264,95 @@ export const submitGenericAssessment = async (req, res, next) => {
       allowedTypes: GENERIC_TEST_TYPES
     });
 
+    // Bulk payload (frontend sends answers[])
+    if (Array.isArray(answers)) {
+      const normalizedAnswers = answers.map((answer) => ({
+        questionId: answer.questionId,
+        scoreGiven: Number.parseFloat(answer.scoreGiven)
+      }));
+
+      const questionIds = [...new Set(normalizedAnswers.map((answer) => answer.questionId))];
+      const questions = await prisma.question.findMany({
+        where: { id: { in: questionIds } }
+      });
+      const questionById = new Map(questions.map((q) => [q.id, q]));
+
+      for (const answer of normalizedAnswers) {
+        const q = questionById.get(answer.questionId);
+        if (!q || q.testId !== test.id) {
+          return res.status(422).json({
+            success: false,
+            error: {
+              code: 'INVALID_QUESTION',
+              message: 'Question does not belong to the provided test'
+            }
+          });
+        }
+        if (q.maxScore !== null && answer.scoreGiven > q.maxScore) {
+          return res.status(422).json({
+            success: false,
+            error: {
+              code: 'SCORE_OUT_OF_BOUNDS',
+              message: 'scoreGiven must not exceed question.maxScore'
+            }
+          });
+        }
+      }
+
+      const results = await prisma.$transaction(async (tx) => {
+        const createdOrUpdated = [];
+
+        for (const answer of normalizedAnswers) {
+          const q = questionById.get(answer.questionId);
+          const existing = await tx.assessmentResult.findFirst({
+            where: {
+              childId,
+              questionId: answer.questionId,
+              sessionId
+            }
+          });
+
+          const saved = existing
+            ? await tx.assessmentResult.update({
+                where: { id: existing.id },
+                data: {
+                  testId: test.id,
+                  questionId: answer.questionId,
+                  sessionId,
+                  scoreGiven: answer.scoreGiven,
+                  totalScore: answer.scoreGiven,
+                  maxScore: q?.maxScore ?? null
+                }
+              })
+            : await tx.assessmentResult.create({
+                data: {
+                  childId,
+                  testId: test.id,
+                  questionId: answer.questionId,
+                  sessionId,
+                  scoreGiven: answer.scoreGiven,
+                  totalScore: answer.scoreGiven,
+                  maxScore: q?.maxScore ?? null
+                }
+              });
+
+          createdOrUpdated.push(saved);
+        }
+
+        return createdOrUpdated;
+      });
+
+      res.status(201).json({
+        success: true,
+        data: {
+          sessionId,
+          savedCount: results.length
+        }
+      });
+      return;
+    }
+
+    // Backward compatible single-answer payload
     const question = await prisma.question.findUnique({
       where: { id: questionId }
     });
@@ -332,6 +421,138 @@ export const submitGenericAssessment = async (req, res, next) => {
   } catch (error) {
     if (handleKnownError(res, error)) return;
     logger.error('Submit doctor generic assessment error:', error);
+    next(error);
+  }
+};
+export const submitCarsAssessment = async (req, res, next) => {
+  try {
+    if (handleValidationErrors(req, res)) return;
+
+    const { childId, testId, sessionId, answers } = req.body;
+
+    // 1. التأكد من صلاحية الدكتور
+    await ensureDoctorCanAccessChild({
+      prisma,
+      doctorId: req.doctor.id,
+      childId
+    });
+
+    const test = await ensureTestForType({
+      prisma,
+      testId,
+      expectedType: 'CARS'
+    });
+
+    // Ensure the CARS test is correctly configured (15 questions)
+    const carsQuestionCount = await prisma.q_CARS.count({
+      where: { testId: test.id }
+    });
+
+    if (carsQuestionCount !== 15) {
+      return res.status(422).json({
+        success: false,
+        error: {
+          code: 'CARS_TEST_INVALID',
+          message: `CARS test must have 15 questions, found ${carsQuestionCount}`
+        }
+      });
+    }
+
+    // 2. حساب المجموع الكلي للاختبار
+    const totalScore = answers.reduce((sum, answer) => sum + parseFloat(answer.scoreGiven), 0);
+
+    // 3. تحديد فئة التوحد بناءً على مقياس كارز [cite: 16]
+    let carsDiagnosis = '';
+    let childStatus = undefined;
+
+    if (totalScore >= 15 && totalScore < 30) {
+      carsDiagnosis = 'ليس توحد (طبيعي)';
+      childStatus = 'NORMAL'; 
+    } else if (totalScore >= 30 && totalScore <= 36.5) {
+      carsDiagnosis = 'توحد بسيط إلى متوسط';
+      childStatus = 'AUTISM'; 
+    } else if (totalScore >= 37 && totalScore <= 60) {
+      carsDiagnosis = 'توحد شديد';
+      childStatus = 'AUTISM';
+    }
+
+    // 4. تنفيذ الحفظ والتحديث في Transaction عشان نضمن إن مفيش حاجة تقع في النص
+    await prisma.$transaction(async (tx) => {
+      // 1) إنشاء AssessmentResult واحدة للاختبار كله
+      const result = await tx.assessmentResult.create({
+        data: {
+          childId,
+          testId: test.id,
+          sessionId,
+          scoreGiven: totalScore,
+          totalScore,
+          maxScore: answers.length * 4
+        }
+      });
+
+      // 2) حفظ اختيارات كارز في q_CARS_Answer
+      const questions = await tx.q_CARS.findMany({
+        where: {
+          testId: test.id,
+          id: { in: answers.map((a) => a.questionId) }
+        },
+        select: { id: true, choices: true }
+      });
+
+      if (questions.length !== answers.length) {
+        throw createHttpError(422, 'INVALID_QUESTION', 'One or more CARS questions do not belong to this test');
+      }
+
+      const questionById = new Map(questions.map((q) => [q.id, q]));
+
+      const answerRows = answers.map((answer) => {
+        const q = questionById.get(answer.questionId);
+        if (!q) {
+          throw createHttpError(422, 'INVALID_QUESTION', 'One or more CARS questions do not belong to this test');
+        }
+
+        const choices = Array.isArray(q.choices) ? q.choices : [];
+        const chosenIndex = choices.findIndex((c) => Number.parseFloat(c?.score) === Number.parseFloat(answer.scoreGiven));
+
+        if (chosenIndex < 0) {
+          throw createHttpError(422, 'INVALID_ANSWER', 'Chosen score does not match any option for CARS question');
+        }
+
+        return {
+          resultId: result.id,
+          questionId: answer.questionId,
+          chosenIndex,
+          score: Number.parseFloat(answer.scoreGiven)
+        };
+      });
+
+      await tx.q_CARS_Answer.createMany({
+        data: answerRows
+      });
+
+      // 3) تحديث حالة الطفل وإضافة النتيجة للملاحظات
+      await tx.child.update({
+        where: { id: childId },
+        data: {
+          status: childStatus,
+          caseDescription: `تم إجراء مقياس كارز. المجموع: ${totalScore} (${carsDiagnosis}).`
+        }
+      });
+    });
+
+    res.status(201).json({
+      success: true,
+      data: {
+        sessionId,
+        totalScore,
+        diagnosis: carsDiagnosis,
+        message: 'تم حفظ تقييم كارز وتحديث حالة الطفل بنجاح'
+      }
+    });
+
+  } catch (error) {
+    if (handleKnownError(res, error)) return;
+    logger.error('Submit CARS assessment error:', error);
     next(error);
   }
 };
