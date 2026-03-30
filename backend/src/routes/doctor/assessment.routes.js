@@ -6,7 +6,7 @@ import * as assessmentController from '../../controllers/doctor/assessment.contr
 const router = express.Router();
 
 const HELP_SCORES = ['NOT_SUITABLE', 'NOT_PRESENT', 'INITIAL_ATTEMPTS', 'PARTIAL_LEVEL', 'SUCCESSFUL'];
-const TEST_TYPES = ['CARS', 'ANALOGY', 'VISUAL_MEMORY', 'AUDITORY_MEMORY', 'HELP', 'IMAGE_SEQUENCE_ORDER'];
+const TEST_TYPES = ['CARS', 'ANALOGY', 'VISUAL_MEMORY', 'AUDITORY_MEMORY', 'VERBAL_NONSENSE', 'HELP', 'IMAGE_SEQUENCE_ORDER'];
 
 const requiredParam = (name, label) =>
   param(name)
@@ -58,6 +58,19 @@ router.post(
   body('sessionId').isString().trim().notEmpty().withMessage('sessionId is required'),
   body('scoreGiven').isInt({ min: 0 }).withMessage('scoreGiven must be an integer greater than or equal to 0'),
   assessmentController.submitGenericAssessment
+);
+
+router.post(
+  '/verbal-nonsense/submit',
+  authenticateDoctor,
+  body('childId').isString().trim().notEmpty().withMessage('childId is required'),
+  body('testId').isString().trim().notEmpty().withMessage('testId is required'),
+  body('sessionId').isString().trim().notEmpty().withMessage('sessionId is required'),
+  body('answers').isArray({ min: 1 }).withMessage('answers must be a non-empty array'),
+  body('answers.*.questionId').isString().trim().notEmpty().withMessage('each answer.questionId is required'),
+  body('answers.*.isCorrect').isBoolean().withMessage('each answer.isCorrect must be a boolean'),
+  body('answers.*.doctorNote').optional({ nullable: true }).isString().withMessage('each answer.doctorNote must be a string'),
+  assessmentController.submitVerbalNonsenseAssessment
 );
 
 router.post(

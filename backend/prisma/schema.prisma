@@ -797,6 +797,7 @@ model Test {
   qVisualMemoryBatches   Q_VisualMemory_Batch[]
   qAuditoryMemoryQuestions Q_AuditoryMemory[]
   qSequenceOrderQuestions Q_SequenceOrder[]
+  qVerbalNonsenseQuestions Q_VerbalNonsense[]
   @@map("tests")
 }
 
@@ -837,6 +838,7 @@ model AssessmentResult {
   qVisualMemoryAnswers   Q_VisualMemory_Answer[]
   qAuditoryMemoryAnswers Q_AuditoryMemory_Answer[]
   qSequenceOrderAnswers  Q_SequenceOrder_Answer[]
+  qVerbalNonsenseAnswers Q_VerbalNonsense_Answer[]
   
   @@index([childId], map: "assessment_results_childId_fkey")
   @@index([testId], map: "assessment_results_testId_fkey")
@@ -1188,6 +1190,34 @@ model Q_SequenceOrder_Answer {
   @@map("q_sequence_order_answers")
 }
 
+model Q_VerbalNonsense {
+  id         String                    @id @default(cuid())
+  testId     String
+  order      Int
+  sentenceAr String                    @db.Text
+  sentenceEn String?                   @db.Text
+  test       Test                      @relation(fields: [testId], references: [id], onDelete: Cascade)
+  answers    Q_VerbalNonsense_Answer[]
+
+  @@index([testId], map: "q_verbal_nonsense_testId_fkey")
+  @@map("q_verbal_nonsense")
+}
+
+model Q_VerbalNonsense_Answer {
+  id         String              @id @default(cuid())
+  resultId   String
+  questionId String
+  isCorrect  Boolean
+  doctorNote String?             @db.Text
+  result     AssessmentResult    @relation(fields: [resultId], references: [id], onDelete: Cascade)
+  question   Q_VerbalNonsense    @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@unique([resultId, questionId])
+  @@index([resultId], map: "q_verbal_nonsense_answers_resultId_fkey")
+  @@index([questionId], map: "q_verbal_nonsense_answers_questionId_fkey")
+  @@map("q_verbal_nonsense_answers")
+}
+
 // ==============================
 // ENUMS
 // ==============================
@@ -1400,6 +1430,7 @@ enum TestType {
   ANALOGY
   VISUAL_MEMORY
   AUDITORY_MEMORY
+  VERBAL_NONSENSE
   HELP
   IMAGE_SEQUENCE_ORDER    
 }

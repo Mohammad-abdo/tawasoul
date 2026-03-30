@@ -11,7 +11,7 @@
         required: false
         schema:
           type: string
-          enum: [CARS, ANALOGY, VISUAL_MEMORY, AUDITORY_MEMORY, HELP, IMAGE_SEQUENCE_ORDER]
+          enum: [CARS, ANALOGY, VISUAL_MEMORY, AUDITORY_MEMORY, VERBAL_NONSENSE, HELP, IMAGE_SEQUENCE_ORDER]
     responses:
       "200":
         description: Tests
@@ -73,7 +73,7 @@
                 enum: [AUDITORY, VISUAL]
               testType:
                 type: string
-                enum: [CARS, ANALOGY, VISUAL_MEMORY, AUDITORY_MEMORY, HELP, IMAGE_SEQUENCE_ORDER]
+                enum: [CARS, ANALOGY, VISUAL_MEMORY, AUDITORY_MEMORY, VERBAL_NONSENSE, HELP, IMAGE_SEQUENCE_ORDER]
               description:
                 type: string
                 nullable: true
@@ -197,7 +197,7 @@
                 enum: [AUDITORY, VISUAL]
               testType:
                 type: string
-                enum: [CARS, ANALOGY, VISUAL_MEMORY, AUDITORY_MEMORY, HELP, IMAGE_SEQUENCE_ORDER]
+                enum: [CARS, ANALOGY, VISUAL_MEMORY, AUDITORY_MEMORY, VERBAL_NONSENSE, HELP, IMAGE_SEQUENCE_ORDER]
               description:
                 type: string
                 nullable: true
@@ -664,6 +664,80 @@
                   type: boolean
                 data:
                   $ref: "#/components/schemas/AuditoryMemoryQuestionSchema"
+      "400":
+        description: Bad request
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "401":
+        description: Missing or invalid token
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "403":
+        description: Forbidden
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "404":
+        description: Test not found
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "409":
+        description: Duplicate order
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "422":
+        description: Wrong test type
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "500":
+        description: Internal server error
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+
+/admin/assessments/verbal-nonsense/{testId}/questions:
+  post:
+    tags: [Admin Assessments]
+    summary: Create verbal nonsense question
+    description: Creates one verbal nonsense question after validating the test type and question order uniqueness within the test.
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: testId
+        in: path
+        required: true
+        schema:
+          type: string
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/VerbalNonsenseQuestionSchema"
+    responses:
+      "201":
+        description: Question created
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  $ref: "#/components/schemas/VerbalNonsenseQuestionSchema"
       "400":
         description: Bad request
         content:

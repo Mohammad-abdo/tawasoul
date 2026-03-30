@@ -57,7 +57,8 @@ export const findChildDetails = (doctorId, childId) =>
           qCarsAnswers: true,
           qAnalogyAnswers: true,
           qVisualMemoryAnswers: true,
-          qAuditoryMemoryAnswers: true
+          qAuditoryMemoryAnswers: true,
+          qVerbalNonsenseAnswers: true
         },
         orderBy: { timestamp: 'desc' }
       },

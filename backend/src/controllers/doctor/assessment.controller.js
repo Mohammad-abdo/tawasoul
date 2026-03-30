@@ -7,6 +7,7 @@ import {
   calculateHelpEvaluationTotals,
   ensureDoctorCanAccessChild,
   ensureTestForType,
+  ensureUniqueAnswerQuestionIds,
   fetchAssessmentSessionResults,
   GENERIC_TEST_TYPES,
   getHelpTestOrThrow,
@@ -331,6 +332,133 @@ export const submitGenericAssessment = async (req, res, next) => {
   } catch (error) {
     if (handleKnownError(res, error)) return;
     logger.error('Submit doctor generic assessment error:', error);
+    next(error);
+  }
+};
+
+export const submitVerbalNonsenseAssessment = async (req, res, next) => {
+  try {
+    if (handleValidationErrors(req, res)) return;
+
+    const { childId, testId, sessionId, answers } = req.body;
+
+    await ensureDoctorCanAccessChild({
+      prisma,
+      doctorId: req.doctor.id,
+      childId
+    });
+
+    const test = await ensureTestForType({
+      prisma,
+      testId,
+      expectedType: 'VERBAL_NONSENSE'
+    });
+
+    ensureUniqueAnswerQuestionIds(answers);
+
+    const data = await prisma.$transaction(async (tx) => {
+      const questions = await tx.q_VerbalNonsense.findMany({
+        where: {
+          id: { in: answers.map((answer) => answer.questionId) },
+          testId: test.id
+        }
+      });
+
+      if (questions.length !== answers.length) {
+        throw createHttpError(422, 'INVALID_QUESTION', 'One or more questions do not belong to this test');
+      }
+
+      const questionMap = new Map(questions.map((question) => [question.id, question]));
+      let totalScore = 0;
+      const answerRows = [];
+
+      for (const answer of answers) {
+        const question = questionMap.get(answer.questionId);
+
+        if (!question) {
+          throw createHttpError(422, 'INVALID_QUESTION', `Question ${answer.questionId} does not belong to this test`);
+        }
+
+        if (typeof answer.isCorrect !== 'boolean') {
+          throw createHttpError(422, 'INVALID_ANSWER', `Question ${answer.questionId} requires isCorrect as a boolean`);
+        }
+
+        const score = answer.isCorrect ? 1 : 0;
+        totalScore += score;
+
+        answerRows.push({
+          questionId: question.id,
+          isCorrect: answer.isCorrect,
+          doctorNote: answer.doctorNote || null
+        });
+      }
+
+      const maxScore = answerRows.length;
+      const existing = await tx.assessmentResult.findFirst({
+        where: {
+          childId,
+          testId: test.id,
+          sessionId
+        },
+        select: { id: true }
+      });
+
+      const result = existing
+        ? await tx.assessmentResult.update({
+            where: { id: existing.id },
+            data: {
+              scoreGiven: totalScore,
+              totalScore,
+              maxScore
+            }
+          })
+        : await tx.assessmentResult.create({
+            data: {
+              childId,
+              testId: test.id,
+              sessionId,
+              scoreGiven: totalScore,
+              totalScore,
+              maxScore
+            }
+          });
+
+      if (existing) {
+        await tx.q_VerbalNonsense_Answer.deleteMany({
+          where: { resultId: existing.id }
+        });
+      }
+
+      await tx.q_VerbalNonsense_Answer.createMany({
+        data: answerRows.map((answer) => ({
+          resultId: result.id,
+          questionId: answer.questionId,
+          isCorrect: answer.isCorrect,
+          doctorNote: answer.doctorNote
+        }))
+      });
+
+      return {
+        created: !existing,
+        assessmentResultId: result.id,
+        totalScore,
+        maxScore,
+        answers: answerRows
+      };
+    });
+
+    res.status(data.created ? 201 : 200).json({
+      success: true,
+      data: {
+        assessmentResultId: data.assessmentResultId,
+        totalScore: data.totalScore,
+        maxScore: data.maxScore,
+        answers: data.answers
+      }
+    });
+  } catch (error) {
+    if (handleKnownError(res, error)) return;
+    logger.error('Submit doctor verbal nonsense assessment error:', error);
     next(error);
   }
 };

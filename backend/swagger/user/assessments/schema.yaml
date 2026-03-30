@@ -54,7 +54,7 @@ TestSummary:
       nullable: true
     testType:
       type: string
-      enum: [CARS, ANALOGY, VISUAL_MEMORY, AUDITORY_MEMORY, HELP, IMAGE_SEQUENCE_ORDER]
+      enum: [CARS, ANALOGY, VISUAL_MEMORY, AUDITORY_MEMORY, VERBAL_NONSENSE, HELP, IMAGE_SEQUENCE_ORDER]
     type:
       type: string
       enum: [AUDITORY, VISUAL]
@@ -160,6 +160,21 @@ AuditoryMemoryQuestionSchema:
     modelAnswer:
       $ref: "#/components/schemas/AuditoryModelAnswerSchema"
 
+VerbalNonsenseQuestionSchema:
+  type: object
+  properties:
+    id:
+      type: string
+    testId:
+      type: string
+    order:
+      type: integer
+    sentenceAr:
+      type: string
+    sentenceEn:
+      type: string
+      nullable: true
+
 SequenceOrderImageSchema:
   type: object
   properties:
@@ -238,6 +253,7 @@ AssessmentQuestionSchema:
     - $ref: "#/components/schemas/AnalogyQuestionSchema"
     - $ref: "#/components/schemas/VisualMemoryBatchSchema"
     - $ref: "#/components/schemas/AuditoryMemoryQuestionSchema"
+    - $ref: "#/components/schemas/VerbalNonsenseQuestionSchema"
     - $ref: "#/components/schemas/SequenceOrderQuestionSchema"
     - $ref: "#/components/schemas/HelpSkillSchema"
     - $ref: "#/components/schemas/GenericQuestionSchema"
@@ -434,6 +450,21 @@ SequenceOrderAnswerDetailSchema:
     question:
       $ref: "#/components/schemas/SequenceOrderQuestionSchema"
 
+VerbalNonsenseAnswerDetailSchema:
+  type: object
+  properties:
+    id:
+      type: string
+    questionId:
+      type: string
+    isCorrect:
+      type: boolean
+    doctorNote:
+      type: string
+      nullable: true
+    question:
+      $ref: "#/components/schemas/VerbalNonsenseQuestionSchema"
+
 AssessmentResultSummary:
   type: object
   properties:
@@ -447,7 +478,7 @@ AssessmentResultSummary:
     testType:
       type: string
       nullable: true
-      enum: [CARS, ANALOGY, VISUAL_MEMORY, AUDITORY_MEMORY, HELP, IMAGE_SEQUENCE_ORDER]
+      enum: [CARS, ANALOGY, VISUAL_MEMORY, AUDITORY_MEMORY, VERBAL_NONSENSE, HELP, IMAGE_SEQUENCE_ORDER]
     totalScore:
       type: integer
       nullable: true
@@ -500,6 +531,10 @@ AssessmentResultDetail:
           type: array
           items:
             $ref: "#/components/schemas/AuditoryMemoryAnswerDetailSchema"
+        qVerbalNonsenseAnswers:
+          type: array
+          items:
+            $ref: "#/components/schemas/VerbalNonsenseAnswerDetailSchema"
         qSequenceOrderAnswers:
           type: array
           items:

@@ -328,6 +328,15 @@ export const deleteTestQuestion = async (req, res, next) => {
           where: { id: req.params.questionId }
         });
         break;
+      case 'VERBAL_NONSENSE':
+        await findScopedRecordOrThrow(prisma.q_VerbalNonsense, {
+          id: req.params.questionId,
+          testId: test.id
+        });
+        await prisma.q_VerbalNonsense.delete({
+          where: { id: req.params.questionId }
+        });
+        break;
       case 'IMAGE_SEQUENCE_ORDER':
         await findScopedRecordOrThrow(prisma.q_SequenceOrder, {
           id: req.params.questionId,
@@ -557,6 +566,47 @@ export const createAuditoryMemoryQuestion = async (req, res, next) => {
   } catch (error) {
     if (handleKnownError(res, error)) return;
     logger.error('Create auditory memory question error:', error);
+    next(error);
+  }
+};
+
+export const createVerbalNonsenseQuestion = async (req, res, next) => {
+  try {
+    if (handleValidationErrors(req, res)) return;
+
+    await ensureTestForType({
+      prisma,
+      testId: req.params.testId,
+      expectedType: 'VERBAL_NONSENSE'
+    });
+
+    await ensureOrderAvailable(
+      prisma.q_VerbalNonsense,
+      { testId: req.params.testId, order: req.body.order },
+      'A verbal nonsense question with this order already exists in this test'
+    );
+
+    const question = await prisma.q_VerbalNonsense.create({
+      data: {
+        testId: req.params.testId,
+        order: req.body.order,
+        sentenceAr: req.body.sentenceAr,
+        sentenceEn: req.body.sentenceEn || null
+      }
+    });
+
+    res.status(201).json({
+      success: true,
+      data: serializeAssessmentQuestion({
+        req,
+        testType: 'VERBAL_NONSENSE',
+        question,
+        includeCorrect: true
+      })
+    });
+  } catch (error) {
+    if (handleKnownError(res, error)) return;
+    logger.error('Create verbal nonsense question error:', error);
     next(error);
   }
 };

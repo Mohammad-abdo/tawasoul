@@ -3,6 +3,7 @@ const TEST_TYPES = {
   ANALOGY: 'ANALOGY',
   VISUAL_MEMORY: 'VISUAL_MEMORY',
   AUDITORY_MEMORY: 'AUDITORY_MEMORY',
+  VERBAL_NONSENSE: 'VERBAL_NONSENSE',
   IMAGE_SEQUENCE_ORDER: 'IMAGE_SEQUENCE_ORDER',
   HELP: 'HELP'
 };
@@ -59,6 +60,8 @@ export const getQuestionModelForTestType = (testType) => {
       return 'Q_VisualMemory_Batch';
     case TEST_TYPES.AUDITORY_MEMORY:
       return 'Q_AuditoryMemory';
+    case TEST_TYPES.VERBAL_NONSENSE:
+      return 'Q_VerbalNonsense';
     case TEST_TYPES.IMAGE_SEQUENCE_ORDER:
       return 'Q_SequenceOrder';
     case TEST_TYPES.HELP:
@@ -131,6 +134,15 @@ export const serializeAssessmentQuestion = ({ req, testType, question, includeCo
         audioClipUrl: toPublicAssetUrl(req, question.audioClipUrl),
         questionText: question.questionText,
         ...(includeCorrect ? { modelAnswer: question.modelAnswer } : {})
+      };
+
+    case TEST_TYPES.VERBAL_NONSENSE:
+      return {
+        id: question.id,
+        testId: question.testId,
+        order: question.order,
+        sentenceAr: question.sentenceAr,
+        sentenceEn: question.sentenceEn
       };
 
     case TEST_TYPES.IMAGE_SEQUENCE_ORDER:
@@ -220,6 +232,15 @@ export const fetchAssessmentQuestions = async ({ prisma, test, req, includeCorre
       return questions.map((question) => serializeAssessmentQuestion({ req, testType: test.testType, question, includeCorrect }));
     }
 
+    case TEST_TYPES.VERBAL_NONSENSE: {
+      const questions = await prisma.q_VerbalNonsense.findMany({
+        where: { testId: test.id },
+        orderBy: [{ order: 'asc' }, { id: 'asc' }]
+      });
+
+      return questions.map((question) => serializeAssessmentQuestion({ req, testType: test.testType, question, includeCorrect }));
+    }
+
     case TEST_TYPES.IMAGE_SEQUENCE_ORDER: {
       const questions = await prisma.q_SequenceOrder.findMany({
         where: { testId: test.id },
@@ -273,6 +294,8 @@ export const countAssessmentQuestions = async ({ prisma, test }) => {
     }
     case TEST_TYPES.AUDITORY_MEMORY:
       return prisma.q_AuditoryMemory.count({ where: { testId: test.id } });
+    case TEST_TYPES.VERBAL_NONSENSE:
+      return prisma.q_VerbalNonsense.count({ where: { testId: test.id } });
     case TEST_TYPES.IMAGE_SEQUENCE_ORDER:
       return prisma.q_SequenceOrder.count({ where: { testId: test.id } });
     case TEST_TYPES.HELP:
@@ -494,6 +517,39 @@ export const buildAssessmentSubmission = async ({ prisma, test, answers, resultI
       break;
     }
 
+    case TEST_TYPES.VERBAL_NONSENSE: {
+      const questions = await prisma.q_VerbalNonsense.findMany({ where: { testId: test.id } });
+      const questionMap = new Map(questions.map((question) => [question.id, question]));
+
+      for (const answer of answers) {
+        const question = questionMap.get(answer.questionId);
+        if (!question) {
+          throw createAssessmentValidationError(`Question ${answer.questionId} does not belong to this test`);
+        }
+        ensureUniqueQuestionId(answer.questionId);
+
+        if (typeof answer.isCorrect !== 'boolean') {
+          throw createAssessmentValidationError(`Question ${answer.questionId} requires isCorrect as a boolean`);
+        }
+
+        const score = answer.isCorrect ? 1 : 0;
+        totalScore += score;
+        maxScore += 1;
+
+        operations.push(
+          prisma.q_VerbalNonsense_Answer.create({
+            data: {
+              resultId,
+              questionId: question.id,
+              isCorrect: answer.isCorrect,
+              doctorNote: answer.doctorNote ?? null
+            }
+          })
+        );
+      }
+      break;
+    }
+
     case TEST_TYPES.IMAGE_SEQUENCE_ORDER: {
       const questions = await prisma.q_SequenceOrder.findMany({
         where: { testId: test.id },
@@ -640,6 +696,10 @@ export const getAdminQuestionEntityById = async ({ prisma, id, req }) => {
     {
       delegate: prisma.q_AuditoryMemory,
       testType: TEST_TYPES.AUDITORY_MEMORY
+    },
+    {
+      delegate: prisma.q_VerbalNonsense,
+      testType: TEST_TYPES.VERBAL_NONSENSE
     },
     {
       delegate: prisma.q_SequenceOrder,

@@ -220,6 +220,11 @@ export const fetchAssessmentSessionResults = ({ prisma, childId, sessionId }) =>
           question: true
         }
       },
+      qVerbalNonsenseAnswers: {
+        include: {
+          question: true
+        }
+      },
       qSequenceOrderAnswers: {
         include: {
           question: {
@@ -255,6 +260,7 @@ export const serializeAssessmentResultDetail = (result) => {
     qAnalogyAnswers: testType === 'ANALOGY' ? result.qAnalogyAnswers : [],
     qVisualMemoryAnswers: testType === 'VISUAL_MEMORY' ? result.qVisualMemoryAnswers : [],
     qAuditoryMemoryAnswers: testType === 'AUDITORY_MEMORY' ? result.qAuditoryMemoryAnswers : [],
+    qVerbalNonsenseAnswers: testType === 'VERBAL_NONSENSE' ? result.qVerbalNonsenseAnswers : [],
     qSequenceOrderAnswers: testType === 'IMAGE_SEQUENCE_ORDER' ? result.qSequenceOrderAnswers : []
   };
 };

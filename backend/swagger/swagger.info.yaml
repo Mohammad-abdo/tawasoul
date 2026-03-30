@@ -46,7 +46,7 @@ tags:
   - name: User Settings
     description: Account settings and password management
   - name: User Assessments
-    description: Child speech/auditory assessment tests
+    description: Child assessment tests, including doctor-scored verbal nonsense sessions
   - name: User Mahara Kids
     description: Sequential educational activities for children
   - name: Doctor Auth
@@ -64,7 +64,7 @@ tags:
   - name: Doctor Children
     description: Children profiles and assessment access for doctors
   - name: Doctor Assessments
-    description: Doctor-facing assessment scoring, HELP flows, and child result access
+    description: Doctor-facing assessment scoring, verbal nonsense evaluation, HELP flows, and child result access
   - name: Admin Auth
     description: Admin panel authentication
   - name: Admin Dashboard
@@ -96,7 +96,7 @@ tags:
   - name: Admin Management
     description: Admin account management (SUPER_ADMIN only)
   - name: Admin Assessments
-    description: Assessment tests, question banks, and HELP skill management
+    description: Assessment tests, question banks, verbal nonsense content, and HELP skill management
   - name: Admin Mahara
     description: Mahara Kids categories, skill groups, and activities management
 

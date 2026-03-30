@@ -9,7 +9,7 @@
         required: false
         schema:
           type: string
-          enum: [CARS, ANALOGY, VISUAL_MEMORY, AUDITORY_MEMORY, HELP, IMAGE_SEQUENCE_ORDER]
+          enum: [CARS, ANALOGY, VISUAL_MEMORY, AUDITORY_MEMORY, VERBAL_NONSENSE, HELP, IMAGE_SEQUENCE_ORDER]
     responses:
       "200":
         description: Test summaries

@@ -11,6 +11,7 @@ const TEST_TYPES = [
   'ANALOGY',
   'VISUAL_MEMORY',
   'AUDITORY_MEMORY',
+  'VERBAL_NONSENSE',
   'HELP',
   'IMAGE_SEQUENCE_ORDER'
 ];
@@ -127,6 +128,12 @@ const auditoryMemoryValidators = [
   body('modelAnswer.order').isBoolean().withMessage('modelAnswer.order must be a boolean')
 ];
 
+const verbalNonsenseValidators = [
+  body('order').isInt({ min: 1 }).withMessage('order must be an integer greater than or equal to 1'),
+  body('sentenceAr').isString().trim().notEmpty().withMessage('sentenceAr is required'),
+  body('sentenceEn').optional({ nullable: true }).isString().withMessage('sentenceEn must be a string')
+];
+
 const sequenceOrderValidators = [
   body('order').isInt({ min: 1 }).withMessage('order must be an integer greater than or equal to 1'),
   body('images').isArray({ min: 2 }).withMessage('images must be an array with at least 2 items'),
@@ -220,6 +227,7 @@ router.post('/visual-memory/:testId/batches', authenticateAdmin, requiredIdParam
 router.delete('/tests/:testId/batches/:batchId', authenticateAdmin, requiredIdParam('testId', 'testId'), requiredIdParam('batchId', 'batchId'), assessmentsController.deleteVisualMemoryBatch);
 
 router.post('/auditory-memory/:testId/questions', authenticateAdmin, requiredIdParam('testId', 'testId'), auditoryMemoryValidators, assessmentsController.createAuditoryMemoryQuestion);
+router.post('/verbal-nonsense/:testId/questions', authenticateAdmin, requiredIdParam('testId', 'testId'), verbalNonsenseValidators, assessmentsController.createVerbalNonsenseQuestion);
 router.post('/image-sequence-order/:testId/questions', authenticateAdmin, requiredIdParam('testId', 'testId'), sequenceOrderValidators, assessmentsController.createImageSequenceOrderQuestion);
 router.patch('/image-sequence-order/questions/:questionId', authenticateAdmin, requiredIdParam('questionId', 'questionId'), patchSequenceOrderValidators, assessmentsController.updateImageSequenceOrderQuestion);
 

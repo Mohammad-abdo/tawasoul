@@ -11,7 +11,7 @@
         required: false
         schema:
           type: string
-          enum: [CARS, ANALOGY, VISUAL_MEMORY, AUDITORY_MEMORY, HELP, IMAGE_SEQUENCE_ORDER]
+          enum: [CARS, ANALOGY, VISUAL_MEMORY, AUDITORY_MEMORY, VERBAL_NONSENSE, HELP, IMAGE_SEQUENCE_ORDER]
     responses:
       "200":
         description: Test summaries
@@ -344,6 +344,101 @@
               $ref: "#/components/schemas/ErrorResponse"
       "422":
         description: Invalid test type, question linkage, or score range
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "500":
+        description: Internal server error
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+
+/doctor/assessments/verbal-nonsense/submit:
+  post:
+    tags: [Doctor Assessments]
+    summary: Submit verbal nonsense assessment
+    description: Creates or updates a doctor-scored verbal nonsense assessment for one child session by storing one correctness decision and optional note per sentence.
+    security:
+      - BearerAuth: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [childId, testId, sessionId, answers]
+            properties:
+              childId:
+                type: string
+              testId:
+                type: string
+              sessionId:
+                type: string
+              answers:
+                type: array
+                minItems: 1
+                items:
+                  type: object
+                  required: [questionId, isCorrect]
+                  properties:
+                    questionId:
+                      type: string
+                    isCorrect:
+                      type: boolean
+                    doctorNote:
+                      type: string
+                      nullable: true
+    responses:
+      "200":
+        description: Verbal nonsense assessment updated
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  type: object
+      "201":
+        description: Verbal nonsense assessment created
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  type: object
+      "400":
+        description: Bad request
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "401":
+        description: Missing or invalid token
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "403":
+        description: Doctor does not have access to the child
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "404":
+        description: Child or test not found
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "422":
+        description: Wrong test type, invalid question linkage, or invalid answer shape
         content:
           application/json:
             schema:
