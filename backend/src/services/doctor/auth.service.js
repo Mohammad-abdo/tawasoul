@@ -42,6 +42,7 @@ const normalizeSessionPrices = (sessionPrices) => {
 
 const normalizeDoctorSessionPrices = (doctor) => ({
   ...doctor,
+  specialization: doctor.specialties?.[0]?.specialty ?? null,
   sessionPrices: normalizeSessionPrices(doctor.sessionPrices)
 });
 
@@ -60,18 +61,28 @@ export const register = async ({ name, email, phone, password, specialization })
   }
 
   const hashedPassword = await bcrypt.hash(password, 10);
+  const specializationValue = typeof specialization === 'string' ? specialization.trim() : '';
   const doctor = await authRepo.createDoctor({
     name,
     email,
     phone,
     password: hashedPassword,
-    specialization: specialization || null,
+    ...(specializationValue
+      ? {
+          specialties: {
+            create: [{ specialty: specializationValue }]
+          }
+        }
+      : {}),
     isActive: true,
     isApproved: false
   });
 
+  const normalizedDoctor = normalizeDoctorSessionPrices(doctor);
+  const { password: _password, ...doctorWithoutPassword } = normalizedDoctor;
+
   return {
-    doctor,
+    doctor: doctorWithoutPassword,
     message: 'Registration successful. Your account is pending admin approval.'
   };
 };
@@ -92,7 +103,8 @@ export const login = async ({ email, password }) => {
   }
 
   const token = signToken(doctor.id);
-  const { password: _password, ...doctorWithoutPassword } = doctor;
+  const normalizedDoctor = normalizeDoctorSessionPrices(doctor);
+  const { password: _password, ...doctorWithoutPassword } = normalizedDoctor;
 
   return {
     doctor: doctorWithoutPassword,
@@ -124,20 +136,26 @@ export const updateProfile = async (doctorId, body) => {
   const updateData = {};
   if (name) updateData.name = name;
   if (phone) updateData.phone = phone;
-  if (specialization) updateData.specialization = specialization;
   if (bio !== undefined) updateData.bio = bio;
   if (avatar !== undefined) updateData.avatar = avatar;
 
   const updatedDoctor = await authRepo.updateDoctor(doctorId, updateData);
 
-  if (specialties && Array.isArray(specialties)) {
-    await authRepo.replaceSpecialties(doctorId, specialties);
+  const specializationValue = typeof specialization === 'string' ? specialization.trim() : '';
+  const normalizedSpecialties = Array.isArray(specialties) && specialties.length > 0
+    ? specialties
+    : specialization !== undefined
+      ? (specializationValue ? [specializationValue] : [])
+      : null;
+
+  if (normalizedSpecialties !== null) {
+    await authRepo.replaceSpecialties(doctorId, normalizedSpecialties);
   }
 
-  if (sessionPrices && Array.isArray(sessionPrices)) {
-    const singlePrice = getSingleSessionPriceInput(sessionPrices);
-    await authRepo.replaceSessionPrices(doctorId, singlePrice);
-  }
+  // The current Prisma schema no longer exposes Doctor.sessionPrices.
+  // Keep accepting the form payload for compatibility, but don't persist it here.
+  void sessionPrices;
 
-  return normalizeDoctorSessionPrices(updatedDoctor);
+  const refreshedDoctor = await authRepo.findById(doctorId);
+  return normalizeDoctorSessionPrices(refreshedDoctor || updatedDoctor);
 };

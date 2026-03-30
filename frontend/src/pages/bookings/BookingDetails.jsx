@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import apiClient from '../../api/client';
 import { bookings } from '../../api/admin';
 import { doctorBookings, doctorChildren, doctorAssessments } from '../../api/doctor';
+import { agoraApi } from '../../api/agora';
 import { useAuthStore } from '../../store/authStore';
+import AgoraSessionOverlay from '../../features/agora/AgoraSessionOverlay';
 import { 
   ArrowRight, 
   Calendar, 
@@ -32,7 +34,7 @@ const BookingDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { role } = useAuthStore();
-  const queryClient = useQueryClient();
+  const [isAgoraOpen, setIsAgoraOpen] = useState(false);
 
   const { data: booking, isLoading, error, refetch } = useQuery({
     queryKey: ['booking-details', id],
@@ -58,6 +60,13 @@ const BookingDetails = () => {
 
   const [assessmentNote, setAssessmentNote] = useState('');
   const [assessmentScore, setAssessmentScore] = useState(10);
+
+  const canStartSession = role === 'doctor' && booking?.status === 'CONFIRMED';
+
+  const fetchAgoraToken = async () => {
+    const response = await agoraApi.getToken(booking.id);
+    return response.data.data;
+  };
 
   const completeMutation = useMutation({
     mutationFn: ({ id, notes, rating }) => {
@@ -193,10 +202,10 @@ const BookingDetails = () => {
           <span>العودة</span>
         </button>
         <div className="flex items-center gap-3">
-          {booking.status === 'CONFIRMED' && (booking.sessionType === 'VIDEO' || booking.sessionType === 'AUDIO') && (
+          {canStartSession && (
             <button
               onClick={() => {
-                navigate(`/sessions/${id}`);
+                setIsAgoraOpen(true);
               }}
               className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-colors shadow-lg shadow-primary-200"
             >
@@ -608,6 +617,14 @@ const BookingDetails = () => {
           </div>
         </div>
       )}
+
+      <AgoraSessionOverlay
+        isOpen={isAgoraOpen}
+        booking={booking}
+        fetchToken={fetchAgoraToken}
+        allowScreenShare={role === 'doctor'}
+        onClose={() => setIsAgoraOpen(false)}
+      />
     </div>
   );
 };

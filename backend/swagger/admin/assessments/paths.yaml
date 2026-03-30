@@ -781,6 +781,80 @@
             schema:
               $ref: "#/components/schemas/ErrorResponse"
 
+/admin/assessments/verbal-nonsense/questions/{questionId}:
+  patch:
+    tags: [Admin Assessments]
+    summary: Update verbal nonsense question
+    description: Updates one verbal nonsense question after validating the question belongs to a verbal nonsense test and preserving unique order within the test.
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: questionId
+        in: path
+        required: true
+        schema:
+          type: string
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/VerbalNonsenseQuestionSchema"
+    responses:
+      "200":
+        description: Question updated
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  $ref: "#/components/schemas/VerbalNonsenseQuestionSchema"
+      "400":
+        description: Bad request
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "401":
+        description: Missing or invalid token
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "403":
+        description: Forbidden
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "404":
+        description: Question not found
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "409":
+        description: Duplicate order
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "422":
+        description: Wrong test type
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "500":
+        description: Internal server error
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+
 /admin/assessments/image-sequence-order/{testId}/questions:
   post:
     tags: [Admin Assessments]

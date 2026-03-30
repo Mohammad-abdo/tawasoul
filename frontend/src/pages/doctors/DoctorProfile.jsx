@@ -1,18 +1,8 @@
-import { useState, useEffect } from 'react';
-import { useQuery, useMutation } from '@tanstack/react-query';
-import { doctorAuth } from '../../api/doctor';
-import { 
-  User, 
-  Mail, 
-  Phone, 
-  Award, 
-  BookOpen, 
-  DollarSign, 
-  Save, 
-  Camera,
-  Activity
-} from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { Award, BookOpen, Camera, Mail, Phone, Save, User } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { doctorAuth } from '../../api/doctor';
 
 const DoctorProfile = () => {
   const [formData, setFormData] = useState({
@@ -22,12 +12,7 @@ const DoctorProfile = () => {
     specialization: '',
     bio: '',
     avatar: '',
-    specialties: [],
-    sessionPrices: [
-      { duration: 30, price: 0 },
-      { duration: 45, price: 0 },
-      { duration: 60, price: 0 }
-    ]
+    specialties: []
   });
 
   const { data: profile, isLoading, refetch } = useQuery({
@@ -35,26 +20,23 @@ const DoctorProfile = () => {
     queryFn: async () => {
       const response = await doctorAuth.getMe();
       return response.data.data;
-    },
+    }
   });
 
   useEffect(() => {
-    if (profile) {
-      setFormData({
-        name: profile.name || '',
-        email: profile.email || '',
-        phone: profile.phone || '',
-        specialization: profile.specialization || '',
-        bio: profile.bio || '',
-        avatar: profile.avatar || '',
-        specialties: profile.specialties?.map(s => s.specialty) || [],
-        sessionPrices: [
-          { duration: 30, price: profile.sessionPrices?.find(p => p.duration === 30)?.price || 0 },
-          { duration: 45, price: profile.sessionPrices?.find(p => p.duration === 45)?.price || 0 },
-          { duration: 60, price: profile.sessionPrices?.find(p => p.duration === 60)?.price || 0 }
-        ]
-      });
+    if (!profile) {
+      return;
     }
+
+    setFormData({
+      name: profile.name || '',
+      email: profile.email || '',
+      phone: profile.phone || '',
+      specialization: profile.specialization || '',
+      bio: profile.bio || '',
+      avatar: profile.avatar || '',
+      specialties: profile.specialties?.map((specialty) => specialty.specialty) || []
+    });
   }, [profile]);
 
   const updateMutation = useMutation({
@@ -68,52 +50,48 @@ const DoctorProfile = () => {
     }
   });
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+  const handleChange = (event) => {
+    const { name, value } = event.target;
+    setFormData((previous) => ({ ...previous, [name]: value }));
   };
 
-  const handlePriceChange = (index, value) => {
-    const newPrices = [...formData.sessionPrices];
-    newPrices[index].price = value;
-    setFormData(prev => ({ ...prev, sessionPrices: newPrices }));
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
+  const handleSubmit = (event) => {
+    event.preventDefault();
     updateMutation.mutate(formData);
   };
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+      <div className="flex h-64 items-center justify-center">
+        <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-primary-600" />
       </div>
     );
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="mx-auto max-w-4xl space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">الملف الشخصي</h1>
-          <p className="text-gray-500">إدارة بياناتك الشخصية وأسعار الجلسات</p>
+          <p className="text-gray-500">إدارة بياناتك الشخصية وملفك المهني</p>
         </div>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6 pb-12">
-        {/* Basic Info */}
-        <div className="glass-card rounded-2xl p-6 border border-gray-200">
-          <div className="flex items-center gap-6 mb-8">
-            <div className="relative group">
-              <div className="w-24 h-24 rounded-3xl bg-primary-50 border-2 border-primary-200 flex items-center justify-center overflow-hidden">
+        <div className="glass-card rounded-2xl border border-gray-200 p-6">
+          <div className="mb-8 flex items-center gap-6">
+            <div className="group relative">
+              <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-3xl border-2 border-primary-200 bg-primary-50">
                 {formData.avatar ? (
-                  <img src={formData.avatar} alt={formData.name} className="w-full h-full object-cover" />
+                  <img src={formData.avatar} alt={formData.name} className="h-full w-full object-cover" />
                 ) : (
                   <User className="text-primary-600" size={40} />
                 )}
               </div>
-              <button type="button" className="absolute -bottom-2 -right-2 p-2 bg-white rounded-xl shadow-lg border border-gray-100 text-primary-600 hover:scale-110 transition-transform">
+              <button
+                type="button"
+                className="absolute -bottom-2 -right-2 rounded-xl border border-gray-100 bg-white p-2 text-primary-600 shadow-lg transition-transform hover:scale-110"
+              >
                 <Camera size={16} />
               </button>
             </div>
@@ -123,9 +101,9 @@ const DoctorProfile = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
             <div className="space-y-2">
-              <label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+              <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
                 <User size={16} className="text-primary-500" /> الاسم بالكامل
               </label>
               <input
@@ -137,19 +115,21 @@ const DoctorProfile = () => {
                 required
               />
             </div>
+
             <div className="space-y-2">
-              <label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+              <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
                 <Mail size={16} className="text-primary-500" /> البريد الإلكتروني
               </label>
               <input
                 type="email"
                 value={formData.email}
-                className="input opacity-60 bg-gray-50"
+                className="input bg-gray-50 opacity-60"
                 disabled
               />
             </div>
+
             <div className="space-y-2">
-              <label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+              <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
                 <Phone size={16} className="text-primary-500" /> رقم الهاتف
               </label>
               <input
@@ -161,8 +141,9 @@ const DoctorProfile = () => {
                 required
               />
             </div>
+
             <div className="space-y-2">
-              <label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+              <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
                 <Award size={16} className="text-primary-500" /> التخصص الرئيسي
               </label>
               <input
@@ -177,9 +158,8 @@ const DoctorProfile = () => {
           </div>
         </div>
 
-        {/* Bio & Professional Info */}
-        <div className="glass-card rounded-2xl p-6 border border-gray-200">
-          <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+        <div className="glass-card rounded-2xl border border-gray-200 p-6">
+          <h3 className="mb-4 flex items-center gap-2 text-lg font-bold text-gray-900">
             <BookOpen size={20} className="text-primary-600" /> النبذة التعريفية والخبرات
           </h3>
           <div className="space-y-4">
@@ -196,36 +176,11 @@ const DoctorProfile = () => {
           </div>
         </div>
 
-        {/* Session Pricing */}
-        <div className="glass-card rounded-2xl p-6 border border-gray-200">
-          <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-            <DollarSign size={20} className="text-primary-600" /> تحديد أسعار الجلسات
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {formData.sessionPrices.map((price, index) => (
-              <div key={price.duration} className="p-4 bg-gray-50 rounded-2xl border border-gray-100">
-                <label className="text-xs font-bold text-gray-500 uppercase mb-2 block">
-                  جلسة {price.duration} دقيقة
-                </label>
-                <div className="relative">
-                  <input
-                    type="number"
-                    value={price.price}
-                    onChange={(e) => handlePriceChange(index, e.target.value)}
-                    className="input pr-12 font-bold"
-                  />
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm text-gray-400 font-bold">ج.م</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
         <div className="flex justify-end gap-4">
           <button
             type="submit"
             disabled={updateMutation.isPending}
-            className="btn-primary px-12 flex items-center gap-2 shadow-xl hover:scale-105 transition-all"
+            className="btn-primary flex items-center gap-2 px-12 shadow-xl transition-all hover:scale-105"
           >
             <Save size={20} />
             {updateMutation.isPending ? 'جاري الحفظ...' : 'حفظ الملف الشخصي'}

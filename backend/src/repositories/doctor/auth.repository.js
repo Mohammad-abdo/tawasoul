@@ -16,15 +16,13 @@ export const findByEmailWithSpecialties = (email) =>
 export const createDoctor = (data) =>
   prisma.doctor.create({
     data,
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      phone: true,
-      specialization: true,
-      isActive: true,
-      isApproved: true,
-      createdAt: true
+    include: {
+      specialties: {
+        select: {
+          specialty: true
+        },
+        take: 1
+      }
     }
   });
 
@@ -33,7 +31,6 @@ export const findById = (id) =>
     where: { id },
     include: {
       specialties: true,
-      sessionPrices: true,
       _count: {
         select: {
           bookings: true,
@@ -48,8 +45,7 @@ export const updateDoctor = (id, data) =>
     where: { id },
     data,
     include: {
-      specialties: true,
-      sessionPrices: true
+      specialties: true
     }
   });
 
@@ -85,15 +81,5 @@ export const upsertSessionPrice = (doctorId, duration, price) =>
   });
 
 export const replaceSessionPrices = async (doctorId, price) => {
-  await prisma.sessionPrice.deleteMany({
-    where: { doctorId }
-  });
-
-  return prisma.sessionPrice.create({
-    data: {
-      doctorId,
-      duration: 60,
-      price
-    }
-  });
+  return null;
 };
