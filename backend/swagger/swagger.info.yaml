@@ -65,6 +65,8 @@ tags:
     description: Children profiles and assessment access for doctors
   - name: Doctor Assessments
     description: Doctor-facing assessment scoring, verbal nonsense evaluation, HELP flows, and child result access
+  - name: Realtime Sessions
+    description: Agora RTC token generation for confirmed booking sessions
   - name: Admin Auth
     description: Admin panel authentication
   - name: Admin Dashboard

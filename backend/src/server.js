@@ -18,6 +18,7 @@ import userRoutes from './routes/user.routes.js';
 import doctorRoutes from './routes/doctor.routes.js';
 import adminRoutes from './routes/admin.routes.js';
 import publicRoutes from './routes/public.routes.js';
+import agoraRoutes from './routes/agora.routes.js';
 
 // Import middleware
 import { errorHandler } from './middleware/errorHandler.middleware.js';
@@ -138,6 +139,7 @@ app.use('/api/public', publicRoutes); // Public routes (no authentication)
 app.use('/api/user', userRoutes);
 app.use('/api/doctor', doctorRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/agora', agoraRoutes);
 
 // ============================================
 // Socket.IO for real-time notifications

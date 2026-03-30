@@ -136,6 +136,109 @@ export const authenticateDoctor = async (req, res, next) => {
 };
 
 /**
+ * Authentication middleware for Users or Doctors
+ */
+export const authenticateUserOrDoctor = async (req, res, next) => {
+  try {
+    const token = req.headers.authorization?.replace('Bearer ', '');
+
+    if (!token) {
+      return res.status(401).json({
+        success: false,
+        error: {
+          code: 'AUTH_REQUIRED',
+          message: 'Authentication required'
+        }
+      });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    if (decoded.role === 'USER') {
+      const user = await prisma.user.findUnique({
+        where: { id: decoded.userId },
+        select: {
+          id: true,
+          username: true,
+          email: true,
+          phone: true,
+          isActive: true,
+          isApproved: true,
+          avatar: true
+        }
+      });
+
+      if (!user || !user.isActive || !user.isApproved) {
+        return res.status(403).json({
+          success: false,
+          error: {
+            code: 'ACCOUNT_INACTIVE',
+            message: 'Account is inactive or not approved'
+          }
+        });
+      }
+
+      req.user = user;
+      req.authActor = {
+        role: 'USER',
+        id: user.id
+      };
+      return next();
+    }
+
+    if (decoded.role === 'DOCTOR') {
+      const doctor = await prisma.doctor.findUnique({
+        where: { id: decoded.doctorId },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          phone: true,
+          isActive: true,
+          isApproved: true,
+          isVerified: true,
+          avatar: true
+        }
+      });
+
+      if (!doctor || !doctor.isActive || !doctor.isApproved) {
+        return res.status(403).json({
+          success: false,
+          error: {
+            code: 'ACCOUNT_INACTIVE',
+            message: 'Account is inactive or not approved'
+          }
+        });
+      }
+
+      req.doctor = doctor;
+      req.authActor = {
+        role: 'DOCTOR',
+        id: doctor.id
+      };
+      return next();
+    }
+
+    return res.status(403).json({
+      success: false,
+      error: {
+        code: 'UNAUTHORIZED',
+        message: 'Invalid token for Agora access'
+      }
+    });
+  } catch (error) {
+    logger.error('User/doctor authentication error:', error);
+    return res.status(401).json({
+      success: false,
+      error: {
+        code: 'INVALID_TOKEN',
+        message: 'Invalid or expired token'
+      }
+    });
+  }
+};
+
+/**
  * Authentication middleware for Admins
  */
 export const authenticateAdmin = async (req, res, next) => {
