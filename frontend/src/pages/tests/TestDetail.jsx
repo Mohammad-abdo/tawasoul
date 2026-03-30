@@ -360,6 +360,12 @@ const TestDetail = () => {
             renderActions={renderCommonActions}
           />
         );
+      case 'VB_MAPP':
+        return (
+          <div className="rounded-2xl border border-dashed border-gray-300 p-8 text-center text-sm text-gray-600">
+            VB-MAPP is visible here for admin reference, but its sessions and scoring are managed through the dedicated VB-MAPP workflow.
+          </div>
+        );
       default:
         return (
           <div className="rounded-2xl border border-dashed border-gray-300 p-8 text-center text-sm text-gray-600">

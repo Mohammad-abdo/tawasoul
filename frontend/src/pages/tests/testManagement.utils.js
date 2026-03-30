@@ -6,6 +6,7 @@ export const TEST_TYPE_LABELS = {
   VERBAL_NONSENSE: 'Verbal Nonsense',
   HELP: 'HELP',
   IMAGE_SEQUENCE_ORDER: 'Image Sequence Order',
+  VB_MAPP: 'VB-MAPP',
 };
 
 export const MODALITY_LABELS = {
