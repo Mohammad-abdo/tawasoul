@@ -467,7 +467,7 @@ export const submitCarsAssessment = async (req, res, next) => {
 
     if (totalScore >= 15 && totalScore < 30) {
       carsDiagnosis = 'ليس توحد (طبيعي)';
-      childStatus = 'NORMAL'; 
+      childStatus = 'OTHER'; 
     } else if (totalScore >= 30 && totalScore <= 36.5) {
       carsDiagnosis = 'توحد بسيط إلى متوسط';
       childStatus = 'AUTISM'; 
@@ -907,6 +907,283 @@ export const updateHelpAssessment = async (req, res, next) => {
   } catch (error) {
     if (handleKnownError(res, error)) return;
     logger.error('Update HELP assessment error:', error);
+    next(error);
+  }
+};
+// دوال مساعدة ضيفها فوق مع باقي الدوال
+const normalizeAuditoryModelItems = (modelAnswer) => {
+  if (Array.isArray(modelAnswer?.items)) return modelAnswer.items;
+  if (Array.isArray(modelAnswer)) return modelAnswer;
+  return [];
+};
+
+const normalizeSequenceOrderSubmission = (submittedOrder) => {
+  if (Array.isArray(submittedOrder)) return submittedOrder;
+  return [];
+};
+
+// ==========================================
+// باقي الـ Controllers الجديدة
+// ==========================================
+
+export const submitAnalogyAssessment = async (req, res, next) => {
+  try {
+    if (handleValidationErrors(req, res)) return;
+
+    const { childId, testId, sessionId, answers } = req.body;
+
+    // التعديل هنا: استخدام ensureDoctorCanAccessChild
+    await ensureDoctorCanAccessChild({ prisma, doctorId: req.doctor.id, childId });
+    const test = await ensureTestForType({ prisma, testId, expectedType: 'ANALOGY' });
+    ensureUniqueAnswerQuestionIds(answers);
+
+    const data = await prisma.$transaction(async (tx) => {
+      const questions = await tx.q_Analogy.findMany({
+        where: { id: { in: answers.map((answer) => answer.questionId) }, testId: test.id }
+      });
+
+      if (questions.length !== answers.length) {
+        throw createHttpError(422, 'INVALID_QUESTION', 'One or more questions do not belong to this test');
+      }
+
+      const questionMap = new Map(questions.map((question) => [question.id, question]));
+      let totalScore = 0;
+      const answerRows = [];
+
+      for (const answer of answers) {
+        const question = questionMap.get(answer.questionId);
+        const choices = Array.isArray(question?.choices) ? question.choices : [];
+
+        if (!question) throw createHttpError(422, 'INVALID_QUESTION', `Question ${answer.questionId} does not belong to this test`);
+        if (answer.chosenIndex < 0 || answer.chosenIndex >= choices.length) throw createHttpError(422, 'ANSWER_OUT_OF_BOUNDS', `chosenIndex is out of bounds`);
+
+        const score = answer.chosenIndex === question.correctIndex ? 1 : 0;
+        totalScore += score;
+        answerRows.push({ questionId: question.id, chosenIndex: answer.chosenIndex, score });
+      }
+
+      const maxScore = answers.length;
+      const result = await tx.assessmentResult.create({
+        data: { childId, testId: test.id, sessionId, totalScore, maxScore, scoreGiven: totalScore }
+      });
+
+      await tx.q_Analogy_Answer.createMany({
+        data: answerRows.map((answer) => ({
+          resultId: result.id, questionId: answer.questionId, chosenIndex: answer.chosenIndex, score: answer.score
+        }))
+      });
+
+      return { assessmentResultId: result.id, totalScore, maxScore, answers: answerRows };
+    });
+
+    res.status(201).json({ success: true, data });
+  } catch (error) {
+    if (handleKnownError(res, error)) return;
+    logger.error('Submit doctor analogy assessment error:', error);
+    next(error);
+  }
+};
+
+export const submitVisualMemoryAssessment = async (req, res, next) => {
+  try {
+    if (handleValidationErrors(req, res)) return;
+
+    const { childId, testId, sessionId, answers } = req.body;
+
+    await ensureDoctorCanAccessChild({ prisma, doctorId: req.doctor.id, childId });
+    const test = await ensureTestForType({ prisma, testId, expectedType: 'VISUAL_MEMORY' });
+    ensureUniqueAnswerQuestionIds(answers);
+
+    const data = await prisma.$transaction(async (tx) => {
+      const questions = await tx.q_VisualMemory.findMany({
+        where: { id: { in: answers.map((answer) => answer.questionId) }, batch: { testId: test.id } }
+      });
+
+      if (questions.length !== answers.length) throw createHttpError(422, 'INVALID_QUESTION', 'One or more questions do not belong to this test');
+
+      const questionMap = new Map(questions.map((question) => [question.id, question]));
+      let totalScore = 0;
+      const answerRows = [];
+
+      for (const answer of answers) {
+        const question = questionMap.get(answer.questionId);
+        if (!question) throw createHttpError(422, 'INVALID_QUESTION', `Question ${answer.questionId} does not belong to this test`);
+
+        let score = 0;
+        let answerBool = null;
+        let chosenIndex = null;
+
+        if (question.questionType === 'YES_NO') {
+          if (typeof answer.answerBool !== 'boolean') throw createHttpError(422, 'INVALID_ANSWER', `Requires answerBool`);
+          answerBool = answer.answerBool;
+          score = answerBool === question.correctBool ? 1 : 0;
+        } else {
+          const choices = Array.isArray(question.choices) ? question.choices : [];
+          chosenIndex = answer.chosenIndex;
+          if (!Number.isInteger(chosenIndex) || chosenIndex < 0 || chosenIndex >= choices.length) throw createHttpError(422, 'ANSWER_OUT_OF_BOUNDS', `chosenIndex out of bounds`);
+          score = chosenIndex === question.correctIndex ? 1 : 0;
+        }
+
+        totalScore += score;
+        answerRows.push({ questionId: question.id, answerBool, chosenIndex, score });
+      }
+
+      const maxScore = answers.length;
+      const result = await tx.assessmentResult.create({
+        data: { childId, testId: test.id, sessionId, totalScore, maxScore, scoreGiven: totalScore }
+      });
+
+      await tx.q_VisualMemory_Answer.createMany({
+        data: answerRows.map((answer) => ({
+          resultId: result.id, questionId: answer.questionId, answerBool: answer.answerBool, chosenIndex: answer.chosenIndex, score: answer.score
+        }))
+      });
+
+      return { assessmentResultId: result.id, totalScore, maxScore, answers: answerRows };
+    });
+
+    res.status(201).json({ success: true, data });
+  } catch (error) {
+    if (handleKnownError(res, error)) return;
+    logger.error('Submit doctor visual memory assessment error:', error);
+    next(error);
+  }
+};
+
+export const submitAuditoryMemoryAssessment = async (req, res, next) => {
+  try {
+    if (handleValidationErrors(req, res)) return;
+
+    const { childId, testId, sessionId, answers } = req.body;
+
+    await ensureDoctorCanAccessChild({ prisma, doctorId: req.doctor.id, childId });
+    const test = await ensureTestForType({ prisma, testId, expectedType: 'AUDITORY_MEMORY' });
+    ensureUniqueAnswerQuestionIds(answers);
+
+    const data = await prisma.$transaction(async (tx) => {
+      const questions = await tx.q_AuditoryMemory.findMany({
+        where: { id: { in: answers.map((answer) => answer.questionId) }, testId: test.id }
+      });
+
+      if (questions.length !== answers.length) throw createHttpError(422, 'INVALID_QUESTION', 'One or more questions do not belong to this test');
+
+      const questionMap = new Map(questions.map((question) => [question.id, question]));
+      let totalScore = 0;
+      const answerRows = [];
+
+      for (const answer of answers) {
+        const question = questionMap.get(answer.questionId);
+        if (!question) throw createHttpError(422, 'INVALID_QUESTION', `Question does not belong to test`);
+
+        const modelItems = normalizeAuditoryModelItems(question.modelAnswer);
+        const recalledItems = Array.isArray(answer.recalledItems) ? answer.recalledItems : [];
+        const itemScores = modelItems.map((item) => ({
+          item,
+          recalled: recalledItems.includes(item),
+          score: recalledItems.includes(item) ? 1 : 0
+        }));
+        const score = itemScores.reduce((sum, itemScore) => sum + itemScore.score, 0);
+
+        totalScore += score;
+        answerRows.push({ questionId: question.id, recalledItems, itemScores, score });
+      }
+
+      const maxScore = answerRows.reduce((sum, answer) => sum + answer.itemScores.length, 0);
+      const result = await tx.assessmentResult.create({
+        data: { childId, testId: test.id, sessionId, totalScore, maxScore, scoreGiven: totalScore }
+      });
+
+      await tx.q_AuditoryMemory_Answer.createMany({
+        data: answerRows.map((answer) => ({
+          resultId: result.id, questionId: answer.questionId, recalledItems: answer.recalledItems, itemScores: answer.itemScores, score: answer.score
+        }))
+      });
+
+      return { assessmentResultId: result.id, totalScore, maxScore, answers: answerRows };
+    });
+
+    res.status(201).json({ success: true, data });
+  } catch (error) {
+    if (handleKnownError(res, error)) return;
+    logger.error('Submit doctor auditory memory assessment error:', error);
+    next(error);
+  }
+};
+
+export const submitImageSequenceOrderAssessment = async (req, res, next) => {
+  try {
+    if (handleValidationErrors(req, res)) return;
+
+    const { childId, testId, sessionId, answers } = req.body;
+
+    await ensureDoctorCanAccessChild({ prisma, doctorId: req.doctor.id, childId });
+    const test = await ensureTestForType({ prisma, testId, expectedType: 'IMAGE_SEQUENCE_ORDER' });
+    ensureUniqueAnswerQuestionIds(answers);
+
+    const data = await prisma.$transaction(async (tx) => {
+      const questions = await tx.q_SequenceOrder.findMany({
+        where: { id: { in: answers.map((answer) => answer.questionId) }, testId: test.id },
+        include: { images: { orderBy: [{ position: 'asc' }, { id: 'asc' }] } }
+      });
+
+      if (questions.length !== answers.length) throw createHttpError(422, 'INVALID_QUESTION', 'Mismatch in questions');
+
+      const questionMap = new Map(questions.map((q) => [q.id, q]));
+      let totalScore = 0;
+      const answerRows = [];
+
+      for (const answer of answers) {
+        const question = questionMap.get(answer.questionId);
+        if (!question) throw createHttpError(422, 'INVALID_QUESTION', `Invalid question`);
+
+        const images = Array.isArray(question.images) ? question.images : [];
+        const submittedOrder = normalizeSequenceOrderSubmission(answer.submittedOrder);
+
+        if (submittedOrder.length !== images.length) throw createHttpError(422, 'INVALID_ANSWER', `Requires one position per image`);
+
+        const validImageIds = new Set(images.map((img) => img.id));
+        const seenImageIds = new Set();
+        const seenPositions = new Set();
+
+        for (const item of submittedOrder) {
+          if (!item || !item.imageId || item.submittedPosition < 1 || item.submittedPosition > images.length) throw createHttpError(422, 'INVALID_ANSWER', 'Invalid order data');
+          if (!validImageIds.has(item.imageId)) throw createHttpError(422, 'INVALID_ANSWER', 'Invalid image ID');
+          if (seenImageIds.has(item.imageId) || seenPositions.has(item.submittedPosition)) throw createHttpError(422, 'DUPLICATE_ANSWER', 'Duplicate submission');
+
+          seenImageIds.add(item.imageId);
+          seenPositions.add(item.submittedPosition);
+        }
+
+        const submittedMap = new Map(submittedOrder.map((item) => [item.imageId, item.submittedPosition]));
+        const itemScores = images.map((image) => {
+          const submittedPosition = submittedMap.get(image.id) ?? null;
+          const score = submittedPosition === image.position ? 1 : 0;
+          return { imageId: image.id, correctPosition: image.position, submittedPosition, score };
+        });
+
+        const score = itemScores.reduce((sum, item) => sum + item.score, 0);
+        totalScore += score;
+        answerRows.push({ questionId: question.id, submittedOrder, itemScores, score });
+      }
+
+      const maxScore = answerRows.reduce((sum, answer) => sum + answer.itemScores.length, 0);
+      const result = await tx.assessmentResult.create({
+        data: { childId, testId: test.id, sessionId, totalScore, maxScore, scoreGiven: totalScore }
+      });
+
+      await tx.q_SequenceOrder_Answer.createMany({
+        data: answerRows.map((answer) => ({
+          resultId: result.id, questionId: answer.questionId, submittedOrder: answer.submittedOrder, itemScores: answer.itemScores, score: answer.score
+        }))
+      });
+
+      return { assessmentResultId: result.id, totalScore, maxScore, answers: answerRows };
+    });
+
+    res.status(201).json({ success: true, data });
+  } catch (error) {
+    if (handleKnownError(res, error)) return;
+    logger.error('Submit doctor image sequence order assessment error:', error);
     next(error);
   }
 };

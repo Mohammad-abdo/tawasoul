@@ -70,6 +70,41 @@ export const doctorAssessments = {
 
   submitCarsResult: (data) =>
     apiClient.post('/doctor/assessments/cars/submit', data),
+
+  // ==========================================
+  // Endpoints الاختبارات الجديدة
+  // ==========================================
+  submitVerbalNonsenseResult: (data) =>
+    apiClient.post('/doctor/assessments/verbal-nonsense/submit', data),
+
+  submitAnalogyResult: (data) =>
+    apiClient.post('/doctor/assessments/analogy/submit', data),
+
+  submitVisualMemoryResult: (data) =>
+    apiClient.post('/doctor/assessments/visual-memory/submit', data),
+
+  submitAuditoryMemoryResult: (data) =>
+    apiClient.post('/doctor/assessments/auditory-memory/submit', data),
+
+  submitSequenceOrderResult: (data) =>
+    apiClient.post('/doctor/assessments/image-sequence-order/submit', data),
+
+  // ==========================================
+  // Endpoints مقياس الـ HELP
+  // ==========================================
+  startHelpAssessment: (data) =>
+    apiClient.post('/doctor/assessments/help/start', data),
+  
+  evaluateHelpAssessment: (helpAssessmentId, data) =>
+    apiClient.post(`/doctor/assessments/help/${helpAssessmentId}/evaluate`, data),
+  
+  getHelpAssessment: (helpAssessmentId) =>
+    apiClient.get(`/doctor/assessments/help/${helpAssessmentId}`),
+
+  updateHelpAssessment: (helpAssessmentId, data) =>
+    apiClient.patch(`/doctor/assessments/help/${helpAssessmentId}`, data),
+
+  // ==========================================
   
   getChildResults: (childId) => 
     apiClient.get(`/doctor/assessments/children/${childId}/results`),

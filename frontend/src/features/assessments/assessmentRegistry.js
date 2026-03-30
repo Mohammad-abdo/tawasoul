@@ -5,6 +5,7 @@ import GenericQuestionRenderer from './renderers/GenericQuestionRenderer';
 import HelpQuestionRenderer from './renderers/HelpQuestionRenderer';
 import SequenceOrderQuestionRenderer from './renderers/SequenceOrderQuestionRenderer';
 import VisualMemoryQuestionRenderer from './renderers/VisualMemoryQuestionRenderer';
+import VerbalNonsenseRenderer from './renderers/VerbalNonsenseRenderer'; // <-- تم الإضافة هنا
 
 const GENERIC_TEST_TYPES = [
   'SOUND_DISCRIMINATION',
@@ -56,6 +57,14 @@ const assessmentRegistry = {
     completionLabel: 'إنهاء المعاينة',
     scoreNotice: 'يتم تنفيذ HELP من خلال مسار تقييم المهارات المخصص للطبيب.'
   },
+  // 👇 تم إضافة الـ VERBAL_NONSENSE هنا 👇
+  VERBAL_NONSENSE: {
+    component: VerbalNonsenseRenderer,
+    stepLabel: 'جملة',
+    supportsManualScoring: true, // عملناها true عشان زرار الحفظ يشتغل والدكتور يقدر يبعت التقييم
+    completionLabel: 'حفظ التقييم',
+    scoreNotice: 'استمع إلى نطق الطفل للجملة ثم حدد ما إذا كان النطق صحيحاً أم خاطئاً. يمكنك إضافة ملاحظات تفصيلية.'
+  },
   default: {
     component: GenericQuestionRenderer,
     stepLabel: 'سؤال',
@@ -71,4 +80,3 @@ for (const testType of GENERIC_TEST_TYPES) {
 
 export const getAssessmentConfig = (testType) =>
   assessmentRegistry[testType] || assessmentRegistry.default;
-
