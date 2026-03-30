@@ -160,7 +160,7 @@ model Availability {
   id        String   @id @default(uuid())
   doctorId  String
   dayOfWeek Int
-  timeSlots String   @db.Text
+  timeSlots Json
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
