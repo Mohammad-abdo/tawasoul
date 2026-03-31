@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'; // أضفنا useQueryClient هنا
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   AlertCircle,
@@ -13,19 +13,180 @@ import { doctorAssessments } from '../../api/doctor';
 import AssessmentQuestionRenderer from '../../features/assessments/AssessmentQuestionRenderer';
 import { getAssessmentConfig } from '../../features/assessments/assessmentRegistry';
 import {
-  getManualScoreOptions,
   getTestDisplayDescription,
   getTestDisplayTitle,
 } from '../../features/assessments/assessmentUiUtils';
 
+const buildAssessmentAnswers = ({ testType, questions, questionResponses, scores }) => {
+  switch (testType) {
+    case 'CARS':
+      return questions
+        .filter((question) => scores[question.id] !== undefined)
+        .map((question) => ({
+          questionId: question.id,
+          scoreGiven: Number(scores[question.id]),
+        }));
+
+    case 'ANALOGY':
+      return questions
+        .filter((question) => Number.isInteger(questionResponses[question.id]))
+        .map((question) => ({
+          questionId: question.id,
+          chosenIndex: questionResponses[question.id],
+        }));
+
+    case 'VISUAL_MEMORY':
+      return questions.flatMap((batch) => {
+        const batchResponses =
+          questionResponses[batch.id] && typeof questionResponses[batch.id] === 'object'
+            ? questionResponses[batch.id]
+            : {};
+
+        return (Array.isArray(batch.questions) ? batch.questions : []).flatMap((subQuestion) => {
+          const value = batchResponses[subQuestion.id];
+
+          if (subQuestion.questionType === 'YES_NO') {
+            return typeof value === 'boolean'
+              ? [{ questionId: subQuestion.id, answerBool: value }]
+              : [];
+          }
+
+          return Number.isInteger(value)
+            ? [{ questionId: subQuestion.id, chosenIndex: value }]
+            : [];
+        });
+      });
+
+    case 'AUDITORY_MEMORY':
+      return questions.flatMap((question) => {
+        const response = questionResponses[question.id];
+        const recalledItems = Array.isArray(response?.recalledItems)
+          ? response.recalledItems
+          : [];
+
+        return response && typeof response === 'object'
+          ? [{ questionId: question.id, recalledItems }]
+          : [];
+      });
+
+    case 'VERBAL_NONSENSE':
+      return questions.flatMap((question) => {
+        const response = questionResponses[question.id];
+
+        return typeof response?.isCorrect === 'boolean'
+          ? [
+              {
+                questionId: question.id,
+                isCorrect: response.isCorrect,
+                doctorNote: response.doctorNote?.trim() || null,
+              },
+            ]
+          : [];
+      });
+
+    case 'IMAGE_SEQUENCE_ORDER':
+      return questions.flatMap((question) => {
+        const selectedSequence = Array.isArray(questionResponses[question.id])
+          ? questionResponses[question.id]
+          : [];
+        const images = Array.isArray(question.images) ? question.images : [];
+
+        if (selectedSequence.length !== images.length) {
+          return [];
+        }
+
+        return [
+          {
+            questionId: question.id,
+            submittedOrder: selectedSequence.map((imageId, index) => ({
+              imageId,
+              submittedPosition: index + 1,
+            })),
+          },
+        ];
+      });
+
+    case 'HELP':
+      return questions.flatMap((question) => {
+        const response = questionResponses[question.id];
+
+        return typeof response?.score === 'string'
+          ? [
+              {
+                skillId: question.id,
+                score: response.score,
+                doctorNotes: response.doctorNotes?.trim() || null,
+              },
+            ]
+          : [];
+      });
+
+    default:
+      return [];
+  }
+};
+
+const getExpectedAnswerCount = (test, questions) => {
+  if (Number.isInteger(test?.questionCount)) {
+    return test.questionCount;
+  }
+
+  if (test?.testType === 'VISUAL_MEMORY') {
+    return questions.reduce((total, batch) => {
+      const batchQuestions = Array.isArray(batch?.questions) ? batch.questions.length : 0;
+      return total + batchQuestions;
+    }, 0);
+  }
+
+  return questions.length;
+};
+
+const getAssessmentApi = (testType) => {
+  switch (testType) {
+    case 'CARS':
+      return doctorAssessments.submitCarsResult;
+    case 'ANALOGY':
+      return doctorAssessments.submitAnalogyResult;
+    case 'VISUAL_MEMORY':
+      return doctorAssessments.submitVisualMemoryResult;
+    case 'AUDITORY_MEMORY':
+      return doctorAssessments.submitAuditoryMemoryResult;
+    case 'VERBAL_NONSENSE':
+      return doctorAssessments.submitVerbalNonsenseResult;
+    case 'IMAGE_SEQUENCE_ORDER':
+      return doctorAssessments.submitSequenceOrderResult;
+    case 'HELP':
+      return doctorAssessments.submitHelpResult;
+    default:
+      return doctorAssessments.submitResult;
+  }
+};
+
+const getIncompleteAssessmentMessage = (testType) => {
+  if (testType === 'HELP') {
+    return 'يجب تقييم جميع مهارات HELP قبل الحفظ';
+  }
+
+  if (testType === 'VISUAL_MEMORY') {
+    return 'يجب الإجابة على جميع الأسئلة الفرعية في اختبار الذاكرة البصرية قبل الحفظ';
+  }
+
+  if (testType === 'IMAGE_SEQUENCE_ORDER') {
+    return 'يجب ترتيب جميع الصور في كل سؤال قبل الحفظ';
+  }
+
+  return 'يجب الإجابة على جميع عناصر الاختبار قبل الحفظ';
+};
+
 const DoctorAssessment = () => {
   const { testId, childId } = useParams();
   const navigate = useNavigate();
-  const queryClient = useQueryClient(); // تعريف queryClient لمسح الكاش
+  const queryClient = useQueryClient();
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [scores, setScores] = useState({});
   const [questionResponses, setQuestionResponses] = useState({});
   const [audio, setAudio] = useState(null);
+  const [helpDevelopmentalAge, setHelpDevelopmentalAge] = useState('');
 
   const {
     data: test,
@@ -40,30 +201,23 @@ const DoctorAssessment = () => {
     },
   });
 
-  // تعديل الـ Mutation عشان يوجه الريكويست حسب نوع الاختبار
   const submitMutation = useMutation({
-    mutationFn: (payload) => {
-      if (test?.testType === 'CARS') {
-        // تأكد إن الدالة دي متعرفة في ملف api/doctor.js
-        return doctorAssessments.submitCarsResult(payload); 
-      }
-      // مسار افتراضي لأي اختبارات تانية مستقبلاً
-      return doctorAssessments.submitResult(payload); 
-    },
+    mutationFn: (payload) => getAssessmentApi(test?.testType)?.(payload),
   });
 
   const questions = test?.questions || [];
   const currentQuestion = questions[currentQuestionIndex] || null;
   const config = getAssessmentConfig(test?.testType);
-  const supportsManualScoring = config.supportsManualScoring;
-  const scoreOptions = getManualScoreOptions(currentQuestion);
   const isCars = test?.testType === 'CARS';
+  const isHelp = test?.testType === 'HELP';
+  const expectedAnswerCount = getExpectedAnswerCount(test, questions);
   const isCarsQuestionSetInvalid = isCars && questions.length > 0 && questions.length !== 15;
 
   useEffect(() => {
     setCurrentQuestionIndex(0);
     setScores({});
     setQuestionResponses({});
+    setHelpDevelopmentalAge('');
   }, [test?.id]);
 
   useEffect(() => {
@@ -76,7 +230,10 @@ const DoctorAssessment = () => {
 
   const playAudio = (url) => {
     if (!url) return;
-    if (audio) audio.pause();
+
+    if (audio) {
+      audio.pause();
+    }
 
     const nextAudio = new Audio(url);
     nextAudio.play();
@@ -85,7 +242,7 @@ const DoctorAssessment = () => {
   };
 
   const handleScoreChange = (score) => {
-    if (!currentQuestion || !supportsManualScoring) {
+    if (!currentQuestion) {
       return;
     }
 
@@ -121,61 +278,52 @@ const DoctorAssessment = () => {
   const handleFinish = async () => {
     if (!test) return;
 
-    if (!supportsManualScoring) {
-      toast.success('تمت معاينة محتوى الاختبار بنجاح');
-      navigate(-1);
-      return;
-    }
-
     if (isCarsQuestionSetInvalid) {
       toast.error('اختبار كارز غير مكتمل (يجب أن يحتوي على 15 سؤال). تواصل مع الإدارة لإكمال بيانات الاختبار.');
       return;
     }
 
-    // تجهيز الإجابات في Array زي ما الباك إند طالب
-    const answers = Object.entries(scores).map(([questionId, scoreGiven]) => ({
-      questionId,
-      scoreGiven: parseFloat(scoreGiven),
-    }));
-
-    if (answers.length === 0) {
-      toast.error('يرجى إدخال درجة واحدة على الأقل قبل الحفظ');
+    if (expectedAnswerCount === 0) {
+      toast.error('لا توجد عناصر متاحة لهذا الاختبار حالياً');
       return;
     }
 
-    // Validation خاص بكارز: لازم كل الأسئلة (المفروض 15)
-    if (test.testType === 'CARS' && answers.length < questions.length) {
-      toast.error('يجب الإجابة على جميع أسئلة مقياس كارز قبل الحفظ');
+    if (isHelp && !helpDevelopmentalAge.trim()) {
+      toast.error('يرجى إدخال العمر النمائي قبل حفظ تقييم HELP');
       return;
     }
 
-    // Validation لأي اختبارات تانية
-    if (test.testType !== 'CARS' && answers.length < questions.length) {
-      const shouldContinue = window.confirm('لم يتم تقييم جميع الأسئلة، هل تريد الحفظ على أي حال؟');
-      if (!shouldContinue) return;
+    const answers = buildAssessmentAnswers({
+      testType: test.testType,
+      questions,
+      questionResponses,
+      scores,
+    });
+
+    if (answers.length !== expectedAnswerCount) {
+      toast.error(getIncompleteAssessmentMessage(test.testType));
+      return;
     }
 
-    // تجهيز الـ Payload الشامل
     const payload = {
       childId,
       testId: test.id,
       sessionId: `doctor-${test.id}-${Date.now()}`,
       answers,
+      ...(isHelp ? { developmentalAge: helpDevelopmentalAge.trim() } : {}),
     };
 
     try {
-      // إرسال ريكويست واحد فقط بالـ Payload
       await submitMutation.mutateAsync(payload);
-      
+
       toast.success('تم حفظ نتيجة الاختبار وتحديث حالة الطفل بنجاح');
-      
-      // مسح الكاش عشان البروفايل يقرأ الداتا الجديدة فوراً
       queryClient.invalidateQueries({ queryKey: ['doctor-child-details', childId] });
       queryClient.invalidateQueries({ queryKey: ['doctor-children'] });
-
       navigate(-1);
     } catch (submitError) {
-      toast.error(submitError.response?.data?.error?.message || 'فشل حفظ نتيجة الاختبار');
+      toast.error(
+        submitError.response?.data?.error?.message || 'فشل حفظ نتيجة الاختبار'
+      );
     }
   };
 
@@ -231,6 +379,21 @@ const DoctorAssessment = () => {
           <p className="mb-8 text-sm leading-relaxed text-gray-500">{getTestDisplayDescription(test)}</p>
         ) : null}
 
+        {isHelp ? (
+          <div className="mb-6 rounded-3xl border border-primary-100 bg-primary-50 p-5 text-right">
+            <label className="mb-3 block text-sm font-bold text-primary-800">
+              العمر النمائي المستخدم في تقييم HELP
+            </label>
+            <input
+              type="text"
+              value={helpDevelopmentalAge}
+              onChange={(event) => setHelpDevelopmentalAge(event.target.value)}
+              placeholder="مثال: 4 سنوات أو 48 شهر"
+              className="w-full rounded-2xl border border-primary-200 bg-white px-4 py-3 text-sm text-gray-800 outline-none transition-all focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10"
+            />
+          </div>
+        ) : null}
+
         {isCarsQuestionSetInvalid ? (
           <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-right text-sm font-semibold text-amber-800">
             هذا الاختبار يجب أن يحتوي على 15 سؤال، لكن الموجود حالياً {questions.length}. لن يتم السماح بالحفظ قبل اكتمال بيانات الاختبار.
@@ -256,8 +419,8 @@ const DoctorAssessment = () => {
           </div>
         )}
 
-        <div className="mt-8">
-          {isCars ? null : (
+        <div className="mt-8 space-y-4">
+          {!isCars ? (
             <div className="rounded-2xl border border-blue-100 bg-blue-50 p-5 text-right">
               <div className="mb-2 flex items-center gap-2 text-sm font-bold text-blue-800">
                 <Info size={16} />
@@ -265,7 +428,11 @@ const DoctorAssessment = () => {
               </div>
               <p className="text-sm leading-relaxed text-blue-700">{config.scoreNotice}</p>
             </div>
-          )}
+          ) : null}
+
+          <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4 text-right text-sm font-semibold text-gray-600">
+            تم تجهيز {expectedAnswerCount} عنصر للحفظ في هذا الاختبار، ويجب استكمالها كلها قبل الإنهاء.
+          </div>
         </div>
       </div>
 

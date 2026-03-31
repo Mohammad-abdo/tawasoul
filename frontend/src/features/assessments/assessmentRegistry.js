@@ -5,13 +5,13 @@ import GenericQuestionRenderer from './renderers/GenericQuestionRenderer';
 import HelpQuestionRenderer from './renderers/HelpQuestionRenderer';
 import SequenceOrderQuestionRenderer from './renderers/SequenceOrderQuestionRenderer';
 import VisualMemoryQuestionRenderer from './renderers/VisualMemoryQuestionRenderer';
-import VerbalNonsenseRenderer from './renderers/VerbalNonsenseRenderer'; // <-- تم الإضافة هنا
+import VerbalNonsenseRenderer from './renderers/VerbalNonsenseRenderer';
 
 const GENERIC_TEST_TYPES = [
   'SOUND_DISCRIMINATION',
   'PRONUNCIATION_REPETITION',
   'SOUND_IMAGE_LINKING',
-  'SEQUENCE_ORDER'
+  'SEQUENCE_ORDER',
 ];
 
 const assessmentRegistry = {
@@ -20,58 +20,57 @@ const assessmentRegistry = {
     stepLabel: 'سؤال',
     supportsManualScoring: true,
     completionLabel: 'إنهاء وحفظ النتائج',
-    scoreNotice: 'يرجى إدخال الدرجة لكل سؤال ثم حفظ النتائج في نهاية الاختبار.'
+    scoreNotice: 'يرجى إدخال الدرجة لكل سؤال ثم حفظ النتائج في نهاية الاختبار.',
   },
   ANALOGY: {
     component: AnalogyQuestionRenderer,
     stepLabel: 'سؤال',
     supportsManualScoring: false,
-    completionLabel: 'إنهاء المعاينة',
-    scoreNotice: 'هذا الاختبار يعتمد على مطابقة الصورة الصحيحة ويتم احتساب نتيجته تلقائياً.'
+    completionLabel: 'إنهاء وحفظ النتيجة',
+    scoreNotice: 'اختر الصورة المطابقة لكل سؤال، وسيتم احتساب النتيجة تلقائياً عند الحفظ.',
   },
   VISUAL_MEMORY: {
     component: VisualMemoryQuestionRenderer,
     stepLabel: 'دفعة',
     supportsManualScoring: false,
-    completionLabel: 'إنهاء المعاينة',
-    scoreNotice: 'يعرض هذا الاختبار دفعات من الصور والأسئلة الفرعية، ويتم تقييمه تلقائياً من إجابات الطفل.'
+    completionLabel: 'إنهاء وحفظ النتيجة',
+    scoreNotice: 'أجب عن جميع الأسئلة الفرعية داخل كل دفعة ليتم احتساب النتيجة تلقائياً عند الحفظ.',
   },
   AUDITORY_MEMORY: {
     component: AuditoryMemoryQuestionRenderer,
     stepLabel: 'سؤال',
     supportsManualScoring: false,
-    completionLabel: 'إنهاء المعاينة',
-    scoreNotice: 'يعتمد هذا الاختبار على العناصر التي يسترجعها الطفل بعد الاستماع للمقطع.'
+    completionLabel: 'إنهاء وحفظ النتيجة',
+    scoreNotice: 'شغّل المقطع الصوتي وسجل العناصر التي استرجعها الطفل، وسيتم حساب الدرجة تلقائياً بعد الحفظ.',
   },
   IMAGE_SEQUENCE_ORDER: {
     component: SequenceOrderQuestionRenderer,
     stepLabel: 'سؤال',
     supportsManualScoring: false,
-    completionLabel: 'إنهاء المعاينة',
-    scoreNotice: 'يعتمد هذا الاختبار على ترتيب الصور بشكل صحيح ويتم احتساب النتيجة تلقائياً.'
+    completionLabel: 'إنهاء وحفظ النتيجة',
+    scoreNotice: 'رتّب الصور كاملة في كل سؤال قبل الحفظ ليتم احتساب النتيجة تلقائياً.',
   },
   HELP: {
     component: HelpQuestionRenderer,
     stepLabel: 'مهارة',
     supportsManualScoring: false,
-    completionLabel: 'إنهاء المعاينة',
-    scoreNotice: 'يتم تنفيذ HELP من خلال مسار تقييم المهارات المخصص للطبيب.'
+    completionLabel: 'إنهاء وحفظ النتيجة',
+    scoreNotice: 'قيّم كل مهارة، أدخل العمر النمائي، ثم احفظ التقييم بالكامل لاحتساب النتيجة النهائية.',
   },
-  // 👇 تم إضافة الـ VERBAL_NONSENSE هنا 👇
   VERBAL_NONSENSE: {
     component: VerbalNonsenseRenderer,
     stepLabel: 'جملة',
-    supportsManualScoring: true, // عملناها true عشان زرار الحفظ يشتغل والدكتور يقدر يبعت التقييم
+    supportsManualScoring: true,
     completionLabel: 'حفظ التقييم',
-    scoreNotice: 'استمع إلى نطق الطفل للجملة ثم حدد ما إذا كان النطق صحيحاً أم خاطئاً. يمكنك إضافة ملاحظات تفصيلية.'
+    scoreNotice: 'استمع إلى نطق الطفل للجملة ثم حدد ما إذا كان النطق صحيحاً أم خاطئاً مع إمكانية إضافة ملاحظات تفصيلية.',
   },
   default: {
     component: GenericQuestionRenderer,
     stepLabel: 'سؤال',
     supportsManualScoring: true,
     completionLabel: 'إنهاء وحفظ النتائج',
-    scoreNotice: 'يمكن للطبيب إدخال الدرجة مباشرة لهذا النوع من الاختبارات.'
-  }
+    scoreNotice: 'يمكن للطبيب إدخال الدرجة مباشرة لهذا النوع من الاختبارات.',
+  },
 };
 
 for (const testType of GENERIC_TEST_TYPES) {

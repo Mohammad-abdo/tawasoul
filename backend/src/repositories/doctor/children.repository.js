@@ -58,6 +58,7 @@ export const findChildDetails = (doctorId, childId) =>
           qAnalogyAnswers: true,
           qVisualMemoryAnswers: true,
           qAuditoryMemoryAnswers: true,
+          qSequenceOrderAnswers: true,
           qVerbalNonsenseAnswers: true
         },
         orderBy: { timestamp: 'desc' }

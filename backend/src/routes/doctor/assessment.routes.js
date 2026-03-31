@@ -90,6 +90,20 @@ router.post(
 );
 
 router.post(
+  '/help/submit',
+  authenticateDoctor,
+  body('childId').isString().trim().notEmpty().withMessage('childId is required'),
+  body('testId').isString().trim().notEmpty().withMessage('testId is required'),
+  body('sessionId').isString().trim().notEmpty().withMessage('sessionId is required'),
+  body('developmentalAge').isString().trim().notEmpty().withMessage('developmentalAge is required'),
+  body('answers').isArray({ min: 1 }).withMessage('answers must be a non-empty array'),
+  body('answers.*.skillId').isString().trim().notEmpty().withMessage('each answer.skillId is required'),
+  body('answers.*.score').isIn(HELP_SCORES).withMessage(`each answer.score must be one of: ${HELP_SCORES.join(', ')}`),
+  body('answers.*.doctorNotes').optional({ nullable: true }).isString().withMessage('each answer.doctorNotes must be a string'),
+  assessmentController.submitHelpAssessment
+);
+
+router.post(
   '/help/start',
   authenticateDoctor,
   body('childId').isString().trim().notEmpty().withMessage('childId is required'),

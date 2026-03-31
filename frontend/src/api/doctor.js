@@ -89,6 +89,9 @@ export const doctorAssessments = {
   submitSequenceOrderResult: (data) =>
     apiClient.post('/doctor/assessments/image-sequence-order/submit', data),
 
+  submitHelpResult: (data) =>
+    apiClient.post('/doctor/assessments/help/submit', data),
+
   // ==========================================
   // Endpoints مقياس الـ HELP
   // ==========================================

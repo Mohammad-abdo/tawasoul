@@ -15,6 +15,7 @@ import {
   serializeAssessmentResultDetail
 } from '../../utils/assessment-api.utils.js';
 import { createHttpError } from '../../utils/httpError.js';
+import { buildHelpAssessmentSubmission, TEST_TYPES } from '../../utils/assessment.utils.js';
 
 const handleValidationErrors = (req, res) => {
   const errors = validationResult(req);
@@ -73,6 +74,143 @@ const getHelpAssessmentOrThrow = async (helpAssessmentId) => {
 
   return helpAssessment;
 };
+
+const ASSESSMENT_SCORE_BANDS = {
+  medium: 0.5,
+  strong: 0.75
+};
+
+const formatAssessmentScore = (value) => {
+  const numericValue = Number(value);
+
+  if (!Number.isFinite(numericValue)) {
+    return String(value ?? '');
+  }
+
+  return Number.isInteger(numericValue) ? String(numericValue) : numericValue.toFixed(1);
+};
+
+const ensureExactAnswerCount = ({ answers, expectedCount, label }) => {
+  if (!Array.isArray(answers) || answers.length !== expectedCount) {
+    throw createHttpError(
+      422,
+      'INCOMPLETE_ASSESSMENT',
+      `${label} requires exactly ${expectedCount} answers`
+    );
+  }
+};
+
+const getAssessmentOutcome = ({ test, totalScore, maxScore }) => {
+  if (!maxScore || maxScore <= 0) {
+    throw createHttpError(422, 'INVALID_MAX_SCORE', 'maxScore must be greater than zero');
+  }
+
+  const ratio = totalScore / maxScore;
+  const title = test?.titleAr || test?.title || 'التقييم';
+  const isStrong = ratio >= ASSESSMENT_SCORE_BANDS.strong;
+  const isMedium = ratio >= ASSESSMENT_SCORE_BANDS.medium;
+
+  let diagnosis = 'نتيجة غير مصنفة';
+  let childStatus = 'OTHER';
+
+  switch (test?.testType) {
+    case TEST_TYPES.ANALOGY:
+      if (isStrong) {
+        diagnosis = 'أداء جيد في مهارات التناظر والتصنيف';
+        childStatus = 'OTHER';
+      } else if (isMedium) {
+        diagnosis = 'صعوبات متوسطة في مهارات التناظر والتصنيف';
+        childStatus = 'SKILLS_DEVELOPMENT';
+      } else {
+        diagnosis = 'صعوبات واضحة في مهارات التناظر والتصنيف';
+        childStatus = 'LEARNING_DIFFICULTIES';
+      }
+      break;
+
+    case TEST_TYPES.VISUAL_MEMORY:
+      if (isStrong) {
+        diagnosis = 'ذاكرة بصرية جيدة';
+        childStatus = 'OTHER';
+      } else if (isMedium) {
+        diagnosis = 'ذاكرة بصرية متوسطة وتحتاج إلى تنمية';
+        childStatus = 'SKILLS_DEVELOPMENT';
+      } else {
+        diagnosis = 'ضعف في الذاكرة البصرية';
+        childStatus = 'LEARNING_DIFFICULTIES';
+      }
+      break;
+
+    case TEST_TYPES.AUDITORY_MEMORY:
+      if (isStrong) {
+        diagnosis = 'ذاكرة سمعية جيدة';
+        childStatus = 'OTHER';
+      } else if (isMedium) {
+        diagnosis = 'ذاكرة سمعية متوسطة وتحتاج إلى دعم';
+        childStatus = 'SKILLS_DEVELOPMENT';
+      } else {
+        diagnosis = 'ضعف في الذاكرة السمعية';
+        childStatus = 'SPEECH_DISORDER';
+      }
+      break;
+
+    case TEST_TYPES.VERBAL_NONSENSE:
+      if (isStrong) {
+        diagnosis = 'أداء جيد في النطق والتمييز اللفظي';
+        childStatus = 'OTHER';
+      } else if (isMedium) {
+        diagnosis = 'صعوبات متوسطة في النطق والتمييز اللفظي';
+        childStatus = 'SPEECH_DISORDER';
+      } else {
+        diagnosis = 'صعوبات واضحة في النطق والتمييز اللفظي';
+        childStatus = 'SPEECH_DISORDER';
+      }
+      break;
+
+    case TEST_TYPES.IMAGE_SEQUENCE_ORDER:
+      if (isStrong) {
+        diagnosis = 'قدرة جيدة على ترتيب التسلسل البصري';
+        childStatus = 'OTHER';
+      } else if (isMedium) {
+        diagnosis = 'قدرة متوسطة على ترتيب التسلسل البصري';
+        childStatus = 'SKILLS_DEVELOPMENT';
+      } else {
+        diagnosis = 'ضعف في ترتيب التسلسل البصري';
+        childStatus = 'LEARNING_DIFFICULTIES';
+      }
+      break;
+
+    case TEST_TYPES.HELP:
+      if (isStrong) {
+        diagnosis = 'المهارات النمائية ضمن المستوى المتوقع';
+        childStatus = 'OTHER';
+      } else if (isMedium) {
+        diagnosis = 'المهارات النمائية تحتاج إلى دعم وتدريب';
+        childStatus = 'SKILLS_DEVELOPMENT';
+      } else {
+        diagnosis = 'يوجد تأخر نمائي يستدعي تنمية مهارات مكثفة';
+        childStatus = 'SKILLS_DEVELOPMENT';
+      }
+      break;
+
+    default:
+      break;
+  }
+
+  return {
+    diagnosis,
+    childStatus,
+    caseDescription: `تم إجراء ${title}. النتيجة: ${formatAssessmentScore(totalScore)}/${formatAssessmentScore(maxScore)} (${diagnosis}).`
+  };
+};
+
+const updateChildAssessmentOutcome = async ({ tx, childId, outcome }) =>
+  tx.child.update({
+    where: { id: childId },
+    data: {
+      status: outcome.childStatus,
+      caseDescription: outcome.caseDescription
+    }
+  });
 
 export const getTests = async (req, res, next) => {
   try {
@@ -596,7 +734,15 @@ export const submitVerbalNonsenseAssessment = async (req, res, next) => {
       testId,
       expectedType: 'VERBAL_NONSENSE'
     });
+    const expectedQuestionCount = await prisma.q_VerbalNonsense.count({
+      where: { testId: test.id }
+    });
 
+    ensureExactAnswerCount({
+      answers,
+      expectedCount: expectedQuestionCount,
+      label: 'Verbal nonsense assessment'
+    });
     ensureUniqueAnswerQuestionIds(answers);
 
     const data = await prisma.$transaction(async (tx) => {
@@ -637,6 +783,11 @@ export const submitVerbalNonsenseAssessment = async (req, res, next) => {
       }
 
       const maxScore = answerRows.length;
+      const outcome = getAssessmentOutcome({
+        test,
+        totalScore,
+        maxScore
+      });
       const existing = await tx.assessmentResult.findFirst({
         where: {
           childId,
@@ -678,7 +829,13 @@ export const submitVerbalNonsenseAssessment = async (req, res, next) => {
           questionId: answer.questionId,
           isCorrect: answer.isCorrect,
           doctorNote: answer.doctorNote
-        }))
+          }))
+      });
+
+      await updateChildAssessmentOutcome({
+        tx,
+        childId,
+        outcome
       });
 
       return {
@@ -686,6 +843,7 @@ export const submitVerbalNonsenseAssessment = async (req, res, next) => {
         assessmentResultId: result.id,
         totalScore,
         maxScore,
+        diagnosis: outcome.diagnosis,
         answers: answerRows
       };
     });
@@ -696,12 +854,109 @@ export const submitVerbalNonsenseAssessment = async (req, res, next) => {
         assessmentResultId: data.assessmentResultId,
         totalScore: data.totalScore,
         maxScore: data.maxScore,
+        diagnosis: data.diagnosis,
         answers: data.answers
       }
     });
   } catch (error) {
     if (handleKnownError(res, error)) return;
     logger.error('Submit doctor verbal nonsense assessment error:', error);
+    next(error);
+  }
+};
+
+export const submitHelpAssessment = async (req, res, next) => {
+  try {
+    if (handleValidationErrors(req, res)) return;
+
+    const { childId, testId, sessionId, developmentalAge, answers } = req.body;
+
+    await ensureDoctorCanAccessChild({
+      prisma,
+      doctorId: req.doctor.id,
+      childId
+    });
+
+    const test = await ensureTestForType({
+      prisma,
+      testId,
+      expectedType: 'HELP'
+    });
+    const expectedSkillCount = await prisma.helpSkill.count();
+
+    ensureExactAnswerCount({
+      answers,
+      expectedCount: expectedSkillCount,
+      label: 'HELP assessment'
+    });
+
+    const data = await prisma.$transaction(async (tx) => {
+      const submission = await buildHelpAssessmentSubmission({
+        prisma: tx,
+        answers
+      });
+      const outcome = getAssessmentOutcome({
+        test,
+        totalScore: submission.totalScore,
+        maxScore: submission.maxScore
+      });
+
+      const result = await tx.assessmentResult.create({
+        data: {
+          childId,
+          testId: test.id,
+          sessionId,
+          scoreGiven: submission.totalScore,
+          totalScore: submission.totalScore,
+          maxScore: submission.maxScore
+        }
+      });
+
+      const helpAssessment = await tx.helpAssessment.create({
+        data: {
+          childId,
+          doctorId: req.doctor.id,
+          assessmentResultId: result.id,
+          sessionId,
+          developmentalAge
+        }
+      });
+
+      await tx.helpEvaluation.createMany({
+        data: submission.evaluations.map((evaluation) => ({
+          assessmentId: helpAssessment.id,
+          skillId: evaluation.skillId,
+          score: evaluation.score,
+          doctorNotes: evaluation.doctorNotes
+        }))
+      });
+
+      await updateChildAssessmentOutcome({
+        tx,
+        childId,
+        outcome
+      });
+
+      return {
+        helpAssessmentId: helpAssessment.id,
+        assessmentResultId: result.id,
+        totalScore: submission.totalScore,
+        maxScore: submission.maxScore,
+        diagnosis: outcome.diagnosis
+      };
+    });
+
+    res.status(201).json({
+      success: true,
+      data: {
+        ...data,
+        sessionId,
+        message: 'تم حفظ تقييم HELP وتحديث حالة الطفل بنجاح'
+      }
+    });
+  } catch (error) {
+    if (handleKnownError(res, error)) return;
+    logger.error('Submit HELP assessment error:', error);
     next(error);
   }
 };
@@ -957,6 +1212,15 @@ export const submitAnalogyAssessment = async (req, res, next) => {
     // التعديل هنا: استخدام ensureDoctorCanAccessChild
     await ensureDoctorCanAccessChild({ prisma, doctorId: req.doctor.id, childId });
     const test = await ensureTestForType({ prisma, testId, expectedType: 'ANALOGY' });
+    const expectedQuestionCount = await prisma.q_Analogy.count({
+      where: { testId: test.id }
+    });
+
+    ensureExactAnswerCount({
+      answers,
+      expectedCount: expectedQuestionCount,
+      label: 'Analogy assessment'
+    });
     ensureUniqueAnswerQuestionIds(answers);
 
     const data = await prisma.$transaction(async (tx) => {
@@ -985,6 +1249,11 @@ export const submitAnalogyAssessment = async (req, res, next) => {
       }
 
       const maxScore = answers.length;
+      const outcome = getAssessmentOutcome({
+        test,
+        totalScore,
+        maxScore
+      });
       const result = await tx.assessmentResult.create({
         data: { childId, testId: test.id, sessionId, totalScore, maxScore, scoreGiven: totalScore }
       });
@@ -995,7 +1264,19 @@ export const submitAnalogyAssessment = async (req, res, next) => {
         }))
       });
 
-      return { assessmentResultId: result.id, totalScore, maxScore, answers: answerRows };
+      await updateChildAssessmentOutcome({
+        tx,
+        childId,
+        outcome
+      });
+
+      return {
+        assessmentResultId: result.id,
+        totalScore,
+        maxScore,
+        diagnosis: outcome.diagnosis,
+        answers: answerRows
+      };
     });
 
     res.status(201).json({ success: true, data });
@@ -1014,6 +1295,19 @@ export const submitVisualMemoryAssessment = async (req, res, next) => {
 
     await ensureDoctorCanAccessChild({ prisma, doctorId: req.doctor.id, childId });
     const test = await ensureTestForType({ prisma, testId, expectedType: 'VISUAL_MEMORY' });
+    const expectedQuestionCount = await prisma.q_VisualMemory.count({
+      where: {
+        batch: {
+          testId: test.id
+        }
+      }
+    });
+
+    ensureExactAnswerCount({
+      answers,
+      expectedCount: expectedQuestionCount,
+      label: 'Visual memory assessment'
+    });
     ensureUniqueAnswerQuestionIds(answers);
 
     const data = await prisma.$transaction(async (tx) => {
@@ -1051,6 +1345,11 @@ export const submitVisualMemoryAssessment = async (req, res, next) => {
       }
 
       const maxScore = answers.length;
+      const outcome = getAssessmentOutcome({
+        test,
+        totalScore,
+        maxScore
+      });
       const result = await tx.assessmentResult.create({
         data: { childId, testId: test.id, sessionId, totalScore, maxScore, scoreGiven: totalScore }
       });
@@ -1061,7 +1360,19 @@ export const submitVisualMemoryAssessment = async (req, res, next) => {
         }))
       });
 
-      return { assessmentResultId: result.id, totalScore, maxScore, answers: answerRows };
+      await updateChildAssessmentOutcome({
+        tx,
+        childId,
+        outcome
+      });
+
+      return {
+        assessmentResultId: result.id,
+        totalScore,
+        maxScore,
+        diagnosis: outcome.diagnosis,
+        answers: answerRows
+      };
     });
 
     res.status(201).json({ success: true, data });
@@ -1080,6 +1391,15 @@ export const submitAuditoryMemoryAssessment = async (req, res, next) => {
 
     await ensureDoctorCanAccessChild({ prisma, doctorId: req.doctor.id, childId });
     const test = await ensureTestForType({ prisma, testId, expectedType: 'AUDITORY_MEMORY' });
+    const expectedQuestionCount = await prisma.q_AuditoryMemory.count({
+      where: { testId: test.id }
+    });
+
+    ensureExactAnswerCount({
+      answers,
+      expectedCount: expectedQuestionCount,
+      label: 'Auditory memory assessment'
+    });
     ensureUniqueAnswerQuestionIds(answers);
 
     const data = await prisma.$transaction(async (tx) => {
@@ -1111,6 +1431,11 @@ export const submitAuditoryMemoryAssessment = async (req, res, next) => {
       }
 
       const maxScore = answerRows.reduce((sum, answer) => sum + answer.itemScores.length, 0);
+      const outcome = getAssessmentOutcome({
+        test,
+        totalScore,
+        maxScore
+      });
       const result = await tx.assessmentResult.create({
         data: { childId, testId: test.id, sessionId, totalScore, maxScore, scoreGiven: totalScore }
       });
@@ -1121,7 +1446,19 @@ export const submitAuditoryMemoryAssessment = async (req, res, next) => {
         }))
       });
 
-      return { assessmentResultId: result.id, totalScore, maxScore, answers: answerRows };
+      await updateChildAssessmentOutcome({
+        tx,
+        childId,
+        outcome
+      });
+
+      return {
+        assessmentResultId: result.id,
+        totalScore,
+        maxScore,
+        diagnosis: outcome.diagnosis,
+        answers: answerRows
+      };
     });
 
     res.status(201).json({ success: true, data });
@@ -1140,6 +1477,15 @@ export const submitImageSequenceOrderAssessment = async (req, res, next) => {
 
     await ensureDoctorCanAccessChild({ prisma, doctorId: req.doctor.id, childId });
     const test = await ensureTestForType({ prisma, testId, expectedType: 'IMAGE_SEQUENCE_ORDER' });
+    const expectedQuestionCount = await prisma.q_SequenceOrder.count({
+      where: { testId: test.id }
+    });
+
+    ensureExactAnswerCount({
+      answers,
+      expectedCount: expectedQuestionCount,
+      label: 'Image sequence order assessment'
+    });
     ensureUniqueAnswerQuestionIds(answers);
 
     const data = await prisma.$transaction(async (tx) => {
@@ -1189,6 +1535,11 @@ export const submitImageSequenceOrderAssessment = async (req, res, next) => {
       }
 
       const maxScore = answerRows.reduce((sum, answer) => sum + answer.itemScores.length, 0);
+      const outcome = getAssessmentOutcome({
+        test,
+        totalScore,
+        maxScore
+      });
       const result = await tx.assessmentResult.create({
         data: { childId, testId: test.id, sessionId, totalScore, maxScore, scoreGiven: totalScore }
       });
@@ -1199,7 +1550,19 @@ export const submitImageSequenceOrderAssessment = async (req, res, next) => {
         }))
       });
 
-      return { assessmentResultId: result.id, totalScore, maxScore, answers: answerRows };
+      await updateChildAssessmentOutcome({
+        tx,
+        childId,
+        outcome
+      });
+
+      return {
+        assessmentResultId: result.id,
+        totalScore,
+        maxScore,
+        diagnosis: outcome.diagnosis,
+        answers: answerRows
+      };
     });
 
     res.status(201).json({ success: true, data });

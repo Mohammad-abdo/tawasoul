@@ -314,9 +314,27 @@ async function main() {
     await prisma.test.create({ data: { title: 'Visual Memory Assessment', titleAr: 'Visual Memory Assessment', type: 'VISUAL', testType: 'VISUAL_MEMORY', description: 'Evaluate short-term visual memory.' } }),
     await prisma.test.create({ data: { title: 'Auditory Memory Assessment', titleAr: 'Auditory Memory Assessment', type: 'AUDITORY', testType: 'AUDITORY_MEMORY', description: 'Evaluate auditory recall and sequence memory.' } }),
     await prisma.test.create({ data: { title: 'Verbal Nonsense Test', titleAr: 'اختبار الجمل غير المنطقية', type: 'AUDITORY', testType: 'VERBAL_NONSENSE', description: 'Doctor listens to the child explain the contradiction in each sentence and marks the response manually.' } }),
-    await prisma.test.create({ data: { title: 'Image Sequence Order Assessment', titleAr: 'Image Sequence Order Assessment', type: 'VISUAL', testType: 'IMAGE_SEQUENCE_ORDER', description: 'Arrange image cards into the correct order.' } }),
-    await prisma.test.create({ data: { title: 'VB-MAPP Assessment', titleAr: 'VB-MAPP Assessment', type: 'VISUAL', testType: 'VB_MAPP', description: 'Read-only VB-MAPP entry for admin visibility. Assessment sessions are managed through the dedicated VB-MAPP workflow.' } })
+    await prisma.test.create({ data: { title: 'Image Sequence Order Assessment', titleAr: 'Image Sequence Order Assessment', type: 'VISUAL', testType: 'IMAGE_SEQUENCE_ORDER', description: 'Arrange image cards into the correct order.' } })
   ];
+
+  try {
+    tests.push(
+      await prisma.test.create({
+        data: {
+          title: 'VB-MAPP Assessment',
+          titleAr: 'VB-MAPP Assessment',
+          type: 'VISUAL',
+          testType: 'VB_MAPP',
+          description: 'Read-only VB-MAPP entry for admin visibility. Assessment sessions are managed through the dedicated VB-MAPP workflow.'
+        }
+      })
+    );
+  } catch (error) {
+    console.warn(
+      'Skipping VB-MAPP test seed because the database TestType enum does not appear to support VB_MAPP yet. Apply the latest Prisma migration, then rerun the seed if you need that record.',
+      error instanceof Error ? error.message : error
+    );
+  }
 
   const helpTest = tests.find((test) => test.testType === 'HELP');
   const carsTest = tests.find((test) => test.testType === 'CARS');

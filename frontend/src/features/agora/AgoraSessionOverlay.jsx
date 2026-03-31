@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Loader2,
   Mic,
@@ -80,8 +81,8 @@ const AgoraSessionOverlay = ({
     onClose();
   };
 
-  return (
-    <div className="fixed inset-0 z-[120] bg-gray-950 text-white">
+  return createPortal(
+    <div className="fixed inset-0 z-[120] text-white">
       <div className="absolute inset-0">
         <div className="relative h-full w-full overflow-hidden bg-black">
           {remoteVideoTrack ? (
@@ -172,7 +173,8 @@ const AgoraSessionOverlay = ({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 
