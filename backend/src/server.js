@@ -82,6 +82,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 app.use('/assets', express.static(join(__dirname, '../uploads')));
+// Public URLs from `toPublicAssetUrl()` use `/uploads/...` (see assessment.utils.js)
+app.use('/uploads', express.static(join(__dirname, '../uploads')));
 
 // ============================================
 // Routes

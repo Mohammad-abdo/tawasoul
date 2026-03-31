@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import 'dotenv/config';
+import { ensureAssessmentAssets } from './ensure-assessment-assets.js';
 
 const prisma = new PrismaClient();
 const now = new Date();
@@ -91,6 +92,7 @@ async function createActivity({ skillGroupId, type, levelOrder, imagePaths = [],
 
 async function main() {
   console.log('Starting extended Tawasoul seed...');
+  await ensureAssessmentAssets();
   await clearDb();
 
   const userPass = await bcrypt.hash('password123', 10);
@@ -106,7 +108,7 @@ async function main() {
   await prisma.appSettings.create({ data: {
     appName: 'تواصل', appNameEn: 'Tawasoul', logo: '/uploads/logo.png', logoMobile: '/uploads/logo-mobile.png',
     favicon: '/uploads/favicon.ico', primaryFont: 'Cairo', secondaryFont: 'Tajawal', primaryColor: '#14b8a6',
-    secondaryColor: '#0f172a', allowedFileTypes: j(['jpg', 'png', 'pdf', 'mp3', 'mp4']), paymentGateway: 'Manual', emailService: 'SMTP'
+    secondaryColor: '#0f172a', allowedFileTypes: j(['jpg', 'png', 'pdf', 'mp3', 'wav', 'mp4']), paymentGateway: 'Manual', emailService: 'SMTP'
   } });
 
   for (const type of ['WELCOME', 'VERIFICATION', 'BOOKING_CONFIRMED', 'BOOKING_CANCELLED', 'PASSWORD_RESET', 'PAYMENT_RECEIVED', 'WITHDRAWAL_APPROVED', 'WITHDRAWAL_REJECTED', 'DOCTOR_APPROVED', 'DOCTOR_REJECTED', 'SUPPORT_REPLY', 'ANNOUNCEMENT']) {
@@ -643,19 +645,19 @@ async function main() {
   const amSeeds = [
     {
       order: 1,
-      audioClipUrl: 'assets/audio/memory/sequence-1.mp3',
+      audioClipUrl: 'assets/audio/memory/sequence-1.wav',
       questionText: { ar: 'ما هي الكلمات التي سمعتها؟', en: 'What words did you hear?' },
       modelAnswer: { items: ['apple', 'car', 'ball'], order: true }
     },
     {
       order: 2,
-      audioClipUrl: 'assets/audio/memory/sequence-2.mp3',
+      audioClipUrl: 'assets/audio/memory/sequence-2.wav',
       questionText: { ar: 'رتّب ما سمعته بالترتيب الصحيح', en: 'Arrange what you heard in order' },
       modelAnswer: { items: ['cat', 'tree', 'house', 'moon'], order: true }
     },
     {
       order: 3,
-      audioClipUrl: 'assets/audio/memory/sequence-3.mp3',
+      audioClipUrl: 'assets/audio/memory/sequence-3.wav',
       questionText: { ar: 'اذكر الأرقام التي سمعتها', en: 'Recall the numbers you heard' },
       modelAnswer: { items: ['3', '7', '1', '9', '5'], order: false }
     }
@@ -1057,11 +1059,11 @@ async function main() {
     words: await prisma.skillGroup.create({ data: { categoryId: activityCategories.listening.id, name: 'Word Matching' } })
   };
   const activities = [
-    await createActivity({ skillGroupId: skillGroups.animals.id, type: 'LISTEN_CHOOSE_IMAGE', levelOrder: 1, imagePaths: ['assets/mahara/animals/cat.png', 'assets/mahara/animals/dog.png', 'assets/mahara/animals/bird.png'], audioPaths: ['assets/mahara/animals/cat.mp3'], correctImageIndex: 0 }),
-    await createActivity({ skillGroupId: skillGroups.words.id, type: 'MATCHING', levelOrder: 1, imagePaths: ['assets/mahara/objects/apple.png', 'assets/mahara/objects/car.png', 'assets/mahara/objects/ball.png'], audioPaths: ['assets/mahara/objects/apple.mp3', 'assets/mahara/objects/car.mp3', 'assets/mahara/objects/ball.mp3'], matching: true }),
+    await createActivity({ skillGroupId: skillGroups.animals.id, type: 'LISTEN_CHOOSE_IMAGE', levelOrder: 1, imagePaths: ['assets/mahara/animals/cat.png', 'assets/mahara/animals/dog.png', 'assets/mahara/animals/bird.png'], audioPaths: ['assets/mahara/animals/cat.wav'], correctImageIndex: 0 }),
+    await createActivity({ skillGroupId: skillGroups.words.id, type: 'MATCHING', levelOrder: 1, imagePaths: ['assets/mahara/objects/apple.png', 'assets/mahara/objects/car.png', 'assets/mahara/objects/ball.png'], audioPaths: ['assets/mahara/objects/apple.wav', 'assets/mahara/objects/car.wav', 'assets/mahara/objects/ball.wav'], matching: true }),
     await createActivity({ skillGroupId: skillGroups.routine.id, type: 'SEQUENCE_ORDER', levelOrder: 1, imagePaths: ['assets/mahara/routine/wake-up.png', 'assets/mahara/routine/brush.png', 'assets/mahara/routine/breakfast.png'], sequence: true }),
-    await createActivity({ skillGroupId: skillGroups.animals.id, type: 'LISTEN_WATCH', levelOrder: 2, imagePaths: ['assets/mahara/animals/horse.png'], audioPaths: ['assets/mahara/animals/horse.mp3'], correctImageIndex: 0 }),
-    await createActivity({ skillGroupId: skillGroups.words.id, type: 'AUDIO_ASSOCIATION', levelOrder: 2, imagePaths: ['assets/mahara/association/red.png', 'assets/mahara/association/blue.png'], audioPaths: ['assets/mahara/association/red.mp3', 'assets/mahara/association/blue.mp3'], matching: true })
+    await createActivity({ skillGroupId: skillGroups.animals.id, type: 'LISTEN_WATCH', levelOrder: 2, imagePaths: ['assets/mahara/animals/horse.png'], audioPaths: ['assets/mahara/animals/horse.wav'], correctImageIndex: 0 }),
+    await createActivity({ skillGroupId: skillGroups.words.id, type: 'AUDIO_ASSOCIATION', levelOrder: 2, imagePaths: ['assets/mahara/association/red.png', 'assets/mahara/association/blue.png'], audioPaths: ['assets/mahara/association/red.wav', 'assets/mahara/association/blue.wav'], matching: true })
   ];
   for (let i = 0; i < children.length; i += 1) {
     for (let a = 0; a < activities.length; a += 1) {
@@ -1148,7 +1150,7 @@ async function main() {
     { conversationId: conv1.id, senderId: users[0].id, senderRole: 'USER', content: 'Have you tried the new sensory cards yet?', messageType: 'TEXT', isRead: true },
     { conversationId: conv1.id, senderId: doctors[0].id, senderRole: 'DOCTOR', content: 'Yes, they worked well during practice time.', messageType: 'TEXT', isRead: true },
     { conversationId: conv2.id, senderId: users[1].id, senderRole: 'USER', imageUrl: '/uploads/messages/therapy-tools-share.png', messageType: 'IMAGE', isRead: false },
-    { conversationId: conv2.id, senderId: doctors[1].id, senderRole: 'DOCTOR', voiceUrl: '/uploads/messages/progress-update-voice.mp3', voiceDuration: 22, messageType: 'VOICE', isRead: false }
+    { conversationId: conv2.id, senderId: doctors[1].id, senderRole: 'DOCTOR', voiceUrl: '/uploads/messages/progress-update-voice.wav', voiceDuration: 22, messageType: 'VOICE', isRead: false }
   ] });
 
   for (const [i, user] of users.entries()) {

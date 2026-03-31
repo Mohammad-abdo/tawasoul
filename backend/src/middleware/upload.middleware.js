@@ -170,3 +170,45 @@ export const getFileUrl = (req, filename, folder = 'general') => {
   return `${baseUrl}/uploads/${folder}/${filename}`;
 };
 
+const assessmentImageStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const folderPath = path.join(uploadsDir, 'assessments', 'images');
+    if (!fs.existsSync(folderPath)) {
+      fs.mkdirSync(folderPath, { recursive: true });
+    }
+    cb(null, folderPath);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
+    const ext = path.extname(file.originalname) || '.png';
+    cb(null, `assessment-image-${uniqueSuffix}${ext}`);
+  }
+});
+
+const assessmentAudioStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const folderPath = path.join(uploadsDir, 'assessments', 'audio');
+    if (!fs.existsSync(folderPath)) {
+      fs.mkdirSync(folderPath, { recursive: true });
+    }
+    cb(null, folderPath);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
+    const ext = path.extname(file.originalname) || '.wav';
+    cb(null, `assessment-audio-${uniqueSuffix}${ext}`);
+  }
+});
+
+export const uploadAssessmentImageSingle = multer({
+  storage: assessmentImageStorage,
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: imageFilter
+}).single('file');
+
+export const uploadAssessmentAudioSingle = multer({
+  storage: assessmentAudioStorage,
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: audioFilter
+}).single('file');
+

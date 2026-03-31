@@ -1112,6 +1112,44 @@ export const createHelpSkill = async (req, res, next) => {
   }
 };
 
+export const updateHelpSkill = async (req, res, next) => {
+  try {
+    if (handleValidationErrors(req, res)) return;
+
+    const existing = await prisma.helpSkill.findUnique({
+      where: { id: req.params.skillId }
+    });
+
+    if (!existing) {
+      return res.status(404).json({
+        success: false,
+        error: {
+          code: 'HELP_SKILL_NOT_FOUND',
+          message: 'Help skill not found'
+        }
+      });
+    }
+
+    const updated = await prisma.helpSkill.update({
+      where: { id: existing.id },
+      data: {
+        ...(req.body.domain !== undefined && { domain: req.body.domain }),
+        ...(req.body.skillNumber !== undefined && { skillNumber: req.body.skillNumber }),
+        ...(req.body.description !== undefined && { description: req.body.description }),
+        ...(req.body.ageRange !== undefined && { ageRange: req.body.ageRange })
+      }
+    });
+
+    res.json({
+      success: true,
+      data: updated
+    });
+  } catch (error) {
+    logger.error('Update HELP skill error:', error);
+    next(error);
+  }
+};
+
 export const deleteHelpSkill = async (req, res, next) => {
   try {
     if (handleValidationErrors(req, res)) return;
@@ -1157,6 +1195,50 @@ export const deleteHelpSkill = async (req, res, next) => {
     });
   } catch (error) {
     logger.error('Delete HELP skill error:', error);
+    next(error);
+  }
+};
+
+export const uploadAssessmentImage = async (req, res, next) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'NO_FILE',
+          message: 'No image file uploaded'
+        }
+      });
+    }
+    const relativePath = `assessments/images/${req.file.filename}`;
+    res.json({
+      success: true,
+      data: { path: relativePath }
+    });
+  } catch (error) {
+    logger.error('Upload assessment image error:', error);
+    next(error);
+  }
+};
+
+export const uploadAssessmentAudio = async (req, res, next) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'NO_FILE',
+          message: 'No audio file uploaded'
+        }
+      });
+    }
+    const relativePath = `assessments/audio/${req.file.filename}`;
+    res.json({
+      success: true,
+      data: { path: relativePath }
+    });
+  } catch (error) {
+    logger.error('Upload assessment audio error:', error);
     next(error);
   }
 };
