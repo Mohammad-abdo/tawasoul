@@ -81,7 +81,12 @@ app.use('/api/', rateLimiter);
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-app.use('/assets', express.static(join(__dirname, '../uploads')));
+const uploadsDirectory = join(__dirname, '../uploads');
+
+// Keep both mounts so existing `/assets/...` links continue working while
+// assessment media URLs that currently point at `/uploads/...` also resolve.
+app.use('/assets', express.static(uploadsDirectory));
+app.use('/uploads', express.static(uploadsDirectory));
 
 // ============================================
 // Routes

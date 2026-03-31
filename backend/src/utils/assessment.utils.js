@@ -25,11 +25,26 @@ const createAssessmentValidationError = (message) => {
 
 const baseUrlFromReq = (req) => process.env.BASE_URL || `${req.protocol}://${req.get('host')}`;
 
+const normalizePublicAssetPath = (assetPath) => {
+  const normalized = String(assetPath).replace(/^\/+/, '').replace(/^uploads\/+/i, '');
+
+  // Some analogy rows were stored without a file extension. The current asset
+  // set uses `.png`, so normalize those paths when building the public URL.
+  if (
+    /^assets\/(?:images\/)?analogy\/.+\/[^/.]+$/i.test(normalized)
+    && !/\.[a-z0-9]+$/i.test(normalized)
+  ) {
+    return `${normalized}.png`;
+  }
+
+  return normalized;
+};
+
 export const toPublicAssetUrl = (req, assetPath) => {
   if (!assetPath) return null;
   if (/^https?:\/\//i.test(assetPath)) return assetPath;
 
-  const normalized = String(assetPath).replace(/^\/+/, '').replace(/^uploads\/+/i, '');
+  const normalized = normalizePublicAssetPath(assetPath);
   return `${baseUrlFromReq(req)}/uploads/${normalized}`;
 };
 

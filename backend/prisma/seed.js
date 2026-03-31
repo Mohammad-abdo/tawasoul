@@ -529,35 +529,35 @@ async function main() {
   const analogySeeds = [
     {
       order: 1,
-      questionImageUrl: 'assets/images/analogy/q1-stem.png',
+      questionImageUrl: 'assets/analogy/q1/q1.png',
       correctIndex: 2,
       choices: [
-        { imagePath: 'assets/images/analogy/q1-choice-0.png' },
-        { imagePath: 'assets/images/analogy/q1-choice-1.png' },
-        { imagePath: 'assets/images/analogy/q1-choice-2.png' },
-        { imagePath: 'assets/images/analogy/q1-choice-3.png' }
+        { imagePath: 'assets/analogy/q1/a1.1.png' },
+        { imagePath: 'assets/analogy/q1/a1.2.png' },
+        { imagePath: 'assets/analogy/q1/a1.3.png' },
+        { imagePath: 'assets/analogy/q1/a1.4.png' }
       ]
     },
     {
       order: 2,
-      questionImageUrl: 'assets/images/analogy/q2-stem.png',
+      questionImageUrl: 'assets/analogy/q2/q2.png',
       correctIndex: 0,
       choices: [
-        { imagePath: 'assets/images/analogy/q2-choice-0.png' },
-        { imagePath: 'assets/images/analogy/q2-choice-1.png' },
-        { imagePath: 'assets/images/analogy/q2-choice-2.png' },
-        { imagePath: 'assets/images/analogy/q2-choice-3.png' }
+        { imagePath: 'assets/analogy/q2/a2.1.png' },
+        { imagePath: 'assets/analogy/q2/a2.2.png' },
+        { imagePath: 'assets/analogy/q2/a2.3.png' },
+        { imagePath: 'assets/analogy/q2/a2.4.png' }
       ]
     },
     {
       order: 3,
-      questionImageUrl: 'assets/images/analogy/q3-stem.png',
+      questionImageUrl: 'assets/analogy/q3/q3.png',
       correctIndex: 1,
       choices: [
-        { imagePath: 'assets/images/analogy/q3-choice-0.png' },
-        { imagePath: 'assets/images/analogy/q3-choice-1.png' },
-        { imagePath: 'assets/images/analogy/q3-choice-2.png' },
-        { imagePath: 'assets/images/analogy/q3-choice-3.png' }
+        { imagePath: 'assets/analogy/q3/a3.1.png' },
+        { imagePath: 'assets/analogy/q3/a3.2.png' },
+        { imagePath: 'assets/analogy/q3/a3.3.png' },
+        { imagePath: 'assets/analogy/q3/a3.4.png' }
       ]
     }
   ];
@@ -589,8 +589,8 @@ async function main() {
   const visualMemoryBatches = [];
 
   const vmBatchSeeds = [
-    { order: 1, imageUrl: 'assets/images/visual-memory/scene-1.png', displaySeconds: 5 },
-    { order: 2, imageUrl: 'assets/images/visual-memory/scene-2.png', displaySeconds: 5 }
+    { order: 1, imageUrl: 'assets/visual-memory/scene-1.png', displaySeconds: 5 },
+    { order: 2, imageUrl: 'assets/visual-memory/scene-2.png', displaySeconds: 5 }
   ];
   for (const batchSeed of vmBatchSeeds) {
     const batch = await prisma.q_VisualMemory_Batch.create({ data: { testId: visualMemoryTest.id, ...batchSeed } });
@@ -758,9 +758,8 @@ async function main() {
     {
       order: 1,
       images: [
-        { assetPath: 'assets/images/sequence-order/routine-1.png', position: 1 },
-        { assetPath: 'assets/images/sequence-order/routine-2.png', position: 2 },
-        { assetPath: 'assets/images/sequence-order/routine-3.png', position: 3 }
+        { assetPath: 'assets/sequence-order/routine-2.png', position: 1 },
+        { assetPath: 'assets/sequence-order/routine-1.png', position: 2 }
       ]
     },
     {
