@@ -6,6 +6,7 @@ import toast from 'react-hot-toast';
 import Modal from '../../components/common/Modal';
 import { assessments } from '../../api/admin';
 import TestQuestionModal from './TestQuestionModal';
+import HelpTestSkillsPanel from './HelpTestSkillsPanel';
 import {
   getLocalizedText,
   isManagedTestType,
@@ -97,7 +98,17 @@ const TestDetail = () => {
     },
   });
 
-  const orderedQuestions = useMemo(() => sortByOrder(data?.questions || []), [data?.questions]);
+  const orderedQuestions = useMemo(() => {
+    const raw = data?.questions || [];
+    if (data?.testType === 'HELP') {
+      return [...raw].sort((a, b) => {
+        const byDomain = (a.domain || '').localeCompare(b.domain || '');
+        if (byDomain !== 0) return byDomain;
+        return String(a.skillNumber || '').localeCompare(String(b.skillNumber || ''), undefined, { numeric: true });
+      });
+    }
+    return sortByOrder(raw);
+  }, [data?.questions, data?.testType]);
   const nextOrder = orderedQuestions.length > 0
     ? Math.max(...orderedQuestions.map((question) => question.order ?? question.orderIndex ?? 0)) + 1
     : 1;
@@ -366,10 +377,12 @@ const TestDetail = () => {
             VB-MAPP is visible here for admin reference, but its sessions and scoring are managed through the dedicated VB-MAPP workflow.
           </div>
         );
+      case 'HELP':
+        return <HelpTestSkillsPanel testId={testId} skills={orderedQuestions} />;
       default:
         return (
           <div className="rounded-2xl border border-dashed border-gray-300 p-8 text-center text-sm text-gray-600">
-            This test type is visible here, but question management is only enabled for CARS, Analogy, Visual Memory, Auditory Memory, Verbal Nonsense, and Image Sequence Order.
+            This test type is visible here, but the standard question editor is only wired for CARS, Analogy, Visual Memory, Auditory Memory, Verbal Nonsense, and Image Sequence Order. HELP and VB-MAPP use separate workflows.
           </div>
         );
     }
@@ -446,9 +459,11 @@ const TestDetail = () => {
       <section className="glass-card p-6">
         <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
           <div>
-            <h3 className="text-lg font-semibold text-gray-900">Questions</h3>
+            <h3 className="text-lg font-semibold text-gray-900">{data.testType === 'HELP' ? 'HELP skills' : 'Questions'}</h3>
             <p className="text-sm text-gray-500">
-              {data.questionCount} item{data.questionCount === 1 ? '' : 's'} in this test.
+              {data.testType === 'HELP'
+                ? `${data.questionCount} skill${data.questionCount === 1 ? '' : 's'} in the HELP catalog.`
+                : `${data.questionCount} item${data.questionCount === 1 ? '' : 's'} in this test.`}
             </p>
           </div>
           {!orderedQuestions.length && (

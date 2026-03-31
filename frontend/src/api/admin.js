@@ -537,6 +537,18 @@ export const assessments = {
   deleteTest: (id) =>
     apiClient.delete(`/admin/assessments/tests/${id}`),
 
+  uploadAssessmentImage: (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return apiClient.post('/admin/assessments/upload/image', formData);
+  },
+
+  uploadAssessmentAudio: (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return apiClient.post('/admin/assessments/upload/audio', formData);
+  },
+
   // Specialized question management
   createCarsQuestion: (testId, data) =>
     apiClient.post(`/admin/assessments/cars/${testId}/questions`, data),
@@ -579,6 +591,12 @@ export const assessments = {
 
   deleteTestQuestion: (testId, questionId) =>
     apiClient.delete(`/admin/assessments/tests/${testId}/questions/${questionId}`),
+
+  // HELP developmental skills (global catalog; shown under the HELP test in admin)
+  getHelpSkills: (params) => apiClient.get('/admin/assessments/help/skills', { params }),
+  createHelpSkill: (data) => apiClient.post('/admin/assessments/help/skills', data),
+  updateHelpSkill: (skillId, data) => apiClient.patch(`/admin/assessments/help/skills/${skillId}`, data),
+  deleteHelpSkill: (skillId) => apiClient.delete(`/admin/assessments/help/skills/${skillId}`),
 };
 
 // Mahara Kids Activities
