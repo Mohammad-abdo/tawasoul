@@ -1,5 +1,6 @@
 import { prisma } from '../../config/database.js';
 import { logger } from '../../utils/logger.js';
+import { creditDoctorWalletForCompletedBooking } from '../../utils/wallet.utils.js';
 
 const bookingDoctorSelect = {
   id: true,
@@ -174,23 +175,86 @@ export const updateBookingStatus = async (req, res, next) => {
       });
     }
 
-    const updatedBooking = await prisma.booking.update({
-      where: { id },
-      data: { status }
-    });
+    if (status === 'COMPLETED' && booking.status === 'COMPLETED') {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'INVALID_STATUS',
+          message: 'Booking is already completed'
+        }
+      });
+    }
 
-    // Log activity
-    await prisma.activityLog.create({
-      data: {
-        adminId: req.admin.id,
-        action: 'UPDATE',
-        entityType: 'BOOKING',
-        entityId: id,
-        description: `Updated booking status to ${status}`,
-        changes: { before: booking.status, after: status },
-        ipAddress: req.ip,
-        userAgent: req.get('user-agent')
+    const updatedBooking = await prisma.$transaction(async (tx) => {
+      let nextBooking;
+
+      if (status === 'COMPLETED') {
+        const completedAt = new Date();
+        const updateResult = await tx.booking.updateMany({
+          where: {
+            id,
+            status: {
+              not: 'COMPLETED'
+            }
+          },
+          data: {
+            status,
+            completedAt
+          }
+        });
+
+        if (updateResult.count === 0) {
+          const transactionError = new Error('BOOKING_ALREADY_COMPLETED');
+          transactionError.status = 400;
+          throw transactionError;
+        }
+
+        nextBooking = await tx.booking.findUnique({
+          where: { id },
+          include: {
+            doctor: {
+              select: {
+                hourlyRate: true
+              }
+            }
+          }
+        });
+
+        if (!nextBooking) {
+          const transactionError = new Error('BOOKING_NOT_FOUND');
+          transactionError.status = 404;
+          throw transactionError;
+        }
+
+        await creditDoctorWalletForCompletedBooking({
+          tx,
+          booking: nextBooking,
+          completedAt
+        });
+      } else {
+        nextBooking = await tx.booking.update({
+          where: { id },
+          data: {
+            status,
+            ...(status === 'COMPLETED' ? { completedAt: new Date() } : {})
+          }
+        });
       }
+
+      await tx.activityLog.create({
+        data: {
+          adminId: req.admin.id,
+          action: 'UPDATE',
+          entityType: 'BOOKING',
+          entityId: id,
+          description: `Updated booking status to ${status}`,
+          changes: { before: booking.status, after: status },
+          ipAddress: req.ip,
+          userAgent: req.get('user-agent')
+        }
+      });
+
+      return nextBooking;
     });
 
     res.json({
@@ -199,6 +263,26 @@ export const updateBookingStatus = async (req, res, next) => {
       message: 'Booking status updated successfully'
     });
   } catch (error) {
+    if (error.message === 'BOOKING_ALREADY_COMPLETED') {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'INVALID_STATUS',
+          message: 'Booking is already completed'
+        }
+      });
+    }
+
+    if (error.message === 'BOOKING_NOT_FOUND') {
+      return res.status(404).json({
+        success: false,
+        error: {
+          code: 'BOOKING_NOT_FOUND',
+          message: 'Booking not found'
+        }
+      });
+    }
+
     logger.error('Update booking error:', error);
     next(error);
   }

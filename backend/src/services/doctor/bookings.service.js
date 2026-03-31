@@ -1,5 +1,7 @@
 import * as bookingsRepo from '../../repositories/doctor/bookings.repository.js';
 import { createHttpError } from '../../utils/httpError.js';
+import { prisma } from '../../config/database.js';
+import { creditDoctorWalletForCompletedBooking } from '../../utils/wallet.utils.js';
 
 const formatBookingSummary = (booking) => ({
   id: booking.id,
@@ -161,10 +163,55 @@ export const completeBooking = async (doctorId, id, { notes, rating }) => {
     throw createHttpError(404, 'BOOKING_NOT_FOUND', 'Booking not found');
   }
 
-  return bookingsRepo.updateBooking(id, {
-    status: 'COMPLETED',
-    completedAt: new Date(),
-    notes,
-    rating: rating ? parseInt(rating) : undefined
+  if (booking.status === 'COMPLETED') {
+    throw createHttpError(400, 'INVALID_STATUS', 'Booking is already completed');
+  }
+
+  const completedAt = new Date();
+  const parsedRating = rating ? parseInt(rating, 10) : undefined;
+
+  return prisma.$transaction(async (tx) => {
+    const updateResult = await tx.booking.updateMany({
+      where: {
+        id,
+        doctorId,
+        status: {
+          not: 'COMPLETED'
+        }
+      },
+      data: {
+        status: 'COMPLETED',
+        completedAt,
+        notes,
+        rating: parsedRating
+      }
+    });
+
+    if (updateResult.count === 0) {
+      throw createHttpError(400, 'INVALID_STATUS', 'Booking could not be marked as completed');
+    }
+
+    const completedBooking = await tx.booking.findUnique({
+      where: { id },
+      include: {
+        doctor: {
+          select: {
+            hourlyRate: true
+          }
+        }
+      }
+    });
+
+    if (!completedBooking) {
+      throw createHttpError(404, 'BOOKING_NOT_FOUND', 'Booking not found');
+    }
+
+    await creditDoctorWalletForCompletedBooking({
+      tx,
+      booking: completedBooking,
+      completedAt
+    });
+
+    return completedBooking;
   });
 };

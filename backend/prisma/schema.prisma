@@ -67,6 +67,7 @@ model Doctor {
   email             String            @unique
   phone             String
   password          String
+  hourlyRate        Decimal           @default(0) @db.Decimal(10, 2)
   bio               String?           @db.Text
   avatar            String?
   rating            Float             @default(0)
@@ -91,6 +92,8 @@ model Doctor {
   payments          Payment[]
   supportReplies    SupportReply[]
   supportTickets    SupportTicket[]
+  wallet            DoctorWallet?
+  walletRequests    WithdrawalRequest[]
   withdrawals       Withdrawal[]
   conversations     Conversation[]
   vbMappEvaluations VbMappSession[]
@@ -302,6 +305,49 @@ model Withdrawal {
 
   @@index([doctorId], map: "withdrawals_doctorId_fkey")
   @@map("withdrawals")
+}
+
+model DoctorWallet {
+  id            String              @id @default(uuid())
+  doctorId      String              @unique
+  balance       Decimal             @default(0) @db.Decimal(10, 2)
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+  doctor        Doctor              @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  transactions  WalletTransaction[]
+  withdrawals   WithdrawalRequest[]
+
+  @@index([doctorId], map: "doctor_wallets_doctorId_fkey")
+  @@map("doctor_wallets")
+}
+
+model WalletTransaction {
+  id          String                @id @default(uuid())
+  walletId     String
+  type        WalletTransactionType
+  amount      Decimal               @db.Decimal(10, 2)
+  description String?               @db.Text
+  createdAt   DateTime              @default(now())
+  wallet      DoctorWallet          @relation(fields: [walletId], references: [id], onDelete: Cascade)
+
+  @@index([walletId], map: "wallet_transactions_walletId_fkey")
+  @@map("wallet_transactions")
+}
+
+model WithdrawalRequest {
+  id          String                   @id @default(uuid())
+  walletId     String
+  doctorId     String
+  amount      Decimal                  @db.Decimal(10, 2)
+  status      WithdrawalRequestStatus  @default(PENDING)
+  createdAt   DateTime                 @default(now())
+  resolvedAt  DateTime?
+  wallet      DoctorWallet             @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  doctor      Doctor                   @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+
+  @@index([walletId], map: "withdrawal_requests_walletId_fkey")
+  @@index([doctorId], map: "withdrawal_requests_doctorId_fkey")
+  @@map("withdrawal_requests")
 }
 
 model Notification {
@@ -1304,6 +1350,17 @@ enum WithdrawalStatus {
   PENDING
   PROCESSING
   COMPLETED
+  REJECTED
+}
+
+enum WalletTransactionType {
+  EARNING
+  WITHDRAWAL
+}
+
+enum WithdrawalRequestStatus {
+  PENDING
+  APPROVED
   REJECTED
 }
 

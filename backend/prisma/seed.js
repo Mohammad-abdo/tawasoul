@@ -175,8 +175,14 @@ async function main() {
     const [name, email, phone, specialization, bio, isFeatured, isVerified] = doctorSeeds[i];
     const doctor = await prisma.doctor.create({ data: {
       name, email, phone, password: doctorPass, bio, avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=doctor-${i + 1}`,
+      hourlyRate: 250 + i * 50,
       rating: 4.4 + i * 0.1, totalSessions: 30 + i * 15, totalRatings: 14 + i * 3, isVerified, isActive: true,
-      isApproved: true, isFeatured, featuredOrder: isFeatured ? i + 1 : 10 + i, approvalNotes: 'Approved during seed setup.'
+      isApproved: true, isFeatured, featuredOrder: isFeatured ? i + 1 : 10 + i, approvalNotes: 'Approved during seed setup.',
+      wallet: {
+        create: {
+          balance: 0
+        }
+      }
     } });
     doctors.push(doctor);
     await prisma.doctorSpecialty.createMany({ data: [
@@ -1086,6 +1092,39 @@ async function main() {
   }
   for (const booking of bookings.slice(0, 8).filter((b) => b.status !== 'CANCELLED')) {
     await prisma.payment.create({ data: { bookingId: booking.id, doctorId: booking.doctorId, amount: booking.price, method: booking.status === 'COMPLETED' ? 'INSTAPAY' : 'FAWRY', status: booking.status === 'COMPLETED' ? 'COMPLETED' : 'PENDING', transactionId: booking.status === 'COMPLETED' ? `txn-booking-${booking.id.slice(0, 8)}` : `txn-booking-init-${booking.id.slice(0, 8)}` } });
+  }
+
+  for (const booking of bookings.filter((b) => b.status === 'COMPLETED')) {
+    const doctor = doctors.find((entry) => entry.id === booking.doctorId);
+    const hourlyRate = Number(doctor?.hourlyRate || 0);
+    const sessionDuration = booking.completedAt
+      ? Math.round((new Date(booking.completedAt).getTime() - new Date(booking.scheduledAt).getTime()) / 60000)
+      : booking.duration;
+    const earningAmount = Number(((hourlyRate * sessionDuration) / 60).toFixed(2));
+
+    const wallet = await prisma.doctorWallet.findUnique({
+      where: { doctorId: booking.doctorId }
+    });
+
+    if (wallet) {
+      await prisma.doctorWallet.update({
+        where: { id: wallet.id },
+        data: {
+          balance: {
+            increment: earningAmount
+          }
+        }
+      });
+
+      await prisma.walletTransaction.create({
+        data: {
+          walletId: wallet.id,
+          type: 'EARNING',
+          amount: earningAmount,
+          description: `Session earning for booking ${booking.id}`
+        }
+      });
+    }
   }
 
   for (let i = 0; i < doctors.length; i += 1) {

@@ -135,7 +135,7 @@ const Layout = ({ children = null }) => {
     { path: '/packages', icon: Layers, label: 'الباقات' },
     { path: '/products', icon: FileText, label: 'المنتجات' },
     { path: '/orders', icon: Ticket, label: 'الطلبات' },
-    { path: '/payments', icon: DollarSign, label: 'المدفوعات' },
+    { path: '/payments', icon: DollarSign, label: 'طلبات السحب' },
     { path: '/support', icon: Headphones, label: 'الدعم' },
     { path: '/reports', icon: FileBarChart, label: 'التقارير' },
     { path: '/coupons', icon: Ticket, label: 'الكوبونات' },
@@ -157,7 +157,7 @@ const Layout = ({ children = null }) => {
     { path: '/bookings', icon: Calendar, label: 'مواعيدي' },
     { path: '/availability', icon: Clock, label: 'مواعيد العمل' },
     { path: '/articles', icon: FileText, label: 'مقالاتي' },
-    { path: '/payments', icon: DollarSign, label: 'أرباحي' },
+    { path: '/payments', icon: DollarSign, label: 'محفظتي' },
     { path: '/doctor/profile', icon: User, label: 'الملف الشخصي' },
   ];
 

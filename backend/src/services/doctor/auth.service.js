@@ -46,7 +46,20 @@ const normalizeDoctorSessionPrices = (doctor) => ({
   sessionPrices: normalizeSessionPrices(doctor.sessionPrices)
 });
 
-export const register = async ({ name, email, phone, password, specialization }) => {
+const normalizeHourlyRateInput = (hourlyRate) => {
+  if (hourlyRate === undefined || hourlyRate === null || hourlyRate === '') {
+    return undefined;
+  }
+
+  const parsedValue = Number(hourlyRate);
+  if (!Number.isFinite(parsedValue) || parsedValue < 0) {
+    throw createHttpError(400, 'VALIDATION_ERROR', 'hourlyRate must be a valid non-negative number');
+  }
+
+  return parsedValue;
+};
+
+export const register = async ({ name, email, phone, password, specialization, hourlyRate }) => {
   if (!name || !email || !phone || !password) {
     throw createHttpError(400, 'VALIDATION_ERROR', 'Name, email, phone, and password are required');
   }
@@ -62,11 +75,13 @@ export const register = async ({ name, email, phone, password, specialization })
 
   const hashedPassword = await bcrypt.hash(password, 10);
   const specializationValue = typeof specialization === 'string' ? specialization.trim() : '';
+  const normalizedHourlyRate = normalizeHourlyRateInput(hourlyRate);
   const doctor = await authRepo.createDoctor({
     name,
     email,
     phone,
     password: hashedPassword,
+    hourlyRate: normalizedHourlyRate,
     ...(specializationValue
       ? {
           specialties: {
@@ -74,6 +89,11 @@ export const register = async ({ name, email, phone, password, specialization })
           }
         }
       : {}),
+    wallet: {
+      create: {
+        balance: 0
+      }
+    },
     isActive: true,
     isApproved: false
   });
@@ -130,7 +150,8 @@ export const updateProfile = async (doctorId, body) => {
     bio,
     avatar,
     specialties,
-    sessionPrices
+    sessionPrices,
+    hourlyRate
   } = body;
 
   const updateData = {};
@@ -138,6 +159,7 @@ export const updateProfile = async (doctorId, body) => {
   if (phone) updateData.phone = phone;
   if (bio !== undefined) updateData.bio = bio;
   if (avatar !== undefined) updateData.avatar = avatar;
+  if (hourlyRate !== undefined) updateData.hourlyRate = normalizeHourlyRateInput(hourlyRate);
 
   const updatedDoctor = await authRepo.updateDoctor(doctorId, updateData);
 

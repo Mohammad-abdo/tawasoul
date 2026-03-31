@@ -131,6 +131,14 @@ export const withdrawals = {
     apiClient.put(`/admin/withdrawals/${id}/reject`, data),
 };
 
+export const wallet = {
+  getWithdrawalRequests: (params) =>
+    apiClient.get('/admin/wallet/withdrawal-requests', { params }),
+
+  resolveWithdrawalRequest: (id, data) =>
+    apiClient.patch(`/admin/wallet/withdrawal-requests/${id}/resolve`, data),
+};
+
 // Support
 export const support = {
   getTickets: (params) =>

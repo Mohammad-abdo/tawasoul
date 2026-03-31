@@ -10,6 +10,7 @@ const DoctorProfile = () => {
     email: '',
     phone: '',
     specialization: '',
+    hourlyRate: '',
     bio: '',
     avatar: '',
     specialties: []
@@ -33,6 +34,7 @@ const DoctorProfile = () => {
       email: profile.email || '',
       phone: profile.phone || '',
       specialization: profile.specialization || '',
+      hourlyRate: profile.hourlyRate || '',
       bio: profile.bio || '',
       avatar: profile.avatar || '',
       specialties: profile.specialties?.map((specialty) => specialty.specialty) || []
@@ -153,6 +155,22 @@ const DoctorProfile = () => {
                 onChange={handleChange}
                 className="input"
                 placeholder="مثال: أخصائي تخاطب وتعديل سلوك"
+              />
+            </div>
+
+            <div className="space-y-2 md:col-span-2">
+              <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+                <Award size={16} className="text-primary-500" /> السعر لكل ساعة
+              </label>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                name="hourlyRate"
+                value={formData.hourlyRate}
+                onChange={handleChange}
+                className="input"
+                placeholder="300"
               />
             </div>
           </div>

@@ -112,3 +112,11 @@ export const doctorAssessments = {
   getChildResults: (childId) => 
     apiClient.get(`/doctor/assessments/children/${childId}/results`),
 };
+
+export const doctorWallet = {
+  get: () =>
+    apiClient.get('/doctor/wallet'),
+
+  requestWithdrawal: (data) =>
+    apiClient.post('/doctor/wallet/withdraw', data),
+};

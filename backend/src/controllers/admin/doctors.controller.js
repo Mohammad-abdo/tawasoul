@@ -173,28 +173,23 @@ export const getDoctorById = async (req, res, next) => {
       });
     }
 
-    // Calculate wallet balance (total payments - total withdrawals)
-    const totalEarnings = await prisma.payment.aggregate({
-      where: {
-        doctorId: id,
-        status: 'COMPLETED'
-      },
-      _sum: {
-        amount: true
+    const wallet = await prisma.doctorWallet.findUnique({
+      where: { doctorId: id },
+      include: {
+        transactions: true,
+        withdrawals: true
       }
     });
 
-    const totalWithdrawals = await prisma.withdrawal.aggregate({
-      where: {
-        doctorId: id,
-        status: 'COMPLETED'
-      },
-      _sum: {
-        amount: true
-      }
-    });
+    const totalEarnings = wallet?.transactions
+      ?.filter((transaction) => transaction.type === 'EARNING')
+      .reduce((sum, transaction) => sum + Number(transaction.amount || 0), 0) || 0;
 
-    const walletBalance = (totalEarnings._sum.amount || 0) - (totalWithdrawals._sum.amount || 0);
+    const totalWithdrawals = wallet?.transactions
+      ?.filter((transaction) => transaction.type === 'WITHDRAWAL')
+      .reduce((sum, transaction) => sum + Number(transaction.amount || 0), 0) || 0;
+
+    const walletBalance = Number(wallet?.balance || 0);
 
     // Group bookings by day
     const bookingsByDay = {};
@@ -230,7 +225,8 @@ export const getDoctorById = async (req, res, next) => {
  */
 export const createDoctor = async (req, res, next) => {
   try {
-    const { name, email, phone, password, specialization, isVerified, isApproved } = req.body;
+    const { name, email, phone, password, specialization, isVerified, isApproved, hourlyRate } = req.body;
+    const normalizedHourlyRate = hourlyRate !== undefined ? Number(hourlyRate) : undefined;
 
     if (!name || !email || !password) {
       return res.status(400).json({
@@ -238,6 +234,16 @@ export const createDoctor = async (req, res, next) => {
         error: {
           code: 'VALIDATION_ERROR',
           message: 'Name, email, and password are required'
+        }
+      });
+    }
+
+    if (normalizedHourlyRate !== undefined && (!Number.isFinite(normalizedHourlyRate) || normalizedHourlyRate < 0)) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'hourlyRate must be a valid non-negative number'
         }
       });
     }
@@ -267,6 +273,7 @@ export const createDoctor = async (req, res, next) => {
         email,
         phone,
         password: hashedPassword,
+        hourlyRate: normalizedHourlyRate,
         ...(specialization
           ? {
               specialties: {
@@ -274,6 +281,11 @@ export const createDoctor = async (req, res, next) => {
               }
             }
           : {}),
+        wallet: {
+          create: {
+            balance: 0
+          }
+        },
         isVerified: isVerified !== undefined ? isVerified : false,
         isApproved: isApproved !== undefined ? isApproved : false
       },
