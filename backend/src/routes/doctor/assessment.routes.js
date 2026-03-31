@@ -49,6 +49,14 @@ router.get(
   assessmentController.getAssessmentSessionDetail
 );
 
+router.get(
+  '/children/:childId/results/:sessionId/pdf',
+  authenticateDoctor,
+  requiredParam('childId', 'childId'),
+  requiredParam('sessionId', 'sessionId'),
+  assessmentController.downloadAssessmentSessionPdf
+);
+
 router.post(
   '/generic/submit',
   authenticateDoctor,

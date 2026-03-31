@@ -165,17 +165,19 @@ export const sendMessage = async (req, res, next) => {
     });
 
     
-        // 4. نبعت إشعار للدكتور في الداتابيز
-        const notification =  await messagesRepo.createNotification({
-          userId: doctorId, // الإشعار رايح للدكتور (باعتبار إن جدول الاشعارات بياخد userId كمرجع للمستقبل)
+        // 4. نبعت إشعار للدكتور (Socket). ملاحظة: جدول notifications مربوط بالـ User فقط في الـ schema.
+        // لذلك لا نخزن إشعار للدكتور في جدول notifications حتى لا نفشل بسبب FK.
+        const socketNotification = {
           type: 'NEW_MESSAGE',
           title: 'رسالة جديدة',
-          message: `لديك رسالة جديدة من ${req.user.username || req.user.fullName || 'أحد المستخدمين'}`
-        });
+          message: `لديك رسالة جديدة من ${req.user.username || req.user.fullName || 'أحد المستخدمين'}`,
+          createdAt: new Date().toISOString(),
+        };
+
         try {
           const io = getIo();
           io.to(`doctor-${doctorId}`).emit('receive-message', message);
-          io.to(`doctor-${doctorId}`).emit('new-notification', notification);
+          io.to(`doctor-${doctorId}`).emit('new-notification', socketNotification);
         } catch (socketError) {
           logger.error('Socket error:', socketError);
         }

@@ -29,11 +29,14 @@ import {
   Trash2,
   CheckCheck,
   Activity,
-  Brain
+  Brain,
+  MessageSquare
 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { notifications } from '../../api/admin';
 import toast from 'react-hot-toast';
+import { connectDoctorSocket, getSocket } from '../../socket/socket';
+// doctorMessages import intentionally not used here (socket only triggers cache invalidation)
 
 const Layout = ({ children = null }) => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -155,6 +158,7 @@ const Layout = ({ children = null }) => {
     { path: '/dashboard', icon: LayoutDashboard, label: 'لوحة التحكم' },
     { path: '/doctor/children', icon: Users, label: 'ملفات الأطفال' },
     { path: '/bookings', icon: Calendar, label: 'مواعيدي' },
+    { path: '/doctor/messages', icon: MessageSquare, label: 'الرسائل' },
     { path: '/availability', icon: Clock, label: 'مواعيد العمل' },
     { path: '/articles', icon: FileText, label: 'مقالاتي' },
     { path: '/payments', icon: DollarSign, label: 'أرباحي' },
@@ -183,6 +187,36 @@ const Layout = ({ children = null }) => {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  // Doctor real-time socket (messages + notifications)
+  useEffect(() => {
+    if (role !== 'doctor' || !user?.id) return;
+
+    const s = connectDoctorSocket();
+    if (!s) return;
+
+    const onReceiveMessage = async () => {
+      // Refresh chat pages if open; keep it simple and reliable.
+      queryClient.invalidateQueries({ queryKey: ['doctor-messages-conversations'] });
+      queryClient.invalidateQueries({ queryKey: ['doctor-messages-conversation'] });
+    };
+
+    const onNewNotification = (notification) => {
+      // Backend is source of truth; frontend only displays.
+      toast.success(notification?.title || notification?.message || 'إشعار جديد');
+    };
+
+    s.off('receive-message');
+    s.off('new-notification');
+    s.on('receive-message', onReceiveMessage);
+    s.on('new-notification', onNewNotification);
+
+    return () => {
+      const current = getSocket();
+      current?.off('receive-message', onReceiveMessage);
+      current?.off('new-notification', onNewNotification);
+    };
+  }, [role, user?.id, queryClient]);
 
   const handleLogout = () => {
     logout();

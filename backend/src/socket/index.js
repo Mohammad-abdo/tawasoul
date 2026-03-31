@@ -1,5 +1,6 @@
 import { Server } from 'socket.io';
 import { logger } from '../utils/logger.js';
+import jwt from 'jsonwebtoken';
 
 let io; // هنحفظ فيها الـ instance عشان نقدر نستخدمه من بره
 
@@ -16,8 +17,45 @@ export const initSocket = (httpServer) => {
     }
   });
 
+  // ==========================================
+  // Auth middleware (JWT) + auto-join rooms
+  // ==========================================
+  io.use((socket, next) => {
+    try {
+      const token = socket.handshake?.auth?.token;
+      if (!token) {
+        return next(new Error('AUTH_REQUIRED'));
+      }
+
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      if (decoded?.role === 'USER' && decoded?.userId) {
+        socket.data.actor = { role: 'USER', id: decoded.userId };
+        return next();
+      }
+      if (decoded?.role === 'DOCTOR' && decoded?.doctorId) {
+        socket.data.actor = { role: 'DOCTOR', id: decoded.doctorId };
+        return next();
+      }
+
+      return next(new Error('UNAUTHORIZED'));
+    } catch (err) {
+      return next(new Error('INVALID_TOKEN'));
+    }
+  });
+
   io.on('connection', (socket) => {
-    logger.info(`Client connected to Socket: ${socket.id}`);
+    const actor = socket.data?.actor;
+    logger.info(`Client connected to Socket: ${socket.id} (${actor?.role || 'UNKNOWN'}:${actor?.id || 'unknown'})`);
+
+    if (actor?.role === 'USER') {
+      socket.join(`user-${actor.id}`);
+      logger.info(`User ${actor.id} auto-joined their room`);
+    }
+
+    if (actor?.role === 'DOCTOR') {
+      socket.join(`doctor-${actor.id}`);
+      logger.info(`Doctor ${actor.id} auto-joined their room`);
+    }
 
     // ==========================================
     // 1. Join Rooms (عشان نبعت لشخص بعينه)
@@ -25,12 +63,14 @@ export const initSocket = (httpServer) => {
     
     // اليوزر أول ما يفتح التطبيق بيبعت الـ ID بتاعه هنا
     socket.on('join-user', (userId) => {
+      if (actor?.role !== 'USER' || actor?.id !== userId) return;
       socket.join(`user-${userId}`);
       logger.info(`User ${userId} joined their room`);
     });
 
     // الدكتور أول ما يفتح التطبيق بيبعت الـ ID بتاعه هنا
     socket.on('join-doctor', (doctorId) => {
+      if (actor?.role !== 'DOCTOR' || actor?.id !== doctorId) return;
       socket.join(`doctor-${doctorId}`);
       logger.info(`Doctor ${doctorId} joined their room`);
     });
@@ -60,7 +100,7 @@ export const initSocket = (httpServer) => {
     // 3. Disconnect
     // ==========================================
     socket.on('disconnect', () => {
-      logger.info(`Client disconnected: ${socket.id}`);
+      logger.info(`Client disconnected: ${socket.id} (${actor?.role || 'UNKNOWN'}:${actor?.id || 'unknown'})`);
       // هنا ممكن مستقبلاً نعمل logic عشان نخلي حالة اليوزر Offline
     });
   });

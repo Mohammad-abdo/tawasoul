@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useParams, Link } from 'react-router-dom';
-import { doctorChildren } from '../../api/doctor';
+import { doctorAssessments, doctorChildren } from '../../api/doctor';
 import {
   Baby,
   ChevronRight,
@@ -13,7 +13,9 @@ import {
   CheckCircle,
   FileText,
   Plus,
+  Download,
 } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 const getAssessmentTest = (result) => result?.test || result?.question?.test || null;
 
@@ -134,6 +136,24 @@ const DoctorChildDetails = () => {
       </div>
     );
   }
+
+  const downloadPdf = async (sessionId) => {
+    try {
+      if (!sessionId) throw new Error('Missing sessionId');
+      const response = await doctorAssessments.downloadChildSessionPdf(id, sessionId);
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `assessment-${id}-${sessionId}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (e) {
+      toast.error(e?.message || 'فشل تنزيل ملف PDF');
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -257,11 +277,24 @@ const DoctorChildDetails = () => {
                             ) : null}
                           </div>
                         </div>
-                        <div className="text-left">
-                          <div className="text-lg font-bold text-primary-600">
-                            {score.value}/{score.max}
+                        <div className="flex flex-col items-end gap-2 text-left">
+                          <div>
+                            <div className="text-lg font-bold text-primary-600">
+                              {score.value}/{score.max}
+                            </div>
+                            <p className="text-[10px] text-gray-400">إجمالي النتيجة</p>
                           </div>
-                          <p className="text-[10px] text-gray-400">إجمالي النتيجة</p>
+                          {result.sessionId ? (
+                            <button
+                              type="button"
+                              onClick={() => downloadPdf(result.sessionId)}
+                              className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:border-primary-200 hover:text-primary-700"
+                              title="تنزيل تقرير PDF"
+                            >
+                              <Download size={14} />
+                              PDF
+                            </button>
+                          ) : null}
                         </div>
                       </div>
                     </div>

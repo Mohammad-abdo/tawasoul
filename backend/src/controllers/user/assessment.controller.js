@@ -12,6 +12,7 @@ import {
   serializeAssessmentResultDetail
 } from '../../utils/assessment-api.utils.js';
 import { createHttpError } from '../../utils/httpError.js';
+import { streamAssessmentSessionPdf } from '../../utils/assessment-pdf.utils.js';
 
 const handleValidationErrors = (req, res) => {
   const errors = validationResult(req);
@@ -721,6 +722,56 @@ export const getAssessmentSessionDetail = async (req, res, next) => {
   } catch (error) {
     if (handleKnownError(res, error)) return;
     logger.error('Get user assessment session detail error:', error);
+    next(error);
+  }
+};
+
+export const downloadAssessmentSessionPdf = async (req, res, next) => {
+  try {
+    if (handleValidationErrors(req, res)) return;
+
+    await ensureUserOwnsChild({
+      prisma,
+      userId: req.user.id,
+      childId: req.params.childId
+    });
+
+    const [child, results] = await Promise.all([
+      prisma.child.findUnique({
+        where: { id: req.params.childId },
+        select: { id: true, name: true, age: true, gender: true, status: true }
+      }),
+      fetchAssessmentSessionResults({
+        prisma,
+        childId: req.params.childId,
+        sessionId: req.params.sessionId
+      })
+    ]);
+
+    if (!child) {
+      return res.status(404).json({
+        success: false,
+        error: { code: 'CHILD_NOT_FOUND', message: 'Child not found' }
+      });
+    }
+
+    if (results.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: { code: 'ASSESSMENT_RESULT_NOT_FOUND', message: 'Assessment session not found' }
+      });
+    }
+
+    await streamAssessmentSessionPdf({
+      res,
+      child,
+      sessionId: req.params.sessionId,
+      results: results.map(serializeAssessmentResultDetail),
+      requestedBy: `user:${req.user.id}`
+    });
+  } catch (error) {
+    if (handleKnownError(res, error)) return;
+    logger.error('Download user assessment session pdf error:', error);
     next(error);
   }
 };

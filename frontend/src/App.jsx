@@ -40,6 +40,8 @@ import DoctorArticles from './pages/doctors/DoctorArticles';
 import DoctorAssessment from './pages/doctors/DoctorAssessment';
 import Availability from './pages/doctors/Availability';
 import DoctorProfile from './pages/doctors/DoctorProfile';
+import DoctorMessages from './pages/doctors/DoctorMessages';
+import DoctorConversation from './pages/doctors/DoctorConversation';
 import HomeSliders from './pages/home-sliders/HomeSliders';
 import HomeServices from './pages/home-services/HomeServices';
 import HomeArticles from './pages/home-articles/HomeArticles';
@@ -130,6 +132,8 @@ function App() {
         <Route path="/doctor/children" element={<DoctorChildren />} />
         <Route path="/doctor/children/:id" element={<DoctorChildDetails />} />
         <Route path="/doctor/assessment/:testId/:childId" element={<DoctorAssessment />} />
+        <Route path="/doctor/messages" element={<DoctorMessages />} />
+        <Route path="/doctor/messages/:userId" element={<DoctorConversation />} />
         <Route path="/articles" element={<DoctorArticles />} />
         <Route path="/availability" element={<Availability />} />
         <Route path="/doctor/profile" element={<DoctorProfile />} />

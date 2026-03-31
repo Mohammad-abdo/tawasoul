@@ -98,4 +98,12 @@ router.get(
   assessmentController.getAssessmentSessionDetail
 );
 
+router.get(
+  '/results/:childId/:sessionId/pdf',
+  authenticateUser,
+  requiredParam('childId', 'childId'),
+  requiredParam('sessionId', 'sessionId'),
+  assessmentController.downloadAssessmentSessionPdf
+);
+
 export default router;
