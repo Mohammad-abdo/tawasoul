@@ -1,11 +1,15 @@
 import { useEffect, useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import Modal from '../../components/common/Modal';
+import { assessments } from '../../api/admin';
+import AssessmentAssetFileField from './AssessmentAssetFileField';
 import {
   buildPayloadFromFormState,
   createEmptyFormState,
   createFormStateFromQuestion,
   TEST_TYPE_LABELS,
+  validateAssessmentMediaForm,
   VISUAL_MEMORY_TYPE_LABELS,
 } from './testManagement.utils';
 
@@ -82,6 +86,11 @@ const TestQuestionModal = ({
 
   const handleSubmit = (event) => {
     event.preventDefault();
+    const mediaCheck = validateAssessmentMediaForm(testType, formState);
+    if (!mediaCheck.ok) {
+      toast.error(mediaCheck.message);
+      return;
+    }
     onSubmit(buildPayloadFromFormState(testType, formState));
   };
 
@@ -184,16 +193,14 @@ const TestQuestionModal = ({
         </div>
       </div>
 
-      <div>
-        <label className="label">Question Image URL</label>
-        <input
-          type="url"
-          className={inputClassName}
-          value={formState.questionImageUrl}
-          onChange={(event) => setTopLevelField('questionImageUrl', event.target.value)}
-          required
-        />
-      </div>
+      <AssessmentAssetFileField
+        label="Question image"
+        kind="image"
+        value={formState.questionImageUrl}
+        onChange={(path) => setTopLevelField('questionImageUrl', path)}
+        upload={assessments.uploadAssessmentImage}
+        disabled={isSubmitting}
+      />
 
       <SectionTitle
         action={(
@@ -232,13 +239,13 @@ const TestQuestionModal = ({
               )}
             </div>
             <div className="mt-3">
-              <label className="label">Image URL</label>
-              <input
-                type="url"
-                className={inputClassName}
+              <AssessmentAssetFileField
+                label={`Choice ${index + 1} image`}
+                kind="image"
                 value={choice.imagePath}
-                onChange={(event) => setArrayField('choices', index, (entry) => ({ ...entry, imagePath: event.target.value }))}
-                required
+                onChange={(path) => setArrayField('choices', index, (entry) => ({ ...entry, imagePath: path }))}
+                upload={assessments.uploadAssessmentImage}
+                disabled={isSubmitting}
               />
             </div>
           </div>
@@ -431,16 +438,14 @@ const TestQuestionModal = ({
         </div>
       </div>
 
-      <div>
-        <label className="label">Batch Image URL</label>
-        <input
-          type="url"
-          className={inputClassName}
-          value={formState.imageUrl}
-          onChange={(event) => setTopLevelField('imageUrl', event.target.value)}
-          required
-        />
-      </div>
+      <AssessmentAssetFileField
+        label="Batch image"
+        kind="image"
+        value={formState.imageUrl}
+        onChange={(path) => setTopLevelField('imageUrl', path)}
+        upload={assessments.uploadAssessmentImage}
+        disabled={isSubmitting}
+      />
 
       <SectionTitle
         action={(
@@ -483,14 +488,14 @@ const TestQuestionModal = ({
             required
           />
         </div>
-        <div>
-          <label className="label">Audio Clip URL</label>
-          <input
-            type="url"
-            className={inputClassName}
+        <div className="md:col-span-2">
+          <AssessmentAssetFileField
+            label="Audio clip"
+            kind="audio"
             value={formState.audioClipUrl}
-            onChange={(event) => setTopLevelField('audioClipUrl', event.target.value)}
-            required
+            onChange={(path) => setTopLevelField('audioClipUrl', path)}
+            upload={assessments.uploadAssessmentAudio}
+            disabled={isSubmitting}
           />
         </div>
       </div>
@@ -611,13 +616,13 @@ const TestQuestionModal = ({
         {formState.images.map((image, index) => (
           <div key={`sequence-image-${index}`} className="grid grid-cols-1 md:grid-cols-[1fr_120px_auto] gap-4 rounded-2xl border border-gray-200 p-4">
             <div>
-              <label className="label">Image URL</label>
-              <input
-                type="url"
-                className={inputClassName}
+              <AssessmentAssetFileField
+                label={`Image ${index + 1}`}
+                kind="image"
                 value={image.assetPath}
-                onChange={(event) => setArrayField('images', index, (entry) => ({ ...entry, assetPath: event.target.value }))}
-                required
+                onChange={(path) => setArrayField('images', index, (entry) => ({ ...entry, assetPath: path }))}
+                upload={assessments.uploadAssessmentImage}
+                disabled={isSubmitting}
               />
             </div>
             <div>

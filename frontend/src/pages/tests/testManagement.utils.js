@@ -4,7 +4,7 @@ export const TEST_TYPE_LABELS = {
   VISUAL_MEMORY: 'Visual Memory',
   AUDITORY_MEMORY: 'Auditory Memory',
   VERBAL_NONSENSE: 'Verbal Nonsense',
-  HELP: 'HELP',
+  HELP: 'HELP (Developmental)',
   IMAGE_SEQUENCE_ORDER: 'Image Sequence Order',
   VB_MAPP: 'VB-MAPP',
 };
@@ -17,6 +17,72 @@ export const MODALITY_LABELS = {
 export const VISUAL_MEMORY_TYPE_LABELS = {
   YES_NO: 'Yes / No',
   MCQ: 'Multiple Choice',
+};
+
+export const HELP_DOMAIN_LABELS = {
+  COGNITIVE: 'Cognitive',
+  FINE_MOTOR: 'Fine motor',
+  GROSS_MOTOR: 'Gross motor',
+  SOCIAL: 'Social',
+};
+
+export const HELP_DOMAINS = Object.keys(HELP_DOMAIN_LABELS);
+
+/** Normalize API absolute URLs to the path stored in DB (relative to `uploads/`) */
+export const stripUploadsToRelativePath = (value) => {
+  if (value == null || value === '') return '';
+  const trimmed = String(value).trim();
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+    const idx = trimmed.indexOf('/uploads/');
+    if (idx !== -1) return trimmed.slice(idx + '/uploads/'.length);
+    return trimmed;
+  }
+  return trimmed.replace(/^\/+/, '').replace(/^uploads\/+/i, '');
+};
+
+/** Browser URL for previewing a stored media path */
+export const publicUploadUrl = (relativePath) => {
+  if (!relativePath || typeof relativePath !== 'string') return '';
+  const trimmed = stripUploadsToRelativePath(relativePath);
+  if (!trimmed) return '';
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) return trimmed;
+  const base = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+  const origin = base.replace(/\/api\/?$/, '');
+  return `${origin}/uploads/${trimmed}`;
+};
+
+export const validateAssessmentMediaForm = (testType, formState) => {
+  switch (testType) {
+    case 'ANALOGY':
+      if (!stripUploadsToRelativePath(formState.questionImageUrl)) {
+        return { ok: false, message: 'Please upload a question image.' };
+      }
+      for (let i = 0; i < formState.choices.length; i += 1) {
+        if (!stripUploadsToRelativePath(formState.choices[i]?.imagePath)) {
+          return { ok: false, message: `Please upload choice ${i + 1} image.` };
+        }
+      }
+      return { ok: true };
+    case 'VISUAL_MEMORY':
+      if (!stripUploadsToRelativePath(formState.imageUrl)) {
+        return { ok: false, message: 'Please upload the batch image.' };
+      }
+      return { ok: true };
+    case 'AUDITORY_MEMORY':
+      if (!stripUploadsToRelativePath(formState.audioClipUrl)) {
+        return { ok: false, message: 'Please upload an audio clip.' };
+      }
+      return { ok: true };
+    case 'IMAGE_SEQUENCE_ORDER':
+      for (let i = 0; i < formState.images.length; i += 1) {
+        if (!stripUploadsToRelativePath(formState.images[i]?.assetPath)) {
+          return { ok: false, message: `Please upload image ${i + 1} in the sequence.` };
+        }
+      }
+      return { ok: true };
+    default:
+      return { ok: true };
+  }
 };
 
 export const MANAGED_TEST_TYPES = [
@@ -142,10 +208,10 @@ export const createFormStateFromQuestion = (testType, item) => {
     case 'ANALOGY':
       return {
         order: item.order,
-        questionImageUrl: item.questionImageUrl || '',
+        questionImageUrl: stripUploadsToRelativePath(item.questionImageUrl || ''),
         choices: Array.isArray(item.choices) && item.choices.length
           ? item.choices.map((choice) => ({
-              imagePath: choice?.imagePath || choice?.imageUrl || '',
+              imagePath: stripUploadsToRelativePath(choice?.imagePath || choice?.imageUrl || ''),
             }))
           : [{ imagePath: '' }, { imagePath: '' }],
         correctIndex: item.correctIndex || 0,
@@ -153,7 +219,7 @@ export const createFormStateFromQuestion = (testType, item) => {
     case 'VISUAL_MEMORY':
       return {
         order: item.order,
-        imageUrl: item.imageUrl || '',
+        imageUrl: stripUploadsToRelativePath(item.imageUrl || ''),
         displaySeconds: item.displaySeconds || 3,
         questions: Array.isArray(item.questions) && item.questions.length
           ? item.questions.map((question, index) => ({
@@ -176,7 +242,7 @@ export const createFormStateFromQuestion = (testType, item) => {
     case 'AUDITORY_MEMORY':
       return {
         order: item.order,
-        audioClipUrl: item.audioClipUrl || '',
+        audioClipUrl: stripUploadsToRelativePath(item.audioClipUrl || ''),
         questionText: {
           ar: item.questionText?.ar || '',
           en: item.questionText?.en || '',
@@ -191,7 +257,7 @@ export const createFormStateFromQuestion = (testType, item) => {
         order: item.order,
         images: Array.isArray(item.images) && item.images.length
           ? item.images.map((image, index) => ({
-              assetPath: image.assetPath || '',
+              assetPath: stripUploadsToRelativePath(image.assetPath || ''),
               position: image.position ?? index + 1,
             }))
           : createEmptyFormState('IMAGE_SEQUENCE_ORDER', item.order).images,
@@ -225,16 +291,16 @@ export const buildPayloadFromFormState = (testType, formState) => {
     case 'ANALOGY':
       return {
         order: Number(formState.order),
-        questionImageUrl: formState.questionImageUrl.trim(),
+        questionImageUrl: stripUploadsToRelativePath(formState.questionImageUrl),
         choices: formState.choices.map((choice) => ({
-          imagePath: choice.imagePath.trim(),
+          imagePath: stripUploadsToRelativePath(choice.imagePath),
         })),
         correctIndex: Number(formState.correctIndex),
       };
     case 'VISUAL_MEMORY':
       return {
         order: Number(formState.order),
-        imageUrl: formState.imageUrl.trim(),
+        imageUrl: stripUploadsToRelativePath(formState.imageUrl),
         displaySeconds: Number(formState.displaySeconds),
         questions: formState.questions.map((question, index) => ({
           order: Number(question.order ?? index + 1),
@@ -254,7 +320,7 @@ export const buildPayloadFromFormState = (testType, formState) => {
     case 'AUDITORY_MEMORY':
       return {
         order: Number(formState.order),
-        audioClipUrl: formState.audioClipUrl.trim(),
+        audioClipUrl: stripUploadsToRelativePath(formState.audioClipUrl),
         questionText: {
           ar: formState.questionText.ar.trim(),
           en: formState.questionText.en.trim(),
@@ -269,7 +335,7 @@ export const buildPayloadFromFormState = (testType, formState) => {
         order: Number(formState.order),
         images: formState.images
           .map((image, index) => ({
-            assetPath: image.assetPath.trim(),
+            assetPath: stripUploadsToRelativePath(image.assetPath),
             position: Number(image.position ?? index + 1),
           }))
           .sort((left, right) => left.position - right.position),

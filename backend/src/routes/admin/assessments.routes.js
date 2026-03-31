@@ -1,6 +1,10 @@
 import express from 'express';
 import { body, param, query } from 'express-validator';
 import { authenticateAdmin } from '../../middleware/auth.middleware.js';
+import {
+  uploadAssessmentImageSingle,
+  uploadAssessmentAudioSingle
+} from '../../middleware/upload.middleware.js';
 import * as assessmentsController from '../../controllers/admin/assessments.controller.js';
 
 const router = express.Router();
@@ -327,6 +331,27 @@ const helpSkillValidators = [
   body('ageRange').matches(/^\d+(?:\.\d+)?-\d+(?:\.\d+)?$/).withMessage('ageRange must match a pattern like 3.0-3.6')
 ];
 
+const patchHelpSkillValidators = [
+  body('domain').optional().isIn(HELP_DOMAINS).withMessage(`domain must be one of: ${HELP_DOMAINS.join(', ')}`),
+  body('skillNumber').optional().isString().trim().notEmpty().withMessage('skillNumber must be a non-empty string'),
+  body('description').optional().isString().trim().notEmpty().withMessage('description must be a non-empty string'),
+  body('ageRange')
+    .optional()
+    .matches(/^\d+(?:\.\d+)?-\d+(?:\.\d+)?$/)
+    .withMessage('ageRange must match a pattern like 3.0-3.6'),
+  body().custom((value) => {
+    if (
+      value.domain === undefined &&
+      value.skillNumber === undefined &&
+      value.description === undefined &&
+      value.ageRange === undefined
+    ) {
+      throw new Error('At least one of domain, skillNumber, description, or ageRange must be provided');
+    }
+    return true;
+  })
+];
+
 const genericQuestionValidators = [
   body('orderIndex').isInt({ min: 0 }).withMessage('orderIndex must be an integer greater than or equal to 0'),
   body('audioAssetPath').optional().isString().withMessage('audioAssetPath must be a string'),
@@ -335,6 +360,19 @@ const genericQuestionValidators = [
   body('scoringGuide').isString().trim().notEmpty().withMessage('scoringGuide is required'),
   body('maxScore').isInt({ min: 1 }).withMessage('maxScore must be an integer greater than or equal to 1')
 ];
+
+router.post(
+  '/upload/image',
+  authenticateAdmin,
+  uploadAssessmentImageSingle,
+  assessmentsController.uploadAssessmentImage
+);
+router.post(
+  '/upload/audio',
+  authenticateAdmin,
+  uploadAssessmentAudioSingle,
+  assessmentsController.uploadAssessmentAudio
+);
 
 router.get(
   '/tests',
@@ -366,6 +404,13 @@ router.patch('/image-sequence-order/questions/:questionId', authenticateAdmin, r
 
 router.get('/help/skills', authenticateAdmin, query('domain').optional().isIn(HELP_DOMAINS).withMessage(`domain must be one of: ${HELP_DOMAINS.join(', ')}`), assessmentsController.getHelpSkills);
 router.post('/help/skills', authenticateAdmin, helpSkillValidators, assessmentsController.createHelpSkill);
+router.patch(
+  '/help/skills/:skillId',
+  authenticateAdmin,
+  requiredIdParam('skillId', 'skillId'),
+  patchHelpSkillValidators,
+  assessmentsController.updateHelpSkill
+);
 router.delete('/help/skills/:skillId', authenticateAdmin, requiredIdParam('skillId', 'skillId'), assessmentsController.deleteHelpSkill);
 
 router.post('/generic/:testId/questions', authenticateAdmin, requiredIdParam('testId', 'testId'), genericQuestionValidators, assessmentsController.createGenericQuestion);
