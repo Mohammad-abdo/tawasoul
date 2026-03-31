@@ -1,78 +1,38 @@
-import { prisma } from '../../config/database.js';
+import * as messagesRepo from '../../repositories/user/messages.repository.js';
+import { getIo } from '../../socket/index.js';
 import { logger } from '../../utils/logger.js';
 
 /**
- * Get User Messages
+ * Get User's Conversations List
  */
-export const getUserMessages = async (req, res, next) => {
+export const getUserConversations = async (req, res, next) => {
   try {
     const userId = req.user.id;
-    const { page = 1, limit = 50 } = req.query;
+    const { page = 1, limit = 20 } = req.query;
 
     const skip = (parseInt(page) - 1) * parseInt(limit);
     const take = parseInt(limit);
 
-    // Get messages where user is sender or receiver
-    const [messages, total] = await Promise.all([
-      prisma.message.findMany({
-        where: {
-          OR: [
-            { senderId: userId },
-            { receiverId: userId }
-          ]
-        },
+    const where = { userId };
+
+    const [conversations, total] = await Promise.all([
+      messagesRepo.findConversations({
+        where,
         skip,
         take,
-        orderBy: { createdAt: 'desc' },
+        orderBy: { updatedAt: 'desc' },
         include: {
-          sender: {
-            select: {
-              id: true,
-              username: true,
-              avatar: true
-            }
-          },
-          receiver: {
-            select: {
-              id: true,
-              username: true,
-              avatar: true
-            }
-          }
+          doctor: { select: { id: true, name: true, avatar: true, specialty: true } },
+          messages: { orderBy: { createdAt: 'desc' }, take: 1 }
         }
       }),
-      prisma.message.count({
-        where: {
-          OR: [
-            { senderId: userId },
-            { receiverId: userId }
-          ]
-        }
-      })
+      messagesRepo.countConversations(where)
     ]);
-
-    // Format messages
-    const formattedMessages = messages.map(message => ({
-      id: message.id,
-      sender: message.sender,
-      receiver: message.receiver,
-      content: message.content,
-      messageType: message.messageType,
-      imageUrl: message.imageUrl,
-      videoUrl: message.videoUrl,
-      fileUrl: message.fileUrl,
-      fileName: message.fileName,
-      voiceUrl: message.voiceUrl,
-      voiceDuration: message.voiceDuration,
-      isRead: message.isRead,
-      isFromMe: message.senderId === userId,
-      createdAt: message.createdAt
-    }));
 
     res.json({
       success: true,
       data: {
-        messages: formattedMessages,
+        conversations,
         pagination: {
           page: parseInt(page),
           limit: parseInt(limit),
@@ -82,108 +42,62 @@ export const getUserMessages = async (req, res, next) => {
       }
     });
   } catch (error) {
-    logger.error('Get messages error:', error);
+    logger.error('Get conversations error:', error);
     next(error);
   }
 };
 
 /**
- * Get Conversation with Specific User
+ * Get Messages for a specific Doctor
  */
-export const getConversation = async (req, res, next) => {
+export const getConversationMessages = async (req, res, next) => {
   try {
     const userId = req.user.id;
-    const { userId: otherUserId } = req.params;
+    const { doctorId } = req.params;
     const { page = 1, limit = 50 } = req.query;
 
     const skip = (parseInt(page) - 1) * parseInt(limit);
     const take = parseInt(limit);
 
-    // Get messages between two users
+    // 1. ندور على المحادثة
+    const conversation = await messagesRepo.findConversation({
+      userId_doctorId: { userId, doctorId }
+    });
+
+    if (!conversation) {
+      return res.json({
+        success: true,
+        data: { messages: [], pagination: { page: 1, limit: parseInt(limit), total: 0, pages: 0 } }
+      });
+    }
+
+    // 2. نجيب الرسائل
+    const msgWhere = { conversationId: conversation.id };
     const [messages, total] = await Promise.all([
-      prisma.message.findMany({
-        where: {
-          OR: [
-            {
-              senderId: userId,
-              receiverId: otherUserId
-            },
-            {
-              senderId: otherUserId,
-              receiverId: userId
-            }
-          ]
-        },
+      messagesRepo.findMessages({
+        where: msgWhere,
         skip,
         take,
-        orderBy: { createdAt: 'asc' },
-        include: {
-          sender: {
-            select: {
-              id: true,
-              username: true,
-              avatar: true
-            }
-          },
-          receiver: {
-            select: {
-              id: true,
-              username: true,
-              avatar: true
-            }
-          }
-        }
+        orderBy: { createdAt: 'desc' }
       }),
-      prisma.message.count({
-        where: {
-          OR: [
-            {
-              senderId: userId,
-              receiverId: otherUserId
-            },
-            {
-              senderId: otherUserId,
-              receiverId: userId
-            }
-          ]
-        }
-      })
+      messagesRepo.countMessages(msgWhere)
     ]);
 
-    // Mark messages as read
-    await prisma.message.updateMany({
+    // 3. نعلم على الرسائل اللي جاية من الدكتور إنها اتقرت
+    await messagesRepo.markMessagesAsRead({
       where: {
-        senderId: otherUserId,
-        receiverId: userId,
+        conversationId: conversation.id,
+        senderRole: 'DOCTOR',
         isRead: false
       },
-      data: {
-        isRead: true
-      }
+      data: { isRead: true }
     });
-
-    // Format messages
-    const formattedMessages = messages.map(message => ({
-      id: message.id,
-      sender: message.sender,
-      receiver: message.receiver,
-      content: message.content,
-      messageType: message.messageType,
-      imageUrl: message.imageUrl,
-      videoUrl: message.videoUrl,
-      fileUrl: message.fileUrl,
-      fileName: message.fileName,
-      voiceUrl: message.voiceUrl,
-      voiceDuration: message.voiceDuration,
-      isRead: message.isRead,
-      isFromMe: message.senderId === userId,
-      createdAt: message.createdAt
-    }));
 
     res.json({
       success: true,
       data: {
-        messages: formattedMessages,
+        conversationId: conversation.id,
+        messages,
         pagination: {
           page: parseInt(page),
           limit: parseInt(limit),
@@ -193,19 +107,19 @@ export const getConversation = async (req, res, next) => {
       }
     });
   } catch (error) {
-    logger.error('Get conversation error:', error);
+    logger.error('Get conversation messages error:', error);
     next(error);
   }
 };
 
 /**
- * Send Message
+ * Send Message (User to Doctor)
  */
 export const sendMessage = async (req, res, next) => {
   try {
     const userId = req.user.id;
     const { 
-      receiverId, 
+      doctorId, 
       content,
       messageType = 'TEXT',
       imageUrl,
@@ -216,187 +130,64 @@ export const sendMessage = async (req, res, next) => {
       voiceDuration
     } = req.body;
 
-    // Validation
-    if (!receiverId) {
-      return res.status(400).json({
-        success: false,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Receiver ID is required'
-        }
-      });
+    if (!doctorId) {
+      return res.status(400).json({ success: false, error: { message: 'Doctor ID is required' } });
     }
 
-    // Validate message type
-    if (!['TEXT', 'IMAGE', 'VIDEO', 'FILE', 'VOICE'].includes(messageType)) {
-      return res.status(400).json({
-        success: false,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Invalid message type'
-        }
-      });
+    // 1. نتأكد إن الدكتور موجود
+    const doctor = await messagesRepo.findDoctorById(doctorId);
+    if (!doctor) {
+      return res.status(404).json({ success: false, error: { message: 'Doctor not found' } });
     }
 
-    // Validate content based on message type
-    if (messageType === 'TEXT') {
-      if (!content || content.trim().length === 0) {
-        return res.status(400).json({
-          success: false,
-          error: {
-            code: 'VALIDATION_ERROR',
-            message: 'Content is required for text messages'
-          }
-        });
-      }
-    } else if (messageType === 'IMAGE') {
-      if (!imageUrl) {
-        return res.status(400).json({
-          success: false,
-          error: {
-            code: 'VALIDATION_ERROR',
-            message: 'Image URL is required for image messages'
-          }
-        });
-      }
-    } else if (messageType === 'VIDEO') {
-      if (!videoUrl) {
-        return res.status(400).json({
-          success: false,
-          error: {
-            code: 'VALIDATION_ERROR',
-            message: 'Video URL is required for video messages'
-          }
-        });
-      }
-    } else if (messageType === 'FILE') {
-      if (!fileUrl || !fileName) {
-        return res.status(400).json({
-          success: false,
-          error: {
-            code: 'VALIDATION_ERROR',
-            message: 'File URL and file name are required for file messages'
-          }
-        });
-      }
-    } else if (messageType === 'VOICE') {
-      if (!voiceUrl) {
-        return res.status(400).json({
-          success: false,
-          error: {
-            code: 'VALIDATION_ERROR',
-            message: 'Voice URL is required for voice messages'
-          }
-        });
-      }
-    }
-
-    // Check if receiver exists
-    const receiver = await prisma.user.findUnique({
-      where: { id: receiverId },
-      select: {
-        id: true,
-        allowPrivateMsg: true
-      }
-    });
-
-    if (!receiver) {
-      return res.status(404).json({
-        success: false,
-        error: {
-          code: 'USER_NOT_FOUND',
-          message: 'Receiver not found'
-        }
-      });
-    }
-
-    // Check if receiver allows private messages
-    if (!receiver.allowPrivateMsg) {
-      return res.status(403).json({
-        success: false,
-        error: {
-          code: 'MESSAGES_DISABLED',
-          message: 'This user does not allow private messages'
-        }
-      });
-    }
-
-    // Check if user is trying to message themselves
-    if (userId === receiverId) {
-      return res.status(400).json({
-        success: false,
-        error: {
-          code: 'INVALID_RECEIVER',
-          message: 'Cannot send message to yourself'
-        }
-      });
-    }
-
-    // Create message
-    const message = await prisma.message.create({
-      data: {
-        senderId: userId,
-        receiverId,
-        content: content ? content.trim() : null,
-        messageType,
-        imageUrl: imageUrl || null,
-        videoUrl: videoUrl || null,
-        fileUrl: fileUrl || null,
-        fileName: fileName || null,
-        voiceUrl: voiceUrl || null,
-        voiceDuration: voiceDuration ? parseInt(voiceDuration) : null
+    // 2. نجيب المحادثة أو نكريتها
+    const conversation = await messagesRepo.upsertConversation({
+      where: {
+        userId_doctorId: { userId, doctorId }
       },
-      include: {
-        sender: {
-          select: {
-            id: true,
-            username: true,
-            avatar: true
-          }
-        },
-        receiver: {
-          select: {
-            id: true,
-            username: true,
-            avatar: true
-          }
+      update: { updatedAt: new Date() },
+      create: { userId, doctorId }
+    });
+
+    // 3. نكريت الرسالة
+    const message = await messagesRepo.createMessage({
+      conversationId: conversation.id,
+      senderId: userId,
+      senderRole: 'USER',
+      content: content ? content.trim() : null,
+      messageType,
+      imageUrl: imageUrl || null,
+      videoUrl: videoUrl || null,
+      fileUrl: fileUrl || null,
+      fileName: fileName || null,
+      voiceUrl: voiceUrl || null,
+      voiceDuration: voiceDuration ? parseInt(voiceDuration) : null
+    });
+
+    
+        // 4. نبعت إشعار للدكتور في الداتابيز
+        const notification =  await messagesRepo.createNotification({
+          userId: doctorId, // الإشعار رايح للدكتور (باعتبار إن جدول الاشعارات بياخد userId كمرجع للمستقبل)
+          type: 'NEW_MESSAGE',
+          title: 'رسالة جديدة',
+          message: `لديك رسالة جديدة من ${req.user.username || req.user.fullName || 'أحد المستخدمين'}`
+        });
+        try {
+          const io = getIo();
+          io.to(`doctor-${doctorId}`).emit('receive-message', message);
+          io.to(`doctor-${doctorId}`).emit('new-notification', notification);
+        } catch (socketError) {
+          logger.error('Socket error:', socketError);
         }
-      }
-    });
 
-    // Create notification for receiver
-    await prisma.notification.create({
-      data: {
-        userId: receiverId,
-        type: 'NEW_MESSAGE',
-        title: 'رسالة جديدة',
-        message: `لديك رسالة جديدة من ${message.sender.username}`
-      }
-    });
 
-    logger.info(`Message sent: ${message.id} from ${userId} to ${receiverId}`);
-
-    res.status(201).json({
+    // 6. نرد على الـ API مرة واحدة
+    return res.status(201).json({
       success: true,
-      data: {
-        id: message.id,
-        sender: message.sender,
-        receiver: message.receiver,
-        content: message.content,
-        messageType: message.messageType,
-        imageUrl: message.imageUrl,
-        videoUrl: message.videoUrl,
-        fileUrl: message.fileUrl,
-        fileName: message.fileName,
-        voiceUrl: message.voiceUrl,
-        voiceDuration: message.voiceDuration,
-        isRead: message.isRead,
-        createdAt: message.createdAt
-      }
+      data: message
     });
   } catch (error) {
     logger.error('Send message error:', error);
     next(error);
   }
 };
-
