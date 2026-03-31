@@ -111,6 +111,24 @@ export const doctorAssessments = {
   
   getChildResults: (childId) => 
     apiClient.get(`/doctor/assessments/children/${childId}/results`),
+
+  getChildSessionDetails: (childId, sessionId) =>
+    apiClient.get(`/doctor/assessments/children/${childId}/results/${sessionId}`),
+
+  downloadChildSessionPdf: (childId, sessionId) =>
+    apiClient.get(`/doctor/assessments/children/${childId}/results/${sessionId}/pdf`, { responseType: 'blob' }),
+};
+
+// Doctor messages (chat)
+export const doctorMessages = {
+  getConversations: (params) =>
+    apiClient.get('/doctor/messages/conversations', { params }),
+
+  getConversationMessages: (userId, params) =>
+    apiClient.get(`/doctor/messages/conversation/${userId}`, { params }),
+
+  sendMessageToUser: (data) =>
+    apiClient.post('/doctor/messages/send', data),
 };
 
 export const doctorWallet = {
