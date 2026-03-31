@@ -1,4 +1,19 @@
-import PDFDocument from 'pdfkit';
+import pdfmakeRtl from 'pdfmake-rtl';
+import { createRequire } from 'module';
+
+const require = createRequire(import.meta.url);
+
+// pdfmake-rtl (server-side) needs fonts registered to render both Arabic (Cairo) and English (Roboto)
+// Cairo is used for RTL scripts, Roboto for Latin text.
+try {
+  const Roboto = require('pdfmake-rtl/fonts/Roboto');
+  pdfmakeRtl.addFonts(Roboto);
+} catch {}
+
+try {
+  const Cairo = require('pdfmake-rtl/fonts/Cairo');
+  pdfmakeRtl.addFonts(Cairo);
+} catch {}
 
 const safeText = (value) => {
   if (value === null || value === undefined) return '';
@@ -16,47 +31,17 @@ const resolveTestTitle = (result) => result?.test?.titleAr || result?.test?.titl
 
 const resolveTestType = (result) => result?.test?.testType || result?.question?.test?.testType || 'UNKNOWN';
 
-const getPdfFontPath = () => process.env.PDF_FONT_PATH || null;
+const toDocTextLine = (text, { bold = false } = {}) => ({
+  text,
+  bold,
+  fontSize: 11,
+  margin: [0, 2, 0, 0],
+});
 
 export const streamAssessmentSessionPdf = async ({ res, child, sessionId, results, requestedBy }) => {
-  const doc = new PDFDocument({
-    size: 'A4',
-    margins: { top: 48, bottom: 48, left: 48, right: 48 },
-    bufferPages: true
-  });
-
-  const fontPath = getPdfFontPath();
-  if (fontPath) {
-    try {
-      doc.registerFont('appFont', fontPath);
-      doc.font('appFont');
-    } catch {
-      // fallback to default font
-    }
-  }
-
   const fileName = `assessment-${child?.id || 'child'}-${sessionId}.pdf`;
   res.setHeader('Content-Type', 'application/pdf');
   res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
-
-  doc.pipe(res);
-
-  doc.fontSize(18).text('Assessment Report', { align: 'left' });
-  doc.moveDown(0.5);
-
-  doc.fontSize(11).text(`Session ID: ${safeText(sessionId)}`);
-  doc.text(`Generated at: ${formatDate(new Date())}`);
-  doc.text(`Requested by: ${requestedBy}`);
-  doc.moveDown(0.8);
-
-  doc.fontSize(12).text('Child', { underline: true });
-  doc.fontSize(11);
-  doc.text(`ID: ${safeText(child?.id)}`);
-  doc.text(`Name: ${safeText(child?.name)}`);
-  doc.text(`Age: ${safeText(child?.age)}`);
-  doc.text(`Gender: ${safeText(child?.gender)}`);
-  doc.text(`Status: ${safeText(child?.status)}`);
-  doc.moveDown(1);
 
   const grouped = new Map();
   for (const result of results) {
@@ -65,100 +50,143 @@ export const streamAssessmentSessionPdf = async ({ res, child, sessionId, result
     grouped.get(testType).push(result);
   }
 
+  const content = [
+    { text: 'Assessment Report', fontSize: 18, bold: true, margin: [0, 0, 0, 10] },
+    toDocTextLine(`Session ID: ${safeText(sessionId)}`),
+    toDocTextLine(`Generated at: ${formatDate(new Date())}`),
+    toDocTextLine(`Requested by: ${safeText(requestedBy)}`),
+    { text: ' ', margin: [0, 6, 0, 0] },
+    { text: 'Child', fontSize: 12, bold: true, decoration: 'underline', margin: [0, 6, 0, 4] },
+    toDocTextLine(`ID: ${safeText(child?.id)}`),
+    toDocTextLine(`Name: ${safeText(child?.name)}`),
+    toDocTextLine(`Age: ${safeText(child?.age)}`),
+    toDocTextLine(`Gender: ${safeText(child?.gender)}`),
+    toDocTextLine(`Status: ${safeText(child?.status)}`),
+  ];
+
   for (const [testType, typeResults] of grouped.entries()) {
     const headerTitle = resolveTestTitle(typeResults[0]);
-    doc.addPage();
-    doc.fontSize(16).text(`${headerTitle}`, { align: 'left' });
-    doc.fontSize(11).text(`Test type: ${testType}`);
-    doc.moveDown(0.6);
-
     const mainResult = typeResults[0];
-    doc.text(`Total score: ${safeText(mainResult?.totalScore)} / ${safeText(mainResult?.maxScore)}`);
-    doc.text(`Timestamp: ${formatDate(mainResult?.timestamp)}`);
-    doc.moveDown(0.8);
+
+    content.push(
+      { text: headerTitle, fontSize: 16, bold: true, margin: [0, 14, 0, 4] },
+      toDocTextLine(`Test type: ${safeText(testType)}`),
+      toDocTextLine(`Total score: ${safeText(mainResult?.totalScore)} / ${safeText(mainResult?.maxScore)}`),
+      toDocTextLine(`Timestamp: ${formatDate(mainResult?.timestamp)}`),
+      { text: ' ', margin: [0, 6, 0, 0] },
+    );
 
     if (testType === 'HELP') {
       const helpAssessment = mainResult?.helpAssessment;
-      doc.fontSize(12).text('HELP Evaluation', { underline: true });
-      doc.fontSize(11).text(`Developmental age: ${safeText(helpAssessment?.developmentalAge)}`);
-      doc.moveDown(0.5);
+      content.push(
+        { text: 'HELP Evaluation', fontSize: 12, bold: true, decoration: 'underline', margin: [0, 6, 0, 4] },
+        toDocTextLine(`Developmental age: ${safeText(helpAssessment?.developmentalAge)}`),
+      );
       const evaluations = helpAssessment?.evaluations || [];
       for (const ev of evaluations) {
         const line = `- ${safeText(ev?.skill?.skillNumber)}: ${safeText(ev?.skill?.description)} | Score: ${safeText(ev?.score)}${ev?.doctorNotes ? ` | Notes: ${safeText(ev?.doctorNotes)}` : ''}`;
-        doc.text(line);
+        content.push(toDocTextLine(line));
       }
       continue;
     }
 
+    const pushAnswersHeader = () =>
+      content.push({ text: 'Answers', fontSize: 12, bold: true, decoration: 'underline', margin: [0, 6, 0, 4] });
+
     if (testType === 'CARS') {
-      doc.fontSize(12).text('Answers', { underline: true });
-      doc.moveDown(0.2);
+      pushAnswersHeader();
       for (const ans of mainResult?.qCarsAnswers || []) {
         const qText = safeText(ans?.question?.questionText?.ar || ans?.question?.questionText?.en || ans?.question?.questionText);
-        doc.fontSize(11).text(`- Q${safeText(ans?.question?.order)}: ${qText}`);
-        doc.text(`  Chosen index: ${safeText(ans?.chosenIndex)} | Score: ${safeText(ans?.score)}`);
+        content.push(
+          toDocTextLine(`- Q${safeText(ans?.question?.order)}: ${qText}`),
+          toDocTextLine(`  Chosen index: ${safeText(ans?.chosenIndex)} | Score: ${safeText(ans?.score)}`),
+        );
       }
       continue;
     }
 
     if (testType === 'ANALOGY') {
-      doc.fontSize(12).text('Answers', { underline: true });
-      doc.moveDown(0.2);
+      pushAnswersHeader();
       for (const ans of mainResult?.qAnalogyAnswers || []) {
-        doc.fontSize(11).text(`- Q${safeText(ans?.question?.order)} | Chosen: ${safeText(ans?.chosenIndex)} | Score: ${safeText(ans?.score)}`);
+        content.push(toDocTextLine(`- Q${safeText(ans?.question?.order)} | Chosen: ${safeText(ans?.chosenIndex)} | Score: ${safeText(ans?.score)}`));
       }
       continue;
     }
 
     if (testType === 'VISUAL_MEMORY') {
-      doc.fontSize(12).text('Answers', { underline: true });
-      doc.moveDown(0.2);
+      pushAnswersHeader();
       for (const ans of mainResult?.qVisualMemoryAnswers || []) {
         const qText = safeText(ans?.question?.questionText?.ar || ans?.question?.questionText?.en || ans?.question?.questionText);
-        doc.fontSize(11).text(`- Q${safeText(ans?.question?.order)}: ${qText}`);
-        doc.text(`  answerBool: ${safeText(ans?.answerBool)} | chosenIndex: ${safeText(ans?.chosenIndex)} | Score: ${safeText(ans?.score)}`);
+        content.push(
+          toDocTextLine(`- Q${safeText(ans?.question?.order)}: ${qText}`),
+          toDocTextLine(`  answerBool: ${safeText(ans?.answerBool)} | chosenIndex: ${safeText(ans?.chosenIndex)} | Score: ${safeText(ans?.score)}`),
+        );
       }
       continue;
     }
 
     if (testType === 'AUDITORY_MEMORY') {
-      doc.fontSize(12).text('Answers', { underline: true });
-      doc.moveDown(0.2);
+      pushAnswersHeader();
       for (const ans of mainResult?.qAuditoryMemoryAnswers || []) {
         const qText = safeText(ans?.question?.questionText?.ar || ans?.question?.questionText?.en || ans?.question?.questionText);
-        doc.fontSize(11).text(`- Q${safeText(ans?.question?.order)}: ${qText}`);
-        doc.text(`  Score: ${safeText(ans?.score)}`);
-        doc.text(`  Recalled: ${safeText(ans?.recalledItems)}`);
+        content.push(
+          toDocTextLine(`- Q${safeText(ans?.question?.order)}: ${qText}`),
+          toDocTextLine(`  Score: ${safeText(ans?.score)}`),
+          toDocTextLine(`  Recalled: ${safeText(ans?.recalledItems)}`),
+        );
       }
       continue;
     }
 
     if (testType === 'VERBAL_NONSENSE') {
-      doc.fontSize(12).text('Answers', { underline: true });
-      doc.moveDown(0.2);
+      pushAnswersHeader();
       for (const ans of mainResult?.qVerbalNonsenseAnswers || []) {
         const qText = safeText(ans?.question?.sentenceAr || ans?.question?.sentenceEn);
-        doc.fontSize(11).text(`- Q${safeText(ans?.question?.order)}: ${qText}`);
-        doc.text(`  Correct: ${safeText(ans?.isCorrect)}${ans?.doctorNote ? ` | Note: ${safeText(ans?.doctorNote)}` : ''}`);
+        content.push(
+          toDocTextLine(`- Q${safeText(ans?.question?.order)}: ${qText}`),
+          toDocTextLine(`  Correct: ${safeText(ans?.isCorrect)}${ans?.doctorNote ? ` | Note: ${safeText(ans?.doctorNote)}` : ''}`),
+        );
       }
       continue;
     }
 
     if (testType === 'IMAGE_SEQUENCE_ORDER') {
-      doc.fontSize(12).text('Answers', { underline: true });
-      doc.moveDown(0.2);
+      pushAnswersHeader();
       for (const ans of mainResult?.qSequenceOrderAnswers || []) {
-        doc.fontSize(11).text(`- Q${safeText(ans?.question?.order)} | Score: ${safeText(ans?.score)}`);
-        doc.text(`  Submitted: ${safeText(ans?.submittedOrder)}`);
+        content.push(
+          toDocTextLine(`- Q${safeText(ans?.question?.order)} | Score: ${safeText(ans?.score)}`),
+          toDocTextLine(`  Submitted: ${safeText(ans?.submittedOrder)}`),
+        );
       }
       continue;
     }
 
-    // Generic / other
-    doc.fontSize(12).text('Results', { underline: true });
-    doc.fontSize(11).text(safeText(typeResults));
+    content.push(toDocTextLine(safeText(typeResults)));
   }
 
-  doc.end();
+  const docDefinition = {
+    pageSize: 'A4',
+    pageMargins: [48, 48, 48, 48],
+    rtl: true,
+    defaultStyle: {
+      font: 'Cairo',
+    },
+    content,
+  };
+
+  // pdfmake-rtl returns a pdfmake document with getStream/getBuffer support (pdfmake compatible)
+  const pdfDoc = pdfmakeRtl.createPdf(docDefinition);
+  const buffer = await new Promise((resolve, reject) => {
+    try {
+      const maybe = pdfDoc.getBuffer((buf) => resolve(buf));
+      if (maybe && typeof maybe.then === 'function') {
+        maybe.then(resolve).catch(reject);
+      }
+    } catch (err) {
+      reject(err);
+    }
+  });
+
+  res.end(Buffer.from(buffer));
 };
 

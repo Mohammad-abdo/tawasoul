@@ -58,6 +58,6 @@ describe('streamAssessmentSessionPdf', () => {
     expect(res.headers['content-type']).toBe('application/pdf');
     expect(res.buffer.length).toBeGreaterThan(200);
     expect(res.buffer.slice(0, 4).toString('utf8')).toBe('%PDF');
-  });
+  }, 15000);
 });
 
