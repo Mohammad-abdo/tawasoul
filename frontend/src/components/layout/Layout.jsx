@@ -148,7 +148,7 @@ const Layout = ({ children = null }) => {
     { path: '/home-services', icon: FileText, label: 'خدمات الصفحة الرئيسية' },
     { path: '/home-articles', icon: FileText, label: 'مقالات الصفحة الرئيسية' },
     { path: '/faqs', icon: FileText, label: 'الأسئلة الشائعة' },
-    { path: '/dashboard/tests', icon: Brain, label: 'Tests' },
+    { path: '/dashboard/tests', icon: Brain, label: 'الاختبارات' },
     { path: '/notifications', icon: Bell, label: 'الإشعارات' },
     ...(user?.role === 'SUPER_ADMIN' ? [{ path: '/admins', icon: Shield, label: 'إدارة الأدمن' }] : []),
     { path: '/settings', icon: Settings, label: 'الإعدادات' },
