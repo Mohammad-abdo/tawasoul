@@ -30,8 +30,8 @@ export const createMessage = (data) =>
 
 // --- Other Entity Methods ---
 
-export const findDoctorById = (id) =>
-  prisma.doctor.findUnique({ where: { id } });
+export const findUserById = (id) =>
+  prisma.user.findUnique({ where: { id } });
 
 export const createNotification = (data) =>
   prisma.notification.create({ data });
