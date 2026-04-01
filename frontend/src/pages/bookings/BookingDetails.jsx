@@ -11,7 +11,7 @@ import {
   ArrowRight, 
   Calendar, 
   Clock, 
-  DollarSign, 
+  // DollarSign, 
   User, 
   Stethoscope, 
   Video, 
@@ -303,11 +303,11 @@ const BookingDetails = () => {
                 </div>
               </div>
               <div className="flex items-center gap-2 text-gray-600">
-                <DollarSign size={20} className="text-green-600" />
-                <div>
+                {/* <DollarSign size={20} className="text-green-600" /> */}
+                {/* <div>
                   <p className="text-lg font-semibold text-gray-900">{booking.price} ج.م</p>
                   <p className="text-xs text-gray-500">السعر</p>
-                </div>
+                </div> */}
               </div>
             </div>
           </div>
@@ -427,10 +427,10 @@ const BookingDetails = () => {
               <span className="text-sm text-gray-600">المدة</span>
               <span className="text-sm font-semibold text-gray-900">{booking.duration} دقيقة</span>
             </div>
-            <div className="flex items-center justify-between py-2">
+            {/* <div className="flex items-center justify-between py-2">
               <span className="text-sm text-gray-600">السعر</span>
               <span className="text-lg font-bold text-green-600">{booking.price} ج.م</span>
-            </div>
+            </div> */}
           </div>
         </div>
 

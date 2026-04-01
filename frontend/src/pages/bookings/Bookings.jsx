@@ -164,22 +164,22 @@ const Bookings = () => {
         </div>
       )
     },
-    {
-      header: 'المبلغ',
-      accessor: 'price',
-      sortable: true,
-      render: (row) => (
-        <div className="flex items-center gap-2">
-          <div className="w-10 h-10 rounded-lg bg-green-50 border border-green-200 flex items-center justify-center">
-            <DollarSign size={16} className="text-green-600" />
-          </div>
-          <div>
-            <p className="text-lg font-bold text-gray-900">{row.price} ج.م</p>
-            <p className="text-xs text-gray-500">{row.duration} دقيقة</p>
-          </div>
-        </div>
-      )
-    },
+    // {
+    //   header: 'المبلغ',
+    //   accessor: 'price',
+    //   sortable: true,
+    //   render: (row) => (
+    //     <div className="flex items-center gap-2">
+    //       <div className="w-10 h-10 rounded-lg bg-green-50 border border-green-200 flex items-center justify-center">
+    //         <DollarSign size={16} className="text-green-600" />
+    //       </div>
+    //       <div>
+    //         <p className="text-lg font-bold text-gray-900">{row.price} ج.م</p>
+    //         <p className="text-xs text-gray-500">{row.duration} دقيقة</p>
+    //       </div>
+    //     </div>
+    //   )
+    // },
     {
       header: 'الحالة',
       accessor: 'status',
@@ -303,7 +303,7 @@ const Bookings = () => {
             </div>
           </div>
         </div>
-        <div className="glass-card rounded-xl p-6 border border-gray-200">
+        {/* <div className="glass-card rounded-xl p-6 border border-gray-200">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-lg bg-green-50 border border-green-200 flex items-center justify-center">
               <DollarSign className="text-green-600" size={24} />
@@ -313,7 +313,7 @@ const Bookings = () => {
               <p className="text-xs text-gray-500">إجمالي الإيرادات (ج.م)</p>
             </div>
           </div>
-        </div>
+        </div> */}
       </div>
 
       {/* Data Table */}
@@ -351,11 +351,11 @@ const Bookings = () => {
               { value: 'TEXT', label: 'نصي' }
             ]
           },
-          {
-            key: 'price',
-            label: 'السعر',
-            type: 'numberRange'
-          },
+          // {
+          //   key: 'price',
+          //   label: 'السعر',
+          //   type: 'numberRange'
+          // },
           {
             key: 'scheduledAt',
             label: 'تاريخ الحجز',

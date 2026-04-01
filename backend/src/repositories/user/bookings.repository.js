@@ -15,7 +15,8 @@ export const findMany = ({ where, skip, take }) =>
           avatar: true,
           rating: true,
           isVerified: true,
-          sessionPrices: { select: { duration: true, price: true } }
+          // sessionPrices: { select: { duration: true, price: true } }
+          hourlyRate: true
         }
       }
     }
@@ -36,7 +37,8 @@ export const findById = (id) =>
           rating: true,
           isVerified: true,
           phone: true,
-          sessionPrices: { select: { duration: true, price: true } }
+          // sessionPrices: { select: { duration: true, price: true } }
+          hourlyRate: true
         }
       }
     }
@@ -44,8 +46,18 @@ export const findById = (id) =>
 
 export const findByIdSimple = (id) => prisma.booking.findUnique({ where: { id } });
 
-export const findDoctorWithPrices = (doctorId) =>
-  prisma.doctor.findUnique({ where: { id: doctorId }, include: { sessionPrices: true } });
+// export const findDoctorWithPrices = (doctorId) =>
+//   prisma.doctor.findUnique({ where: { id: doctorId }, include: { sessionPrices: true } });
+export const findDoctorForBooking = (doctorId) =>
+  prisma.doctor.findUnique({
+    where: { id: doctorId },
+    select: {
+      id: true,
+      isActive: true,
+      isApproved: true,
+      hourlyRate: true
+    }
+  });
 
 export const findChild = (childId) => prisma.child.findUnique({ where: { id: childId } });
 

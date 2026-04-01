@@ -82,10 +82,10 @@ DoctorFullProfile:
                 type: string
               specialty:
                 type: string
-        sessionPrices:
-          type: array
-          items:
-            $ref: "#/components/schemas/SessionPrice"
+        # sessionPrices:
+        #   type: array
+        #   items:
+        #     $ref: "#/components/schemas/SessionPrice"
         updatedAt:
           type: string
           format: date-time
@@ -119,15 +119,4 @@ DoctorUpdateProfileRequest:
       items:
         type: string
       description: Replaces all existing specialties
-    sessionPrices:
-      type: array
-      items:
-        type: object
-        required: [duration, price]
-        properties:
-          duration:
-            type: integer
-            enum: [30, 45, 60]
-          price:
-            type: number
-            format: float
+    
