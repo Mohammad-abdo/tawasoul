@@ -374,12 +374,31 @@ model Admin {
   isActive       Boolean         @default(true)
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
+  activityLogs   ActivityLog[]
   pageContents   PageContent[]
   reports        Report[]
   supportReplies SupportReply[]
   supportTickets SupportTicket[]
 
   @@map("admins")
+}
+
+model ActivityLog {
+  id          String   @id @default(uuid())
+  adminId     String
+  action      String
+  entityType  String
+  entityId    String?
+  description String?  @db.Text
+  changes     Json?
+  ipAddress   String?
+  userAgent   String?  @db.Text
+  createdAt   DateTime @default(now())
+  admin       Admin    @relation(fields: [adminId], references: [id], onDelete: Cascade)
+
+  @@index([adminId])
+  @@index([createdAt])
+  @@map("activity_logs")
 }
 
 model SupportTicket {

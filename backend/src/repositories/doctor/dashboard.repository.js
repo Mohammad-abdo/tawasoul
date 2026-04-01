@@ -1,4 +1,5 @@
 import { prisma } from '../../config/database.js';
+import { aggregatePaymentsByCalendarMonth } from '../../utils/dashboard-aggregates.js';
 
 export const countBookings = (where) => prisma.booking.count({ where });
 
@@ -29,6 +30,7 @@ export const findUpcomingBookings = (doctorId) =>
         select: {
           id: true,
           username: true,
+          fullName: true,
           avatar: true
         }
       }
@@ -45,21 +47,21 @@ export const findRecentBookings = (doctorId) =>
         select: {
           id: true,
           username: true,
+          fullName: true,
           avatar: true
         }
       }
     }
   });
 
-export const groupMonthlyEarnings = (doctorId, sinceDate) =>
-  prisma.payment.groupBy({
-    by: ['createdAt'],
+export const groupMonthlyEarnings = async (doctorId, sinceDate) => {
+  const payments = await prisma.payment.findMany({
     where: {
       doctorId,
       status: 'COMPLETED',
       createdAt: { gte: sinceDate }
     },
-    _sum: {
-      amount: true
-    }
+    select: { amount: true, createdAt: true }
   });
+  return aggregatePaymentsByCalendarMonth(payments, sinceDate, 6);
+};

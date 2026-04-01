@@ -10,11 +10,7 @@ import {
   FileText,
   Headphones,
   TrendingUp,
-  TrendingDown,
   Activity,
-  ArrowUpRight,
-  ArrowDownRight,
-  ArrowLeft,
   Clock,
   CheckCircle,
   XCircle,
@@ -27,11 +23,17 @@ import {
   Ticket,
   Baby
 } from 'lucide-react';
-import { LineChart, Line, AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, RadialBarChart, RadialBar } from 'recharts';
+import { LineChart, Line, AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
 const Dashboard = () => {
   const { role } = useAuthStore();
-  const { data: stats, isLoading, isError, error } = useQuery({
+  const {
+    data: stats,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useQuery({
     queryKey: ['dashboard-stats', role],
     queryFn: async () => {
       if (role === 'doctor') {
@@ -41,6 +43,7 @@ const Dashboard = () => {
       const response = await dashboard.getStats();
       return response.data.data;
     },
+    enabled: !!role,
   });
 
   const adminStatCards = [
@@ -50,9 +53,7 @@ const Dashboard = () => {
       icon: Users,
       iconBg: 'bg-gray-100',
       iconColor: 'text-primary-600',
-      change: '+12%',
-      changeType: 'positive',
-      subtitle: 'مستخدم نشط'
+      subtitle: 'مستخدم مسجل',
     },
     {
       title: 'إجمالي الأطباء',
@@ -60,9 +61,7 @@ const Dashboard = () => {
       icon: Stethoscope,
       iconBg: 'bg-gray-100',
       iconColor: 'text-primary-600',
-      change: '+5%',
-      changeType: 'positive',
-      subtitle: 'طبيب معتمد'
+      subtitle: 'طبيب مسجل',
     },
     {
       title: 'الحجوزات اليوم',
@@ -70,9 +69,7 @@ const Dashboard = () => {
       icon: Calendar,
       iconBg: 'bg-gray-100',
       iconColor: 'text-primary-600',
-      change: '+8%',
-      changeType: 'positive',
-      subtitle: 'حجز جديد'
+      subtitle: 'حسب تاريخ الإنشاء',
     },
     {
       title: 'الإيرادات اليوم',
@@ -80,9 +77,7 @@ const Dashboard = () => {
       icon: DollarSign,
       iconBg: 'bg-gray-100',
       iconColor: 'text-primary-600',
-      change: '+15%',
-      changeType: 'positive',
-      subtitle: 'إيرادات اليوم'
+      subtitle: 'مدفوعات مكتملة',
     },
     {
       title: 'ملفات الأطفال',
@@ -90,9 +85,7 @@ const Dashboard = () => {
       icon: Baby,
       iconBg: 'bg-gray-100',
       iconColor: 'text-primary-600',
-      change: '+15%',
-      changeType: 'positive',
-      subtitle: 'ملف نشط'
+      subtitle: 'ملف مسجل',
     },
     {
       title: 'الباقات النشطة',
@@ -100,9 +93,7 @@ const Dashboard = () => {
       icon: Layers,
       iconBg: 'bg-gray-100',
       iconColor: 'text-primary-600',
-      change: '+10%',
-      changeType: 'positive',
-      subtitle: 'باقة نشطة'
+      subtitle: 'اشتراك فعّال',
     },
   ];
 
@@ -113,9 +104,7 @@ const Dashboard = () => {
       icon: Calendar,
       iconBg: 'bg-blue-50',
       iconColor: 'text-blue-600',
-      change: '+5%',
-      changeType: 'positive',
-      subtitle: 'موعد مسجل'
+      subtitle: 'موعد مسجل',
     },
     {
       title: 'الجلسات المكتملة',
@@ -123,9 +112,7 @@ const Dashboard = () => {
       icon: CheckCircle,
       iconBg: 'bg-green-50',
       iconColor: 'text-green-600',
-      change: '+8%',
-      changeType: 'positive',
-      subtitle: 'جلسة تم تنفيذها'
+      subtitle: 'جلسة تم تنفيذها',
     },
     {
       title: 'إجمالي الأرباح',
@@ -133,9 +120,7 @@ const Dashboard = () => {
       icon: DollarSign,
       iconBg: 'bg-yellow-50',
       iconColor: 'text-yellow-600',
-      change: '+12%',
-      changeType: 'positive',
-      subtitle: 'أرباح محققة'
+      subtitle: 'أرباح محققة',
     },
     {
       title: 'المقالات المنشورة',
@@ -143,13 +128,29 @@ const Dashboard = () => {
       icon: FileText,
       iconBg: 'bg-purple-50',
       iconColor: 'text-purple-600',
-      change: '+2',
-      changeType: 'positive',
-      subtitle: 'مقال توعوي'
-    }
+      subtitle: 'مقال توعوي',
+    },
   ];
 
   const statCards = role === 'doctor' ? doctorStatCards : adminStatCards;
+
+  if (isError) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[16rem] gap-4 glass-card rounded-2xl p-8">
+        <AlertCircle className="text-red-500" size={40} />
+        <p className="text-gray-700 text-center max-w-md">
+          {error?.response?.data?.error?.message || error?.message || 'تعذر تحميل بيانات لوحة التحكم'}
+        </p>
+        <button
+          type="button"
+          onClick={() => refetch()}
+          className="px-4 py-2 rounded-xl bg-primary-600 text-white text-sm font-medium hover:bg-primary-700"
+        >
+          إعادة المحاولة
+        </button>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (
@@ -162,30 +163,27 @@ const Dashboard = () => {
     );
   }
 
-  // Sample chart data (replace with real data from API)
-  const revenueData = [
-    { name: 'يناير', revenue: 4000, bookings: 120 },
-    { name: 'فبراير', revenue: 3000, bookings: 90 },
-    { name: 'مارس', revenue: 5000, bookings: 150 },
-    { name: 'أبريل', revenue: 4500, bookings: 140 },
-    { name: 'مايو', revenue: 6000, bookings: 180 },
-    { name: 'يونيو', revenue: 5500, bookings: 170 },
-  ];
-
-  const userGrowthData = [
-    { name: 'الأسبوع 1', users: 100, doctors: 20 },
-    { name: 'الأسبوع 2', users: 150, doctors: 25 },
-    { name: 'الأسبوع 3', users: 200, doctors: 30 },
-    { name: 'الأسبوع 4', users: 250, doctors: 35 },
-  ];
-
-  const statusData = [
-    { name: 'نشط', value: stats?.totalUsers || 0, color: '#875FD8' },
-    { name: 'غير نشط', value: 50, color: '#A384E1' },
-    { name: 'بانتظار', value: 20, color: '#C2ADEB' },
-  ];
-
-  const COLORS = ['#875FD8', '#A384E1', '#C2ADEB'];
+  const isAdmin = role === 'admin';
+  const adminRevenueChart = stats?.revenueByMonth ?? [];
+  const weeklyUserGrowth = stats?.weeklyUserGrowth ?? [];
+  const doctorMonthly = stats?.monthlyEarnings ?? [];
+  const doctorBookingBar =
+    stats?.stats?.bookings != null
+      ? [
+          { name: 'إجمالي', count: stats.stats.bookings.total },
+          { name: 'معلقة', count: stats.stats.bookings.pending },
+          { name: 'مكتملة', count: stats.stats.bookings.completed },
+          { name: 'ملغاة', count: stats.stats.bookings.cancelled },
+        ]
+      : [];
+  const statusData = (stats?.userStatusBreakdown ?? []).filter((x) => x.value > 0);
+  const COLORS = statusData.map((s) => s.color || '#875FD8');
+  const totalDoctorBookings = stats?.stats?.bookings?.total || 0;
+  const completedDoctorBookings = stats?.stats?.bookings?.completed || 0;
+  const doctorCompletionRate =
+    totalDoctorBookings > 0
+      ? Math.round((completedDoctorBookings / totalDoctorBookings) * 100)
+      : 0;
 
   return (
     <div className="space-y-6">
@@ -209,7 +207,6 @@ const Dashboard = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {statCards.map((stat, index) => {
           const Icon = stat.icon;
-          const isPositive = stat.changeType === 'positive';
           return (
             <div 
               key={index} 
@@ -219,32 +216,11 @@ const Dashboard = () => {
                 <div className={`${stat.iconBg} p-3 rounded-xl group-hover:scale-110 transition-transform duration-300 border border-primary-200`}>
                   <Icon className={stat.iconColor} size={24} />
                 </div>
-                {isPositive ? (
-                  <div className="flex items-center gap-1 px-2 py-1 bg-green-50 rounded-lg">
-                    <ArrowUpRight className="text-green-600" size={14} />
-                    <span className="text-xs font-semibold text-green-600">{stat.change}</span>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-1 px-2 py-1 bg-red-50 rounded-lg">
-                    <ArrowDownRight className="text-red-600" size={14} />
-                    <span className="text-xs font-semibold text-red-600">{stat.change}</span>
-                  </div>
-                )}
               </div>
               <div>
                 <p className="text-sm font-medium text-gray-500 mb-1">{stat.title}</p>
                 <p className="text-3xl font-bold text-gray-900 mb-1">{stat.value}</p>
                 <p className="text-xs text-gray-400">{stat.subtitle}</p>
-              </div>
-              <div className="mt-4 pt-4 border-t border-gray-100">
-                <div className="flex items-center gap-2 text-xs text-gray-500">
-                  {isPositive ? (
-                    <TrendingUp className="text-green-500" size={12} />
-                  ) : (
-                    <TrendingDown className="text-red-500" size={12} />
-                  )}
-                  <span>من الشهر الماضي</span>
-                </div>
               </div>
             </div>
           );
@@ -252,145 +228,272 @@ const Dashboard = () => {
       </div>
 
       {/* Quick Stats Row */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="glass-card rounded-xl p-4 flex items-center gap-3">
-          <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center border border-primary-200">
-            <CheckCircle className="text-primary-600" size={20} />
+      {isAdmin ? (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="glass-card rounded-xl p-4 flex items-center gap-3">
+            <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center border border-primary-200">
+              <CheckCircle className="text-primary-600" size={20} />
+            </div>
+            <div>
+              <p className="text-xs text-gray-500">الحجوزات المكتملة</p>
+              <p className="text-lg font-bold text-gray-900">{stats?.completedBookings ?? 0}</p>
+            </div>
           </div>
-          <div>
-            <p className="text-xs text-gray-500">الحجوزات المكتملة</p>
-            <p className="text-lg font-bold text-gray-900">{stats?.completedBookings || 0}</p>
+          <div className="glass-card rounded-xl p-4 flex items-center gap-3">
+            <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center border border-primary-200">
+              <Clock className="text-primary-600" size={20} />
+            </div>
+            <div>
+              <p className="text-xs text-gray-500">الحجوزات المعلقة</p>
+              <p className="text-lg font-bold text-gray-900">{stats?.pendingBookings ?? 0}</p>
+            </div>
+          </div>
+          <div className="glass-card rounded-xl p-4 flex items-center gap-3">
+            <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center border border-primary-200">
+              <XCircle className="text-primary-600" size={20} />
+            </div>
+            <div>
+              <p className="text-xs text-gray-500">الحجوزات الملغاة</p>
+              <p className="text-lg font-bold text-gray-900">{stats?.cancelledBookings ?? 0}</p>
+            </div>
+          </div>
+          <div className="glass-card rounded-xl p-4 flex items-center gap-3">
+            <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center border border-primary-200">
+              <Target className="text-primary-600" size={20} />
+            </div>
+            <div>
+              <p className="text-xs text-gray-500">معدل إتمام الحجوزات</p>
+              <p className="text-lg font-bold text-gray-900">{stats?.completionRate ?? 0}%</p>
+            </div>
           </div>
         </div>
-        <div className="glass-card rounded-xl p-4 flex items-center gap-3">
-          <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center border border-primary-200">
-            <Clock className="text-primary-600" size={20} />
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="glass-card rounded-xl p-4 flex items-center gap-3">
+            <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center border border-primary-200">
+              <CheckCircle className="text-primary-600" size={20} />
+            </div>
+            <div>
+              <p className="text-xs text-gray-500">الجلسات المكتملة</p>
+              <p className="text-lg font-bold text-gray-900">{stats?.stats?.bookings?.completed ?? 0}</p>
+            </div>
           </div>
-          <div>
-            <p className="text-xs text-gray-500">الحجوزات المعلقة</p>
-            <p className="text-lg font-bold text-gray-900">{stats?.pendingBookings || 0}</p>
+          <div className="glass-card rounded-xl p-4 flex items-center gap-3">
+            <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center border border-primary-200">
+              <Clock className="text-primary-600" size={20} />
+            </div>
+            <div>
+              <p className="text-xs text-gray-500">المعلقة</p>
+              <p className="text-lg font-bold text-gray-900">{stats?.stats?.bookings?.pending ?? 0}</p>
+            </div>
+          </div>
+          <div className="glass-card rounded-xl p-4 flex items-center gap-3">
+            <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center border border-primary-200">
+              <XCircle className="text-primary-600" size={20} />
+            </div>
+            <div>
+              <p className="text-xs text-gray-500">الملغاة</p>
+              <p className="text-lg font-bold text-gray-900">{stats?.stats?.bookings?.cancelled ?? 0}</p>
+            </div>
+          </div>
+          <div className="glass-card rounded-xl p-4 flex items-center gap-3">
+            <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center border border-primary-200">
+              <Target className="text-primary-600" size={20} />
+            </div>
+            <div>
+              <p className="text-xs text-gray-500">معدل الإتمام</p>
+              <p className="text-lg font-bold text-gray-900">{doctorCompletionRate}%</p>
+            </div>
           </div>
         </div>
-        <div className="glass-card rounded-xl p-4 flex items-center gap-3">
-          <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center border border-primary-200">
-            <XCircle className="text-primary-600" size={20} />
-          </div>
-          <div>
-            <p className="text-xs text-gray-500">الحجوزات الملغاة</p>
-            <p className="text-lg font-bold text-gray-900">{stats?.cancelledBookings || 0}</p>
-          </div>
-        </div>
-        <div className="glass-card rounded-xl p-4 flex items-center gap-3">
-          <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center border border-primary-200">
-            <Target className="text-primary-600" size={20} />
-          </div>
-          <div>
-            <p className="text-xs text-gray-500">معدل النجاح</p>
-            <p className="text-lg font-bold text-gray-900">94%</p>
-          </div>
-        </div>
-      </div>
+      )}
 
       {/* Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Revenue Chart */}
-        <div className="glass-card rounded-2xl p-6 hover:shadow-xl transition-shadow duration-300">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h3 className="text-lg font-bold text-gray-900">الإيرادات والحجوزات</h3>
-              <p className="text-sm text-gray-500 mt-1">آخر 6 أشهر</p>
+      {isAdmin ? (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="glass-card rounded-2xl p-6 hover:shadow-xl transition-shadow duration-300">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h3 className="text-lg font-bold text-gray-900">الإيرادات والحجوزات</h3>
+                <p className="text-sm text-gray-500 mt-1">آخر 6 أشهر (من السيرفر)</p>
+              </div>
+              <div className="p-2 bg-gray-100 rounded-lg border border-primary-200">
+                <BarChart3 className="text-primary-600" size={20} />
+              </div>
             </div>
-            <div className="p-2 bg-gray-100 rounded-lg border border-primary-200">
-              <BarChart3 className="text-primary-600" size={20} />
-            </div>
+            {adminRevenueChart.length === 0 ? (
+              <p className="text-center text-gray-500 py-16 text-sm">لا توجد بيانات في هذه الفترة</p>
+            ) : (
+              <ResponsiveContainer width="100%" height={300}>
+                <AreaChart data={adminRevenueChart}>
+                  <defs>
+                    <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#875FD8" stopOpacity={0.8} />
+                      <stop offset="95%" stopColor="#875FD8" stopOpacity={0} />
+                    </linearGradient>
+                    <linearGradient id="colorBookings" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#22c55e" stopOpacity={0.8} />
+                      <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                  <XAxis dataKey="name" className="text-xs" />
+                  <YAxis className="text-xs" />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: '#fff',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '8px',
+                    }}
+                  />
+                  <Legend />
+                  <Area
+                    type="monotone"
+                    dataKey="revenue"
+                    stroke="#14b8a6"
+                    fillOpacity={1}
+                    fill="url(#colorRevenue)"
+                    name="الإيرادات (ج.م)"
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="bookings"
+                    stroke="#22c55e"
+                    fillOpacity={1}
+                    fill="url(#colorBookings)"
+                    name="الحجوزات (عدد)"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            )}
           </div>
-          <ResponsiveContainer width="100%" height={300}>
-            <AreaChart data={revenueData}>
-              <defs>
-                <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#875FD8" stopOpacity={0.8}/>
-                  <stop offset="95%" stopColor="#875FD8" stopOpacity={0}/>
-                </linearGradient>
-                <linearGradient id="colorBookings" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#22c55e" stopOpacity={0.8}/>
-                  <stop offset="95%" stopColor="#22c55e" stopOpacity={0}/>
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-              <XAxis dataKey="name" className="text-xs" />
-              <YAxis className="text-xs" />
-              <Tooltip 
-                contentStyle={{ 
-                  backgroundColor: '#fff', 
-                  border: '1px solid #e5e7eb',
-                  borderRadius: '8px'
-                }} 
-              />
-              <Legend />
-              <Area 
-                type="monotone" 
-                dataKey="revenue" 
-                stroke="#14b8a6" 
-                fillOpacity={1} 
-                fill="url(#colorRevenue)" 
-                name="الإيرادات (ج.م)"
-              />
-              <Area 
-                type="monotone" 
-                dataKey="bookings" 
-                stroke="#22c55e" 
-                fillOpacity={1} 
-                fill="url(#colorBookings)" 
-                name="الحجوزات"
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
 
-        {/* User Growth Chart */}
-        <div className="glass-card rounded-2xl p-6 hover:shadow-xl transition-shadow duration-300">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h3 className="text-lg font-bold text-gray-900">نمو المستخدمين والأطباء</h3>
-              <p className="text-sm text-gray-500 mt-1">آخر 4 أسابيع</p>
+          <div className="glass-card rounded-2xl p-6 hover:shadow-xl transition-shadow duration-300">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h3 className="text-lg font-bold text-gray-900">نمو المستخدمين والأطباء</h3>
+                <p className="text-sm text-gray-500 mt-1">آخر 4 أسابيع (تسجيلات جديدة)</p>
+              </div>
+              <div className="p-2 bg-gray-100 rounded-lg border border-primary-200">
+                <TrendingUp className="text-primary-600" size={20} />
+              </div>
             </div>
-            <div className="p-2 bg-gray-100 rounded-lg border border-primary-200">
-              <TrendingUp className="text-primary-600" size={20} />
-            </div>
+            {weeklyUserGrowth.length === 0 ? (
+              <p className="text-center text-gray-500 py-16 text-sm">لا توجد بيانات في هذه الفترة</p>
+            ) : (
+              <ResponsiveContainer width="100%" height={300}>
+                <LineChart data={weeklyUserGrowth}>
+                  <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                  <XAxis dataKey="name" className="text-xs" />
+                  <YAxis className="text-xs" />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: '#fff',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '8px',
+                    }}
+                  />
+                  <Legend />
+                  <Line
+                    type="monotone"
+                    dataKey="users"
+                    stroke="#875FD8"
+                    strokeWidth={3}
+                    dot={{ fill: '#875FD8', r: 4 }}
+                    name="المستخدمين"
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="doctors"
+                    stroke="#A384E1"
+                    strokeWidth={3}
+                    dot={{ fill: '#A384E1', r: 4 }}
+                    name="الأطباء"
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            )}
           </div>
-          <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={userGrowthData}>
-              <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-              <XAxis dataKey="name" className="text-xs" />
-              <YAxis className="text-xs" />
-              <Tooltip 
-                contentStyle={{ 
-                  backgroundColor: '#fff', 
-                  border: '1px solid #e5e7eb',
-                  borderRadius: '8px'
-                }} 
-              />
-              <Legend />
-              <Line 
-                type="monotone" 
-                dataKey="users" 
-                stroke="#875FD8" 
-                strokeWidth={3}
-                dot={{ fill: '#875FD8', r: 4 }}
-                name="المستخدمين"
-              />
-              <Line 
-                type="monotone" 
-                dataKey="doctors" 
-                stroke="#A384E1" 
-                strokeWidth={3}
-                dot={{ fill: '#A384E1', r: 4 }}
-                name="الأطباء"
-              />
-            </LineChart>
-          </ResponsiveContainer>
         </div>
-      </div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="glass-card rounded-2xl p-6 hover:shadow-xl transition-shadow duration-300">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h3 className="text-lg font-bold text-gray-900">أرباحك الشهرية</h3>
+                <p className="text-sm text-gray-500 mt-1">آخر 6 أشهر</p>
+              </div>
+              <div className="p-2 bg-gray-100 rounded-lg border border-primary-200">
+                <DollarSign className="text-primary-600" size={20} />
+              </div>
+            </div>
+            {doctorMonthly.length === 0 ? (
+              <p className="text-center text-gray-500 py-16 text-sm">لا توجد أرباح مسجلة في هذه الفترة</p>
+            ) : (
+              <ResponsiveContainer width="100%" height={300}>
+                <AreaChart data={doctorMonthly}>
+                  <defs>
+                    <linearGradient id="docRev" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#875FD8" stopOpacity={0.8} />
+                      <stop offset="95%" stopColor="#875FD8" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                  <XAxis dataKey="name" className="text-xs" />
+                  <YAxis className="text-xs" />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: '#fff',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '8px',
+                    }}
+                  />
+                  <Legend />
+                  <Area
+                    type="monotone"
+                    dataKey="revenue"
+                    stroke="#875FD8"
+                    fillOpacity={1}
+                    fill="url(#docRev)"
+                    name="الإيرادات (ج.م)"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+
+          <div className="glass-card rounded-2xl p-6 hover:shadow-xl transition-shadow duration-300">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h3 className="text-lg font-bold text-gray-900">ملخص الحجوزات</h3>
+                <p className="text-sm text-gray-500 mt-1">حسب الحالة</p>
+              </div>
+              <div className="p-2 bg-gray-100 rounded-lg border border-primary-200">
+                <Calendar className="text-primary-600" size={20} />
+              </div>
+            </div>
+            {doctorBookingBar.length === 0 ? (
+              <p className="text-center text-gray-500 py-16 text-sm">لا توجد بيانات</p>
+            ) : (
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={doctorBookingBar}>
+                  <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                  <XAxis dataKey="name" className="text-xs" />
+                  <YAxis className="text-xs" />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: '#fff',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '8px',
+                    }}
+                  />
+                  <Bar dataKey="count" fill="#875FD8" name="العدد" radius={[6, 6, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Bottom Row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -433,25 +536,29 @@ const Dashboard = () => {
                 <PieChartIcon className="text-primary-600" size={20} />
               </div>
             </div>
-            <ResponsiveContainer width="100%" height={250}>
-              <PieChart>
-                <Pie
-                  data={statusData}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="value"
-                >
-                  {statusData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
+            {statusData.length === 0 ? (
+              <p className="text-center text-gray-500 py-16 text-sm">لا توجد بيانات مستخدمين للعرض</p>
+            ) : (
+              <ResponsiveContainer width="100%" height={250}>
+                <PieChart>
+                  <Pie
+                    data={statusData}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                    outerRadius={80}
+                    fill="#8884d8"
+                    dataKey="value"
+                  >
+                    {statusData.map((entry, index) => (
+                      <Cell key={`cell-${entry.name}-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
           </div>
         )}
 
@@ -473,9 +580,9 @@ const Dashboard = () => {
           <div className="space-y-2 max-h-64 overflow-y-auto">
             {role === 'doctor' ? (
               stats?.recentBookings?.length > 0 ? (
-                stats.recentBookings.map((booking, index) => (
+                stats.recentBookings.map((booking) => (
                   <div 
-                    key={index} 
+                    key={booking.id} 
                     className="flex items-center gap-4 p-4 bg-gradient-to-r from-gray-50 to-white rounded-xl border border-gray-100 hover:border-primary-200 hover:shadow-md transition-all duration-300 group"
                   >
                     <div className="w-10 h-10 rounded-xl bg-gray-100 border border-primary-200 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
@@ -507,9 +614,9 @@ const Dashboard = () => {
               )
             ) : (
               stats?.recentActivity?.length > 0 ? (
-                stats.recentActivity.map((activity, index) => (
+                stats.recentActivity.map((activity) => (
                   <div 
-                    key={index} 
+                    key={activity.id} 
                     className="flex items-center gap-4 p-4 bg-gradient-to-r from-gray-50 to-white rounded-xl border border-gray-100 hover:border-primary-200 hover:shadow-md transition-all duration-300 group"
                   >
                     <div className="w-10 h-10 rounded-xl bg-gray-100 border border-primary-200 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">

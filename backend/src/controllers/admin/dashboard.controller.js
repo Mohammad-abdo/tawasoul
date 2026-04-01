@@ -1,12 +1,17 @@
 import { prisma } from '../../config/database.js';
 import { logger } from '../../utils/logger.js';
+import {
+  getMonthBuckets,
+  aggregateRevenueAndBookingsByMonth,
+  getWeekBuckets,
+  countUsersAndDoctorsInRanges
+} from '../../utils/dashboard-aggregates.js';
 
 /**
  * Get Dashboard Statistics
  */
 export const getDashboardStats = async (req, res, next) => {
   try {
-    // Check database connection
     try {
       await prisma.$queryRaw`SELECT 1`;
     } catch (dbError) {
@@ -31,7 +36,11 @@ export const getDashboardStats = async (req, res, next) => {
           openSupportTickets: 0,
           totalPosts: 0,
           totalArticles: 0,
-          recentActivity: []
+          recentActivity: [],
+          revenueByMonth: [],
+          weeklyUserGrowth: [],
+          userStatusBreakdown: [],
+          completionRate: 0
         }
       });
     }
@@ -59,7 +68,9 @@ export const getDashboardStats = async (req, res, next) => {
       totalPackages,
       totalProducts,
       totalOrders,
-      pendingOrders
+      pendingOrders,
+      pendingUsers,
+      disabledUsers
     ] = await Promise.all([
       prisma.user.count(),
       prisma.doctor.count(),
@@ -97,24 +108,69 @@ export const getDashboardStats = async (req, res, next) => {
       prisma.package.count({ where: { isActive: true } }),
       prisma.product.count({ where: { isActive: true } }),
       prisma.order.count(),
-      prisma.order.count({ where: { status: 'PENDING' } })
+      prisma.order.count({ where: { status: 'PENDING' } }),
+      prisma.user.count({ where: { isApproved: false } }),
+      prisma.user.count({ where: { isApproved: true, isActive: false } })
     ]);
 
-    // Get recent activity
-    const recentActivity = typeof prisma.activityLog?.findMany === 'function'
-      ? await prisma.activityLog.findMany({
-          take: 10,
-          orderBy: { createdAt: 'desc' },
-          include: {
-            admin: {
-              select: { name: true }
-            }
-          }
-        })
-      : [];
+    const monthBuckets = getMonthBuckets(new Date(), 6);
+    const rangeStart = monthBuckets[0].start;
+    const weekBuckets = getWeekBuckets(new Date());
+    const weekRangeStart = weekBuckets[0].start;
 
-    if (typeof prisma.activityLog?.findMany !== 'function') {
-      logger.warn('ActivityLog Prisma delegate is unavailable; returning empty recentActivity for dashboard stats');
+    const [paymentsForCharts, bookingsForCharts, usersForWeeks, doctorsForWeeks] =
+      await Promise.all([
+        prisma.payment.findMany({
+          where: { status: 'COMPLETED', createdAt: { gte: rangeStart } },
+          select: { amount: true, createdAt: true }
+        }),
+        prisma.booking.findMany({
+          where: { createdAt: { gte: rangeStart } },
+          select: { createdAt: true }
+        }),
+        prisma.user.findMany({
+          where: { createdAt: { gte: weekRangeStart } },
+          select: { createdAt: true }
+        }),
+        prisma.doctor.findMany({
+          where: { createdAt: { gte: weekRangeStart } },
+          select: { createdAt: true }
+        })
+      ]);
+
+    const revenueByMonth = aggregateRevenueAndBookingsByMonth(
+      paymentsForCharts,
+      bookingsForCharts,
+      monthBuckets
+    );
+    const weeklyUserGrowth = countUsersAndDoctorsInRanges(
+      usersForWeeks,
+      doctorsForWeeks,
+      weekBuckets
+    );
+
+    const userStatusBreakdown = [
+      { name: 'نشط', value: activeUsers, color: '#875FD8' },
+      { name: 'بانتظار الموافقة', value: pendingUsers, color: '#A384E1' },
+      { name: 'معطل', value: disabledUsers, color: '#C2ADEB' }
+    ];
+
+    const completionRate =
+      totalBookings > 0 ? Math.round((completedBookings / totalBookings) * 100) : 0;
+
+    let recentActivity = [];
+    try {
+      recentActivity = await prisma.activityLog.findMany({
+        take: 10,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          admin: {
+            select: { name: true }
+          }
+        }
+      });
+    } catch (logErr) {
+      logger.warn('ActivityLog fetch failed:', logErr);
     }
 
     res.json({
@@ -140,7 +196,13 @@ export const getDashboardStats = async (req, res, next) => {
         totalProducts,
         totalOrders,
         pendingOrders,
-        recentActivity: recentActivity.map(activity => ({
+        pendingUsers,
+        disabledUsers,
+        completionRate,
+        revenueByMonth,
+        weeklyUserGrowth,
+        userStatusBreakdown,
+        recentActivity: recentActivity.map((activity) => ({
           id: activity.id,
           action: activity.action,
           entityType: activity.entityType,
@@ -156,43 +218,79 @@ export const getDashboardStats = async (req, res, next) => {
   }
 };
 
+function aggregateByDay(rows, dateField) {
+  const map = new Map();
+  for (const row of rows) {
+    const d = row[dateField];
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    map.set(key, (map.get(key) || 0) + 1);
+  }
+  return [...map.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([date, count]) => ({ date, count }));
+}
+
+function aggregatePaymentSumByDay(payments) {
+  const map = new Map();
+  for (const p of payments) {
+    const d = p.createdAt;
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    map.set(key, (map.get(key) || 0) + (p.amount || 0));
+  }
+  return [...map.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([date, revenue]) => ({ date, revenue }));
+}
+
 /**
- * Get Dashboard Analytics
+ * Get Dashboard Analytics (date-bucketed; avoids invalid Prisma groupBy on DateTime)
  */
 export const getDashboardAnalytics = async (req, res, next) => {
   try {
-    const { startDate, endDate, period = 'daily' } = req.query;
+    const { startDate, endDate } = req.query;
+    const { period = 'daily' } = req.query;
 
     const start = startDate ? new Date(startDate) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
     const end = endDate ? new Date(endDate) : new Date();
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Invalid startDate or endDate'
+        }
+      });
+    }
 
-    // Get user registrations
-    const userRegistrations = await prisma.user.groupBy({
-      by: ['createdAt'],
-      where: {
-        createdAt: { gte: start, lte: end }
-      },
-      _count: true
-    });
+    const [users, bookingRows, payments] = await Promise.all([
+      prisma.user.findMany({
+        where: { createdAt: { gte: start, lte: end } },
+        select: { createdAt: true }
+      }),
+      prisma.booking.findMany({
+        where: { createdAt: { gte: start, lte: end } },
+        select: { status: true, createdAt: true }
+      }),
+      prisma.payment.findMany({
+        where: {
+          status: 'COMPLETED',
+          createdAt: { gte: start, lte: end }
+        },
+        select: { amount: true, createdAt: true }
+      })
+    ]);
 
-    // Get booking statistics
-    const bookingStats = await prisma.booking.groupBy({
-      by: ['status'],
-      where: {
-        createdAt: { gte: start, lte: end }
-      },
-      _count: true
-    });
+    const bookingByStatusMap = new Map();
+    for (const b of bookingRows) {
+      bookingByStatusMap.set(b.status, (bookingByStatusMap.get(b.status) || 0) + 1);
+    }
+    const bookingStats = [...bookingByStatusMap.entries()].map(([status, _count]) => ({
+      status,
+      _count
+    }));
 
-    // Get revenue by date
-    const revenueByDate = await prisma.payment.groupBy({
-      by: ['createdAt'],
-      where: {
-        status: 'COMPLETED',
-        createdAt: { gte: start, lte: end }
-      },
-      _sum: { amount: true }
-    });
+    const userRegistrations = aggregateByDay(users, 'createdAt');
+    const revenueByDate = aggregatePaymentSumByDay(payments);
 
     res.json({
       success: true,
@@ -210,4 +308,3 @@ export const getDashboardAnalytics = async (req, res, next) => {
     next(error);
   }
 };
-
