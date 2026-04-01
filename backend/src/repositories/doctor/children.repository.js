@@ -49,11 +49,6 @@ export const findChildDetails = (doctorId, childId) =>
               }
             }
           },
-          question: {
-            include: {
-              test: true
-            }
-          },
           qCarsAnswers: true,
           qAnalogyAnswers: true,
           qVisualMemoryAnswers: true,

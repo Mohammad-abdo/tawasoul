@@ -7,8 +7,17 @@ export const findMany = ({ where, skip, take }) =>
     take,
     orderBy: { scheduledAt: 'desc' },
     include: {
-      doctor: { select: { id: true, name: true, specialization: true, avatar: true, rating: true, isVerified: true } },
-      payment: { select: { id: true, status: true, method: true, amount: true } }
+      doctor: {
+        select: {
+          id: true,
+          name: true,
+          specialization: true,
+          avatar: true,
+          rating: true,
+          isVerified: true,
+          sessionPrices: { select: { duration: true, price: true } }
+        }
+      }
     }
   });
 
@@ -18,8 +27,18 @@ export const findById = (id) =>
   prisma.booking.findUnique({
     where: { id },
     include: {
-      doctor: { select: { id: true, name: true, specialization: true, avatar: true, rating: true, isVerified: true, phone: true } },
-      payment: { select: { id: true, status: true, method: true, amount: true, transactionId: true, createdAt: true } }
+      doctor: {
+        select: {
+          id: true,
+          name: true,
+          specialization: true,
+          avatar: true,
+          rating: true,
+          isVerified: true,
+          phone: true,
+          sessionPrices: { select: { duration: true, price: true } }
+        }
+      }
     }
   });
 

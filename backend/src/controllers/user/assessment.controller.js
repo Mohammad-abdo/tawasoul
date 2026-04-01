@@ -197,8 +197,7 @@ export const submitCarsAssessment = async (req, res, next) => {
           testId: test.id,
           sessionId,
           totalScore,
-          maxScore,
-          scoreGiven: totalScore
+          maxScore
         }
       });
 
@@ -284,8 +283,7 @@ export const submitAnalogyAssessment = async (req, res, next) => {
           testId: test.id,
           sessionId,
           totalScore,
-          maxScore,
-          scoreGiven: totalScore
+          maxScore
         }
       });
 
@@ -387,8 +385,7 @@ export const submitVisualMemoryAssessment = async (req, res, next) => {
           testId: test.id,
           sessionId,
           totalScore,
-          maxScore,
-          scoreGiven: totalScore
+          maxScore
         }
       });
 
@@ -479,8 +476,7 @@ export const submitAuditoryMemoryAssessment = async (req, res, next) => {
           testId: test.id,
           sessionId,
           totalScore,
-          maxScore,
-          scoreGiven: totalScore
+          maxScore
         }
       });
 
@@ -617,8 +613,7 @@ export const submitImageSequenceOrderAssessment = async (req, res, next) => {
           testId: test.id,
           sessionId,
           totalScore,
-          maxScore,
-          scoreGiven: totalScore
+          maxScore
         }
       });
 
@@ -664,12 +659,7 @@ export const getAssessmentResultsByChild = async (req, res, next) => {
     const results = await prisma.assessmentResult.findMany({
       where: { childId: req.params.childId },
       include: {
-        test: true,
-        question: {
-          include: {
-            test: true
-          }
-        }
+        test: true
       },
       orderBy: [{ timestamp: 'desc' }, { id: 'desc' }]
     });

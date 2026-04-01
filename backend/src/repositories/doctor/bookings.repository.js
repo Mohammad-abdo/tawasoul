@@ -15,12 +15,15 @@ export const findManyByDoctor = ({ where, skip, take }) =>
           phone: true
         }
       },
-      payment: {
+      doctor: {
         select: {
           id: true,
-          status: true,
-          method: true,
-          amount: true
+          sessionPrices: {
+            select: {
+              duration: true,
+              price: true
+            }
+          }
         }
       }
     }
@@ -53,17 +56,13 @@ export const findDetailedById = (id) =>
           avatar: true,
           phone: true,
           email: true,
-          rating: true
-        }
-      },
-      payment: {
-        select: {
-          id: true,
-          status: true,
-          method: true,
-          amount: true,
-          transactionId: true,
-          createdAt: true
+          rating: true,
+          sessionPrices: {
+            select: {
+              duration: true,
+              price: true
+            }
+          }
         }
       }
     }

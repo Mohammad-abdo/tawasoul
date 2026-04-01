@@ -16,7 +16,9 @@ yarn-debug.log*
 yarn-error.log*
 
 # Prisma
-prisma/migrations/
+prisma/migrations/*
+!prisma/migrations/20260401120000_payments_assessment_results_cleanup/
+!prisma/migrations/20260401120000_payments_assessment_results_cleanup/migration.sql
 
 # Uploads (keep structure but ignore files)
 uploads/*

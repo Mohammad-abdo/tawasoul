@@ -44,8 +44,6 @@ AdminBooking:
     rating:
       type: integer
       nullable: true
-    payment:
-      $ref: "#/components/schemas/BookingPaymentSummary"
     createdAt:
       type: string
       format: date-time

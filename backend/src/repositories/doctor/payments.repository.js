@@ -7,19 +7,12 @@ export const findManyByDoctor = ({ where, skip, take }) =>
     take,
     orderBy: { createdAt: 'desc' },
     include: {
-      booking: {
+      package: {
         select: {
           id: true,
-          user: {
-            select: {
-              id: true,
-              username: true,
-              avatar: true
-            }
-          },
-          sessionType: true,
-          duration: true,
-          scheduledAt: true
+          name: true,
+          nameAr: true,
+          price: true
         }
       }
     }

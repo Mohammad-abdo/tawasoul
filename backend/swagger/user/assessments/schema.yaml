@@ -485,9 +485,6 @@ AssessmentResultSummary:
     maxScore:
       type: integer
       nullable: true
-    scoreGiven:
-      type: integer
-      nullable: true
     sessionId:
       type: string
       nullable: true
@@ -506,10 +503,6 @@ AssessmentResultDetail:
         test:
           allOf:
             - $ref: "#/components/schemas/TestSummary"
-          nullable: true
-        question:
-          allOf:
-            - $ref: "#/components/schemas/GenericQuestionSchema"
           nullable: true
         helpAssessment:
           allOf:

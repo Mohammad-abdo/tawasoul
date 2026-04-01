@@ -732,7 +732,6 @@ async function main() {
         testId: verbalNonsenseTest.id,
         totalScore: i === 0 ? 3 : 2,
         maxScore: verbalNonsenseQuestions.length,
-        scoreGiven: i === 0 ? 3 : 2,
         sessionId: `verbal-nonsense-session-${i + 1}`,
         timestamp: plusDays(-(9 + i))
       }
@@ -831,7 +830,6 @@ async function main() {
         testId: imageSequenceOrderTest.id,
         totalScore,
         maxScore,
-        scoreGiven: totalScore,
         sessionId: `sequence-order-session-${i + 1}`,
         timestamp: plusDays(-(8 + i))
       }
@@ -1084,7 +1082,7 @@ async function main() {
     bookings.push(await prisma.booking.create({ data: {
       userId: users[i % users.length].id, doctorId: doctors[i % doctors.length].id, childId: children[i % children.length].id,
       category: i % 4 === 0 ? 'EVALUATION' : 'INDIVIDUAL',
-      duration: 60, price: 300 + (i % doctors.length) * 10, status, scheduledAt, scheduledMonth: scheduledAt.getMonth() + 1,
+      duration: 60, status, scheduledAt, scheduledMonth: scheduledAt.getMonth() + 1,
       scheduledDay: scheduledAt.getDate(), scheduledTime: formatSeedTime(slotTime), notes: 'Seeded booking for testing.',
       completedAt: status === 'COMPLETED' ? new Date(scheduledAt.getTime() + 60 * 60000) : null, cancelledAt: status === 'CANCELLED' ? plusDays(-1) : null,
       cancellationReason: status === 'CANCELLED' ? 'Family requested a new schedule.' : null, rating: status === 'COMPLETED' ? 4 + (i % 2) : null,
@@ -1092,7 +1090,19 @@ async function main() {
     } }));
   }
   for (const booking of bookings.slice(0, 8).filter((b) => b.status !== 'CANCELLED')) {
-    await prisma.payment.create({ data: { bookingId: booking.id, doctorId: booking.doctorId, amount: booking.price, method: booking.status === 'COMPLETED' ? 'INSTAPAY' : 'FAWRY', status: booking.status === 'COMPLETED' ? 'COMPLETED' : 'PENDING', transactionId: booking.status === 'COMPLETED' ? `txn-booking-${booking.id.slice(0, 8)}` : `txn-booking-init-${booking.id.slice(0, 8)}` } });
+    const packageData = packages[booking.userId === users[0].id ? 1 : booking.userId === users[1].id ? 0 : 2];
+    await prisma.payment.create({
+      data: {
+        packageId: packageData.id,
+        doctorId: booking.doctorId,
+        amount: packageData.price,
+        method: booking.status === 'COMPLETED' ? 'INSTAPAY' : 'FAWRY',
+        status: booking.status === 'COMPLETED' ? 'COMPLETED' : 'PENDING',
+        transactionId: booking.status === 'COMPLETED'
+          ? `txn-package-${packageData.id.slice(0, 8)}-${booking.id.slice(0, 8)}`
+          : `txn-package-init-${packageData.id.slice(0, 8)}-${booking.id.slice(0, 8)}`
+      }
+    });
   }
 
   for (const booking of bookings.filter((b) => b.status === 'COMPLETED')) {

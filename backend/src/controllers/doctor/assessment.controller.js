@@ -345,12 +345,7 @@ export const getAssessmentResultsByChild = async (req, res, next) => {
     const results = await prisma.assessmentResult.findMany({
       where: { childId: req.params.childId },
       include: {
-        test: true,
-        question: {
-          include: {
-            test: true
-          }
-        }
+        test: true
       },
       orderBy: [{ timestamp: 'desc' }, { id: 'desc' }]
     });
@@ -475,100 +470,23 @@ export const submitGenericAssessment = async (req, res, next) => {
       allowedTypes: GENERIC_TEST_TYPES
     });
 
-    // Bulk payload (frontend sends answers[])
-    if (Array.isArray(answers)) {
-      const normalizedAnswers = answers.map((answer) => ({
-        questionId: answer.questionId,
-        scoreGiven: Number.parseFloat(answer.scoreGiven)
-      }));
+    const normalizedAnswers = Array.isArray(answers)
+      ? answers.map((answer) => ({
+          questionId: answer.questionId,
+          scoreGiven: Number.parseFloat(answer.scoreGiven)
+        }))
+      : [{
+          questionId,
+          scoreGiven: Number.parseFloat(scoreGiven)
+        }];
 
-      const questionIds = [...new Set(normalizedAnswers.map((answer) => answer.questionId))];
-      const questions = await prisma.question.findMany({
-        where: { id: { in: questionIds } }
-      });
-      const questionById = new Map(questions.map((q) => [q.id, q]));
-
-      for (const answer of normalizedAnswers) {
-        const q = questionById.get(answer.questionId);
-        if (!q || q.testId !== test.id) {
-          return res.status(422).json({
-            success: false,
-            error: {
-              code: 'INVALID_QUESTION',
-              message: 'Question does not belong to the provided test'
-            }
-          });
-        }
-        if (q.maxScore !== null && answer.scoreGiven > q.maxScore) {
-          return res.status(422).json({
-            success: false,
-            error: {
-              code: 'SCORE_OUT_OF_BOUNDS',
-              message: 'scoreGiven must not exceed question.maxScore'
-            }
-          });
-        }
-      }
-
-      const results = await prisma.$transaction(async (tx) => {
-        const createdOrUpdated = [];
-
-        for (const answer of normalizedAnswers) {
-          const q = questionById.get(answer.questionId);
-          const existing = await tx.assessmentResult.findFirst({
-            where: {
-              childId,
-              questionId: answer.questionId,
-              sessionId
-            }
-          });
-
-          const saved = existing
-            ? await tx.assessmentResult.update({
-                where: { id: existing.id },
-                data: {
-                  testId: test.id,
-                  questionId: answer.questionId,
-                  sessionId,
-                  scoreGiven: answer.scoreGiven,
-                  totalScore: answer.scoreGiven,
-                  maxScore: q?.maxScore ?? null
-                }
-              })
-            : await tx.assessmentResult.create({
-                data: {
-                  childId,
-                  testId: test.id,
-                  questionId: answer.questionId,
-                  sessionId,
-                  scoreGiven: answer.scoreGiven,
-                  totalScore: answer.scoreGiven,
-                  maxScore: q?.maxScore ?? null
-                }
-              });
-
-          createdOrUpdated.push(saved);
-        }
-
-        return createdOrUpdated;
-      });
-
-      res.status(201).json({
-        success: true,
-        data: {
-          sessionId,
-          savedCount: results.length
-        }
-      });
-      return;
-    }
-
-    // Backward compatible single-answer payload
-    const question = await prisma.question.findUnique({
-      where: { id: questionId }
+    const questionIds = [...new Set(normalizedAnswers.map((answer) => answer.questionId))];
+    const questions = await prisma.question.findMany({
+      where: { id: { in: questionIds } }
     });
+    const questionById = new Map(questions.map((q) => [q.id, q]));
 
-    if (!question || question.testId !== test.id) {
+    if (questions.length !== questionIds.length) {
       return res.status(422).json({
         success: false,
         error: {
@@ -578,20 +496,40 @@ export const submitGenericAssessment = async (req, res, next) => {
       });
     }
 
-    if (question.maxScore !== null && scoreGiven > question.maxScore) {
-      return res.status(422).json({
-        success: false,
-        error: {
-          code: 'SCORE_OUT_OF_BOUNDS',
-          message: 'scoreGiven must not exceed question.maxScore'
-        }
-      });
+    let totalScore = 0;
+    let maxScore = 0;
+
+    for (const answer of normalizedAnswers) {
+      const question = questionById.get(answer.questionId);
+
+      if (!question || question.testId !== test.id) {
+        return res.status(422).json({
+          success: false,
+          error: {
+            code: 'INVALID_QUESTION',
+            message: 'Question does not belong to the provided test'
+          }
+        });
+      }
+
+      if (question.maxScore !== null && answer.scoreGiven > question.maxScore) {
+        return res.status(422).json({
+          success: false,
+          error: {
+            code: 'SCORE_OUT_OF_BOUNDS',
+            message: 'scoreGiven must not exceed question.maxScore'
+          }
+        });
+      }
+
+      totalScore += answer.scoreGiven;
+      maxScore += question.maxScore ?? 0;
     }
 
     const existing = await prisma.assessmentResult.findFirst({
       where: {
         childId,
-        questionId,
+        testId: test.id,
         sessionId
       }
     });
@@ -601,22 +539,18 @@ export const submitGenericAssessment = async (req, res, next) => {
           where: { id: existing.id },
           data: {
             testId: test.id,
-            questionId,
             sessionId,
-            scoreGiven,
-            totalScore: scoreGiven,
-            maxScore: question.maxScore ?? null
+            totalScore,
+            maxScore
           }
         })
       : await prisma.assessmentResult.create({
           data: {
             childId,
             testId: test.id,
-            questionId,
             sessionId,
-            scoreGiven,
-            totalScore: scoreGiven,
-            maxScore: question.maxScore ?? null
+            totalScore,
+            maxScore
           }
         });
 
@@ -624,9 +558,10 @@ export const submitGenericAssessment = async (req, res, next) => {
       success: true,
       data: {
         assessmentResultId: result.id,
-        scoreGiven: result.scoreGiven,
+        totalScore: result.totalScore,
         maxScore: result.maxScore,
-        sessionId: result.sessionId
+        sessionId: result.sessionId,
+        savedCount: normalizedAnswers.length
       }
     });
   } catch (error) {
@@ -695,7 +630,6 @@ export const submitCarsAssessment = async (req, res, next) => {
           childId,
           testId: test.id,
           sessionId,
-          scoreGiven: totalScore,
           totalScore,
           maxScore: answers.length * 4
         }
@@ -852,7 +786,6 @@ export const submitVerbalNonsenseAssessment = async (req, res, next) => {
         ? await tx.assessmentResult.update({
             where: { id: existing.id },
             data: {
-              scoreGiven: totalScore,
               totalScore,
               maxScore
             }
@@ -862,7 +795,6 @@ export const submitVerbalNonsenseAssessment = async (req, res, next) => {
               childId,
               testId: test.id,
               sessionId,
-              scoreGiven: totalScore,
               totalScore,
               maxScore
             }
@@ -957,7 +889,6 @@ export const submitHelpAssessment = async (req, res, next) => {
           childId,
           testId: test.id,
           sessionId,
-          scoreGiven: submission.totalScore,
           totalScore: submission.totalScore,
           maxScore: submission.maxScore
         }
@@ -1047,7 +978,6 @@ export const startHelpAssessment = async (req, res, next) => {
           childId,
           testId: helpTest.id,
           sessionId,
-          scoreGiven: 0,
           totalScore: 0,
           maxScore: 0
         }
@@ -1145,7 +1075,6 @@ export const evaluateHelpAssessment = async (req, res, next) => {
         await tx.assessmentResult.update({
           where: { id: helpAssessment.assessmentResultId },
           data: {
-            scoreGiven: totals.totalScore,
             totalScore: totals.totalScore,
             maxScore: totals.maxScore
           }
@@ -1306,7 +1235,7 @@ export const submitAnalogyAssessment = async (req, res, next) => {
         maxScore
       });
       const result = await tx.assessmentResult.create({
-        data: { childId, testId: test.id, sessionId, totalScore, maxScore, scoreGiven: totalScore }
+        data: { childId, testId: test.id, sessionId, totalScore, maxScore }
       });
 
       await tx.q_Analogy_Answer.createMany({
@@ -1402,7 +1331,7 @@ export const submitVisualMemoryAssessment = async (req, res, next) => {
         maxScore
       });
       const result = await tx.assessmentResult.create({
-        data: { childId, testId: test.id, sessionId, totalScore, maxScore, scoreGiven: totalScore }
+        data: { childId, testId: test.id, sessionId, totalScore, maxScore }
       });
 
       await tx.q_VisualMemory_Answer.createMany({
@@ -1488,7 +1417,7 @@ export const submitAuditoryMemoryAssessment = async (req, res, next) => {
         maxScore
       });
       const result = await tx.assessmentResult.create({
-        data: { childId, testId: test.id, sessionId, totalScore, maxScore, scoreGiven: totalScore }
+        data: { childId, testId: test.id, sessionId, totalScore, maxScore }
       });
 
       await tx.q_AuditoryMemory_Answer.createMany({
@@ -1592,7 +1521,7 @@ export const submitImageSequenceOrderAssessment = async (req, res, next) => {
         maxScore
       });
       const result = await tx.assessmentResult.create({
-        data: { childId, testId: test.id, sessionId, totalScore, maxScore, scoreGiven: totalScore }
+        data: { childId, testId: test.id, sessionId, totalScore, maxScore }
       });
 
       await tx.q_SequenceOrder_Answer.createMany({

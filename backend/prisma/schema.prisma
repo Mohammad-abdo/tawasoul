@@ -206,7 +206,6 @@ model Booking {
   childId            String?
   category           SessionCategory @default(INDIVIDUAL)
   duration           Int
-  price              Float
   status             BookingStatus   @default(PENDING)
   scheduledAt        DateTime
   scheduledMonth     Int?
@@ -216,7 +215,6 @@ model Booking {
   completedAt        DateTime?
   cancelledAt        DateTime?
   cancellationReason String?         @db.Text
-  paymentId          String?         @unique
   rating             Int?
   review             String?         @db.Text
   createdAt          DateTime        @default(now())
@@ -225,7 +223,6 @@ model Booking {
   child              Child?          @relation(fields: [childId], references: [id])
   doctor             Doctor          @relation(fields: [doctorId], references: [id], onDelete: Cascade)
   user               User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  payment            Payment?
   vbMappSession      VbMappSession?
 
   @@index([childId], map: "bookings_childId_fkey")
@@ -276,7 +273,7 @@ model Conversation {
 
 model Payment {
   id            String        @id @default(uuid())
-  bookingId     String        @unique
+  packageId     String
   doctorId      String
   amount        Float
   method        PaymentMethod
@@ -284,10 +281,11 @@ model Payment {
   transactionId String?
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
-  booking       Booking       @relation(fields: [bookingId], references: [id], onDelete: Cascade)
   doctor        Doctor        @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  package       Package       @relation(fields: [packageId], references: [id], onDelete: Cascade)
 
   @@index([doctorId], map: "payments_doctorId_fkey")
+  @@index([packageId], map: "payments_packageId_fkey")
   @@map("payments")
 }
 
@@ -695,6 +693,7 @@ model Package {
   isFeatured     Boolean       @default(false)
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
+  payments       Payment[]
   userPackages   UserPackage[]
 
   @@map("packages")
@@ -876,7 +875,6 @@ model Question {
   maxScore          Int?               @default(10)
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
-  assessmentResults AssessmentResult[]
   test              Test               @relation(fields: [testId], references: [id], onDelete: Cascade)
 
   @@index([testId], map: "questions_testId_fkey")
@@ -887,15 +885,12 @@ model AssessmentResult {
   id                     String                    @id @default(uuid())
   childId                String
   testId                 String?
-  questionId             String?
-  scoreGiven             Int?
   totalScore             Int?
   maxScore               Int?
   sessionId              String?
   timestamp              DateTime                  @default(now())
   child                  Child                     @relation(fields: [childId], references: [id], onDelete: Cascade)
   test                   Test?                     @relation(fields: [testId], references: [id], onDelete: Cascade)
-  question               Question?                 @relation(fields: [questionId], references: [id], onDelete: SetNull)
   helpAssessment         HelpAssessment?
   qCarsAnswers           Q_CARS_Answer[]
   qAnalogyAnswers        Q_Analogy_Answer[]
@@ -906,7 +901,6 @@ model AssessmentResult {
   
   @@index([childId], map: "assessment_results_childId_fkey")
   @@index([testId], map: "assessment_results_testId_fkey")
-  @@index([questionId], map: "assessment_results_questionId_fkey")
   @@index([sessionId], map: "assessment_results_sessionId_idx")
   @@map("assessment_results")
 }

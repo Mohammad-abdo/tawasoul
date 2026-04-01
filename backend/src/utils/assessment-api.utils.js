@@ -16,7 +16,7 @@ export const HELP_SCORE_VALUES = {
   SUCCESSFUL: 4
 };
 
-const resolveResultTestType = (result) => result.test?.testType || result.question?.test?.testType || null;
+const resolveResultTestType = (result) => result.test?.testType || null;
 
 export const buildTestSummary = ({ test, questionCount }) => ({
   id: test.id,
@@ -152,7 +152,6 @@ export const serializeAssessmentResultSummary = (result) => ({
   testType: resolveResultTestType(result),
   totalScore: result.totalScore,
   maxScore: result.maxScore,
-  scoreGiven: result.scoreGiven,
   sessionId: result.sessionId,
   timestamp: result.timestamp
 });
@@ -182,11 +181,6 @@ export const fetchAssessmentSessionResults = ({ prisma, childId, sessionId }) =>
     where: { childId, sessionId },
     include: {
       test: true,
-      question: {
-        include: {
-          test: true
-        }
-      },
       helpAssessment: {
         include: {
           evaluations: {
@@ -250,11 +244,9 @@ export const serializeAssessmentResultDetail = (result) => {
     testType,
     totalScore: result.totalScore,
     maxScore: result.maxScore,
-    scoreGiven: result.scoreGiven,
     sessionId: result.sessionId,
     timestamp: result.timestamp,
     test: result.test,
-    question: GENERIC_TEST_TYPES.includes(testType) ? result.question : null,
     helpAssessment: testType === 'HELP' ? result.helpAssessment : null,
     qCarsAnswers: testType === 'CARS' ? result.qCarsAnswers : [],
     qAnalogyAnswers: testType === 'ANALOGY' ? result.qAnalogyAnswers : [],

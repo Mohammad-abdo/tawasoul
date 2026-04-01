@@ -216,7 +216,7 @@ export const bulkRejectDoctors = async (req, res, next) => {
  */
 export const bulkCancelBookings = async (req, res, next) => {
   try {
-    const { bookingIds, reason, refund = true } = req.body;
+    const { bookingIds, reason } = req.body;
 
     if (!bookingIds || !Array.isArray(bookingIds) || bookingIds.length === 0) {
       return res.status(400).json({
@@ -248,19 +248,6 @@ export const bulkCancelBookings = async (req, res, next) => {
         cancellationReason: reason
       }
     });
-
-    // Process refunds if needed
-    if (refund) {
-      await prisma.payment.updateMany({
-        where: {
-          bookingId: { in: bookingIds },
-          status: 'COMPLETED'
-        },
-        data: {
-          status: 'REFUNDED'
-        }
-      });
-    }
 
     // Log activity
     await prisma.activityLog.create({

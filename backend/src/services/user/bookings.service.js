@@ -1,5 +1,6 @@
 import * as bookingsRepo from '../../repositories/user/bookings.repository.js';
 import { ONE_HOUR_SESSION_DURATION, formatDateKey } from '../../utils/availability.js';
+import { getBookingDisplayPrice, omitDoctorSessionPrices } from '../../utils/booking-pricing.utils.js';
 import { getAvailableSlots } from './doctors.service.js';
 
 const parseScheduledDate = (scheduledAt, scheduledMonth, scheduledDay, scheduledTime) => {
@@ -51,10 +52,10 @@ export const getUserBookings = async (userId, { status, page = 1, limit = 20 }) 
 
   const formattedBookings = bookings.map(b => ({
     id: b.id,
-    doctor: b.doctor,
+    doctor: omitDoctorSessionPrices(b.doctor),
     sessionType: b.sessionType,
     duration: b.duration,
-    price: b.price,
+    price: getBookingDisplayPrice(b),
     status: b.status,
     scheduledAt: b.scheduledAt,
     completedAt: b.completedAt,
@@ -62,7 +63,6 @@ export const getUserBookings = async (userId, { status, page = 1, limit = 20 }) 
     cancellationReason: b.cancellationReason,
     rating: b.rating,
     review: b.review,
-    payment: b.payment,
     createdAt: b.createdAt
   }));
 
@@ -139,14 +139,14 @@ export const createBooking = async (userId, body) => {
 
   const booking = await bookingsRepo.createBooking({
     userId, doctorId, childId: childId || null, sessionType,
-    duration: ONE_HOUR_SESSION_DURATION, price: sessionPrice.price,
+    duration: ONE_HOUR_SESSION_DURATION,
     scheduledAt: scheduledDate, scheduledMonth: month, scheduledDay: day,
     scheduledTime: time, notes: notes || null, status: 'PENDING'
   });
 
   return {
     id: booking.id, doctor: booking.doctor, sessionType: booking.sessionType,
-    duration: booking.duration, price: booking.price, status: booking.status,
+    duration: booking.duration, price: sessionPrice.price, status: booking.status,
     scheduledAt: booking.scheduledAt, createdAt: booking.createdAt
   };
 };
@@ -163,11 +163,11 @@ export const getBookingById = async (userId, id) => {
   }
 
   return {
-    id: booking.id, doctor: booking.doctor, sessionType: booking.sessionType,
-    duration: booking.duration, price: booking.price, status: booking.status,
+    id: booking.id, doctor: omitDoctorSessionPrices(booking.doctor), sessionType: booking.sessionType,
+    duration: booking.duration, price: getBookingDisplayPrice(booking), status: booking.status,
     scheduledAt: booking.scheduledAt, completedAt: booking.completedAt,
     cancelledAt: booking.cancelledAt, cancellationReason: booking.cancellationReason,
-    rating: booking.rating, review: booking.review, payment: booking.payment,
+    rating: booking.rating, review: booking.review,
     createdAt: booking.createdAt, updatedAt: booking.updatedAt
   };
 };
@@ -232,7 +232,7 @@ export const rescheduleBooking = async (userId, id, body) => {
 
   return {
     id: updated.id, doctor: updated.doctor, child: updated.child,
-    sessionType: updated.sessionType, duration: updated.duration, price: updated.price,
+    sessionType: updated.sessionType, duration: updated.duration, price: getBookingDisplayPrice(updated),
     status: updated.status, scheduledAt: updated.scheduledAt,
     scheduledMonth: updated.scheduledMonth, scheduledDay: updated.scheduledDay, scheduledTime: updated.scheduledTime,
     message: 'Booking rescheduled successfully'

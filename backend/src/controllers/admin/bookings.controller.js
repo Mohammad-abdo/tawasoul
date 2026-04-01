@@ -1,5 +1,6 @@
 import { prisma } from '../../config/database.js';
 import { logger } from '../../utils/logger.js';
+import { getBookingDisplayPrice, omitDoctorSessionPrices } from '../../utils/booking-pricing.utils.js';
 import { creditDoctorWalletForCompletedBooking } from '../../utils/wallet.utils.js';
 
 const bookingDoctorSelect = {
@@ -25,7 +26,8 @@ const serializeBookingDoctor = (doctor) => {
 
 const serializeBooking = (booking) => ({
   ...booking,
-  doctor: serializeBookingDoctor(booking.doctor)
+  doctor: serializeBookingDoctor(omitDoctorSessionPrices(booking.doctor)),
+  price: getBookingDisplayPrice(booking)
 });
 
 /**
@@ -73,7 +75,15 @@ export const getAllBookings = async (req, res, next) => {
         orderBy: { [sort]: 'desc' },
         include: {
           doctor: {
-            select: bookingDoctorSelect
+            select: {
+              ...bookingDoctorSelect,
+              sessionPrices: {
+                select: {
+                  duration: true,
+                  price: true
+                }
+              }
+            }
           },
           user: {
             select: {
@@ -117,11 +127,16 @@ export const getBookingById = async (req, res, next) => {
       include: {
         doctor: {
           include: {
-            specialties: true
+            specialties: true,
+            sessionPrices: {
+              select: {
+                duration: true,
+                price: true
+              }
+            }
           }
         },
-        user: true,
-        payment: true
+        user: true
       }
     });
 
@@ -294,11 +309,10 @@ export const updateBookingStatus = async (req, res, next) => {
 export const cancelBooking = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { reason, refund = true } = req.body;
+    const { reason } = req.body;
 
     const booking = await prisma.booking.findUnique({
-      where: { id },
-      include: { payment: true }
+      where: { id }
     });
 
     if (!booking) {
@@ -319,14 +333,6 @@ export const cancelBooking = async (req, res, next) => {
         cancellationReason: reason
       }
     });
-
-    // Process refund if needed
-    if (refund && booking.payment && booking.payment.status === 'COMPLETED') {
-      await prisma.payment.update({
-        where: { id: booking.payment.id },
-        data: { status: 'REFUNDED' }
-      });
-    }
 
     // Log activity
     await prisma.activityLog.create({

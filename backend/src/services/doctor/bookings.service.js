@@ -1,5 +1,6 @@
 import * as bookingsRepo from '../../repositories/doctor/bookings.repository.js';
 import { createHttpError } from '../../utils/httpError.js';
+import { getBookingDisplayPrice, omitDoctorSessionPrices } from '../../utils/booking-pricing.utils.js';
 import { prisma } from '../../config/database.js';
 import { creditDoctorWalletForCompletedBooking } from '../../utils/wallet.utils.js';
 
@@ -10,7 +11,7 @@ const formatBookingSummary = (booking) => ({
   sessionType: booking.sessionType ?? booking.category,
   category: booking.category ?? booking.sessionType ?? null,
   duration: booking.duration,
-  price: booking.price,
+  price: getBookingDisplayPrice(booking),
   status: booking.status,
   scheduledAt: booking.scheduledAt,
   completedAt: booking.completedAt,
@@ -19,7 +20,6 @@ const formatBookingSummary = (booking) => ({
   videoLink: booking.videoLink,
   rating: booking.rating,
   review: booking.review,
-  payment: booking.payment,
   createdAt: booking.createdAt
 });
 
@@ -74,12 +74,12 @@ export const getBookingById = async (doctorId, id) => {
   return {
     id: booking.id,
     user: booking.user,
-    doctor: formatDoctorDetails(booking.doctor),
+    doctor: formatDoctorDetails(omitDoctorSessionPrices(booking.doctor)),
     childId: booking.childId,
     sessionType: booking.sessionType ?? booking.category,
     category: booking.category ?? booking.sessionType ?? null,
     duration: booking.duration,
-    price: booking.price,
+    price: getBookingDisplayPrice(booking),
     status: booking.status,
     scheduledAt: booking.scheduledAt,
     completedAt: booking.completedAt,
@@ -88,7 +88,6 @@ export const getBookingById = async (doctorId, id) => {
     videoLink: booking.videoLink,
     rating: booking.rating,
     review: booking.review,
-    payment: booking.payment,
     createdAt: booking.createdAt,
     updatedAt: booking.updatedAt
   };

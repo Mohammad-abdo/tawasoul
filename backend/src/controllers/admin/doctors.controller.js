@@ -1,6 +1,7 @@
 import bcrypt from 'bcryptjs';
 import { prisma } from '../../config/database.js';
 import { logger } from '../../utils/logger.js';
+import { getBookingDisplayPrice } from '../../utils/booking-pricing.utils.js';
 
 const doctorSummarySelect = {
   id: true,
@@ -120,29 +121,18 @@ export const getDoctorById = async (req, res, next) => {
                 username: true,
                 email: true,
               }
-            },
-            payment: {
-              select: {
-                id: true,
-                status: true,
-                amount: true,
-                method: true,
-              }
             }
           }
         },
         payments: {
           orderBy: { createdAt: 'desc' },
           include: {
-            booking: {
+            package: {
               select: {
                 id: true,
-                scheduledAt: true,
-                user: {
-                  select: {
-                    username: true,
-                  }
-                }
+                name: true,
+                nameAr: true,
+                price: true
               }
             }
           }
@@ -194,12 +184,17 @@ export const getDoctorById = async (req, res, next) => {
     // Group bookings by day
     const bookingsByDay = {};
     doctor.bookings.forEach(booking => {
+      const bookingWithPrice = {
+        ...booking,
+        price: getBookingDisplayPrice(booking, doctor.sessionPrices)
+      };
+
       if (booking.scheduledAt) {
         const date = new Date(booking.scheduledAt).toISOString().split('T')[0];
         if (!bookingsByDay[date]) {
           bookingsByDay[date] = [];
         }
-        bookingsByDay[date].push(booking);
+        bookingsByDay[date].push(bookingWithPrice);
       }
     });
 
@@ -207,10 +202,14 @@ export const getDoctorById = async (req, res, next) => {
       success: true,
       data: {
         ...doctor,
+        bookings: doctor.bookings.map((booking) => ({
+          ...booking,
+          price: getBookingDisplayPrice(booking, doctor.sessionPrices)
+        })),
         specialization: doctor.specialties?.[0]?.specialty || null,
         walletBalance,
-        totalEarnings: totalEarnings._sum.amount || 0,
-        totalWithdrawals: totalWithdrawals._sum.amount || 0,
+        totalEarnings,
+        totalWithdrawals,
         bookingsByDay
       }
     });

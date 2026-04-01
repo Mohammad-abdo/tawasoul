@@ -1,6 +1,13 @@
 import bcrypt from 'bcryptjs';
 import { prisma } from '../../config/database.js';
 import { logger } from '../../utils/logger.js';
+import { getBookingDisplayPrice, omitDoctorSessionPrices } from '../../utils/booking-pricing.utils.js';
+
+const serializeUserBooking = (booking) => ({
+  ...booking,
+  doctor: omitDoctorSessionPrices(booking.doctor),
+  price: getBookingDisplayPrice(booking)
+});
 
 /**
  * Get All Users
@@ -112,7 +119,16 @@ export const getUserById = async (req, res, next) => {
           orderBy: { createdAt: 'desc' },
           include: {
             doctor: {
-              select: { name: true, specialization: true }
+              select: {
+                name: true,
+                specialization: true,
+                sessionPrices: {
+                  select: {
+                    duration: true,
+                    price: true
+                  }
+                }
+              }
             }
           }
         }
@@ -131,7 +147,10 @@ export const getUserById = async (req, res, next) => {
 
     res.json({
       success: true,
-      data: user
+      data: {
+        ...user,
+        bookings: user.bookings.map(serializeUserBooking)
+      }
     });
   } catch (error) {
     logger.error('Get user error:', error);

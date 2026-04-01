@@ -594,16 +594,16 @@ const BookingDetails = () => {
                 childAssessmentResults.map((res) => (
                   <div key={res.id} className="p-3 bg-gray-50 rounded-xl border border-gray-100 flex items-center justify-between hover:bg-gray-100 transition-colors">
                     <div className="flex items-center gap-3">
-                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${res.question?.test?.category === 'AUDITORY' ? 'bg-blue-100 text-blue-600' : 'bg-purple-100 text-purple-600'}`}>
+                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${res.testType === 'AUDITORY_MEMORY' ? 'bg-blue-100 text-blue-600' : 'bg-purple-100 text-purple-600'}`}>
                         <Activity size={18} />
                       </div>
                       <div>
-                        <p className="text-sm font-bold text-gray-900">{res.question?.test?.title}</p>
+                        <p className="text-sm font-bold text-gray-900">{res.test?.title || res.testType}</p>
                         <p className="text-[10px] text-gray-500">{new Date(res.timestamp).toLocaleDateString('ar-EG')}</p>
                       </div>
                     </div>
                     <div className="text-right">
-                      <span className="text-sm font-bold text-primary-600">{res.scoreGiven}/10</span>
+                      <span className="text-sm font-bold text-primary-600">{res.totalScore ?? '-'}/{res.maxScore ?? '-'}</span>
                     </div>
                   </div>
                 ))

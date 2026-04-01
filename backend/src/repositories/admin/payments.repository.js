@@ -7,20 +7,12 @@ export const findMany = ({ where, skip, take, sort }) =>
     take,
     orderBy: { [sort]: 'desc' },
     include: {
-      booking: {
-        include: {
-          doctor: {
-            select: {
-              id: true,
-              name: true
-            }
-          },
-          user: {
-            select: {
-              id: true,
-              username: true
-            }
-          }
+      package: {
+        select: {
+          id: true,
+          name: true,
+          nameAr: true,
+          price: true
         }
       }
     }

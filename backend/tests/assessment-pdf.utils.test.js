@@ -35,7 +35,6 @@ describe('streamAssessmentSessionPdf', () => {
         testType: 'CARS',
         totalScore: 10,
         maxScore: 60,
-        scoreGiven: 10,
         timestamp: new Date().toISOString(),
         test: { title: 'CARS', titleAr: null, testType: 'CARS' },
         qCarsAnswers: []
