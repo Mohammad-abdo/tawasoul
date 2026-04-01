@@ -8,6 +8,7 @@
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
     "prisma:generate": "prisma generate",
+    "prisma:ensure-db": "node scripts/ensure-database.mjs",
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
     "ensure:assets": "node prisma/ensure-assessment-assets.js",

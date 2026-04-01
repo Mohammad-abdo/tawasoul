@@ -2,6 +2,7 @@ import express from 'express';
 import { body, param, query } from 'express-validator';
 import { authenticateDoctor } from '../../middleware/auth.middleware.js';
 import * as assessmentController from '../../controllers/doctor/assessment.controller.js';
+import * as vbmappController from '../../controllers/doctor/vbmapp.controller.js';
 
 const router = express.Router();
 
@@ -199,6 +200,149 @@ router.post(
   body('answers.*.submittedOrder.*.imageId').isString().trim().notEmpty().withMessage('each submittedOrder.imageId is required'),
   body('answers.*.submittedOrder.*.submittedPosition').isInt({ min: 1 }).withMessage('each submittedOrder.submittedPosition must be an integer greater than or equal to 1'),
   assessmentController.submitImageSequenceOrderAssessment
+);
+
+// ==========================================
+// VB-MAPP Routes
+// ==========================================
+
+router.get(
+  '/vbmapp/skill-areas',
+  authenticateDoctor,
+  vbmappController.getVbMappSkillAreas
+);
+
+router.get(
+  '/vbmapp/barriers',
+  authenticateDoctor,
+  vbmappController.getVbMappBarriers
+);
+
+router.get(
+  '/vbmapp/transition-criteria',
+  authenticateDoctor,
+  vbmappController.getVbMappTransitionCriteria
+);
+
+router.get(
+  '/vbmapp/eesa-groups',
+  authenticateDoctor,
+  vbmappController.getVbMappEesaGroups
+);
+
+router.post(
+  '/vbmapp/sessions',
+  authenticateDoctor,
+  body('childId').isString().trim().notEmpty().withMessage('childId is required'),
+  body('sessionNumber').isIn(['FIRST', 'SECOND', 'THIRD', 'FOURTH']).withMessage('sessionNumber must be FIRST, SECOND, THIRD, or FOURTH'),
+  body('assessmentDate').isISO8601().withMessage('assessmentDate is required'),
+  body('bookingId').optional().isString(),
+  body('colorCode').optional().isString(),
+  body('notes').optional().isString(),
+  vbmappController.createVbMappSession
+);
+
+router.get(
+  '/vbmapp/sessions/:sessionId',
+  authenticateDoctor,
+  param('sessionId').isString().trim().notEmpty(),
+  vbmappController.getVbMappSession
+);
+
+router.get(
+  '/vbmapp/children/:childId/sessions',
+  authenticateDoctor,
+  param('childId').isString().trim().notEmpty(),
+  vbmappController.getChildVbMappSessions
+);
+
+router.patch(
+  '/vbmapp/sessions/:sessionId',
+  authenticateDoctor,
+  param('sessionId').isString().trim().notEmpty(),
+  body('assessmentDate').optional().isISO8601(),
+  body('colorCode').optional().isString(),
+  body('notes').optional().isString(),
+  vbmappController.updateVbMappSession
+);
+
+router.post(
+  '/vbmapp/sessions/:sessionId/milestones',
+  authenticateDoctor,
+  param('sessionId').isString().trim().notEmpty(),
+  body('scores').isArray({ min: 1 }).withMessage('scores is required'),
+  body('scores.*.milestoneId').isInt().withMessage('milestoneId is required'),
+  body('scores.*.score').isIn(['ACHIEVED', 'PARTIAL', 'NOT_ACHIEVED', 'NOT_TESTED']).withMessage('score must be ACHIEVED, PARTIAL, NOT_ACHIEVED, or NOT_TESTED'),
+  body('scores.*.notes').optional().isString(),
+  vbmappController.submitMilestoneScores
+);
+
+router.post(
+  '/vbmapp/sessions/:sessionId/task-steps',
+  authenticateDoctor,
+  param('sessionId').isString().trim().notEmpty(),
+  body('scores').isArray({ min: 1 }).withMessage('scores is required'),
+  body('scores.*.stepId').isInt().withMessage('stepId is required'),
+  body('scores.*.isAchieved').isBoolean().withMessage('isAchieved is required'),
+  body('scores.*.notes').optional().isString(),
+  vbmappController.submitTaskStepScores
+);
+
+router.post(
+  '/vbmapp/sessions/:sessionId/barriers',
+  authenticateDoctor,
+  param('sessionId').isString().trim().notEmpty(),
+  body('scores').isArray({ min: 1 }).withMessage('scores is required'),
+  body('scores.*.barrierId').isInt().withMessage('barrierId is required'),
+  body('scores.*.score').isIn(['ZERO', 'ONE', 'TWO', 'THREE', 'FOUR']).withMessage('score must be ZERO, ONE, TWO, THREE, or FOUR'),
+  vbmappController.submitBarrierScores
+);
+
+router.post(
+  '/vbmapp/sessions/:sessionId/transitions',
+  authenticateDoctor,
+  param('sessionId').isString().trim().notEmpty(),
+  body('scores').isArray({ min: 1 }).withMessage('scores is required'),
+  body('scores.*.criteriaId').isInt().withMessage('criteriaId is required'),
+  body('scores.*.score').isIn(['ONE', 'TWO', 'THREE', 'FOUR', 'FIVE']).withMessage('score must be ONE, TWO, THREE, FOUR, or FIVE'),
+  vbmappController.submitTransitionScores
+);
+
+router.post(
+  '/vbmapp/sessions/:sessionId/eesa',
+  authenticateDoctor,
+  param('sessionId').isString().trim().notEmpty(),
+  body('scores').isArray({ min: 1 }).withMessage('scores is required'),
+  body('scores.*.itemId').isInt().withMessage('itemId is required'),
+  body('scores.*.score').isIn(['ACHIEVED', 'PARTIAL', 'NOT_ACHIEVED', 'NOT_TESTED']).withMessage('score must be ACHIEVED, PARTIAL, NOT_ACHIEVED, or NOT_TESTED'),
+  vbmappController.submitEesaScores
+);
+
+router.post(
+  '/vbmapp/sessions/:sessionId/iep-goals',
+  authenticateDoctor,
+  param('sessionId').isString().trim().notEmpty(),
+  body('milestoneId').optional().isInt(),
+  body('targetDate').isISO8601().withMessage('targetDate is required'),
+  body('description').isString().trim().notEmpty(),
+  vbmappController.createIepGoal
+);
+
+router.patch(
+  '/vbmapp/iep-goals/:goalId',
+  authenticateDoctor,
+  param('goalId').isString().trim().notEmpty(),
+  body('status').optional().isIn(['ACTIVE', 'ACHIEVED', 'DISCONTINUED']),
+  body('achievedDate').optional().isISO8601(),
+  body('notes').optional().isString(),
+  vbmappController.updateIepGoal
+);
+
+router.get(
+  '/vbmapp/children/:childId/summary',
+  authenticateDoctor,
+  param('childId').isString().trim().notEmpty(),
+  vbmappController.getVbMappSummary
 );
 
 export default router;

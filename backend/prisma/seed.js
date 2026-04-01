@@ -1002,11 +1002,13 @@ async function main() {
   });
 
   for (const [index, step] of seededTaskSteps.slice(0, 3).entries()) {
+    const isAchieved = index !== 2;
     await prisma.vbMappTaskStepScore.create({
       data: {
         sessionId: seededVbMappSession.id,
         stepId: step.id,
-        score: index === 0 ? 'ACHIEVED' : index === 1 ? 'PARTIAL' : 'NOT_ACHIEVED',
+        isAchieved,
+        achievedAt: isAchieved ? plusDays(-index - 1) : null,
         notes: 'Seeded task step score.'
       }
     });
@@ -1023,12 +1025,13 @@ async function main() {
     });
   }
 
+  const transitionScale = ['THREE', 'FIVE', 'TWO'];
   for (const [index, criteria] of vbMappTransitionCriteria.entries()) {
     await prisma.vbMappTransitionScores.create({
       data: {
         sessionId: seededVbMappSession.id,
         criteriaId: criteria.id,
-        score: index === 0 ? 'PARTIAL' : index === 1 ? 'ACHIEVED' : 'NOT_TESTED',
+        score: transitionScale[index % transitionScale.length],
         notes: 'Seeded transition score.'
       }
     });
