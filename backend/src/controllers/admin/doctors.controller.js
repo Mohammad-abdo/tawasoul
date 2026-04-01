@@ -111,7 +111,6 @@ export const getDoctorById = async (req, res, next) => {
         certificates: true,
         education: true,
         // sessionPrices: true,
-        hourlyRate: true,
         availability: true,
         bookings: {
           orderBy: { scheduledAt: 'desc' },

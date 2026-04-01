@@ -17,6 +17,8 @@ const childStatusToSpecialty = {
   OTHER: null
 };
 
+const getDoctorSpecialization = (doctor) => doctor.specialization ?? doctor.specialties?.[0]?.specialty ?? null;
+
 export const getAllDoctors = async (userId, query) => {
   const { page = 1, limit = 20, specialty, rating, price, sort = 'rating', search, recommendedForChildId } = query;
 
@@ -42,7 +44,7 @@ export const getAllDoctors = async (userId, query) => {
   if (search) {
     where.OR = [
       { name: { contains: search } },
-      { specialization: { contains: search } },
+      { specialties: { some: { specialty: { contains: search } } } },
       { bio: { contains: search } }
     ];
   }
@@ -77,7 +79,7 @@ export const getAllDoctors = async (userId, query) => {
   }
 
   const formattedDoctors = filteredDoctors.map(d => ({
-    id: d.id, name: d.name, specialization: d.specialization, bio: d.bio,
+    id: d.id, name: d.name, specialization: getDoctorSpecialization(d), bio: d.bio,
     avatar: d.avatar, rating: d.rating, totalSessions: d.totalSessions,
     isVerified: d.isVerified, isFeatured: d.isFeatured,
     specialties: d.specialties.map(s => s.specialty),
@@ -113,7 +115,7 @@ export const getDoctorById = async (id) => {
 
   return {
     id: doctor.id, name: doctor.name, email: doctor.email, phone: doctor.phone,
-    specialization: doctor.specialization, bio: doctor.bio, avatar: doctor.avatar,
+    specialization: getDoctorSpecialization(doctor), bio: doctor.bio, avatar: doctor.avatar,
     rating: doctor.rating, totalSessions: doctor.totalSessions, totalRatings: doctor.totalRatings,
     isVerified: doctor.isVerified, isFeatured: doctor.isFeatured,
     specialties: doctor.specialties.map(s => s.specialty),

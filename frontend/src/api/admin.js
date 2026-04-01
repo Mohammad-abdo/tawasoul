@@ -74,6 +74,9 @@ export const doctors = {
   verify: (id) =>
     apiClient.put(`/admin/doctors/${id}/verify`),
 
+  unverify: (id) =>
+    apiClient.put(`/admin/doctors/${id}/unverify`),
+
   activate: (id) =>
     apiClient.put(`/admin/doctors/${id}/activate`),
 

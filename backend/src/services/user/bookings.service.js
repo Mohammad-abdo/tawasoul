@@ -151,7 +151,7 @@ export const createBooking = async (userId, body) => {
   });
 
   return {
-    id: booking.id, doctor: booking.doctor, sessionType: booking.sessionType,
+    id: booking.id, doctor: stripDoctorPricing(booking.doctor), sessionType: booking.sessionType,
     duration: booking.duration, price: bookingPrice, status: booking.status,
     scheduledAt: booking.scheduledAt, createdAt: booking.createdAt
   };
@@ -237,7 +237,7 @@ export const rescheduleBooking = async (userId, id, body) => {
   });
 
   return {
-    id: updated.id, doctor: updated.doctor, child: updated.child,
+    id: updated.id, doctor: stripDoctorPricing(updated.doctor), child: updated.child,
     sessionType: updated.sessionType, duration: updated.duration, price: getBookingDisplayPrice(updated),
     status: updated.status, scheduledAt: updated.scheduledAt,
     scheduledMonth: updated.scheduledMonth, scheduledDay: updated.scheduledDay, scheduledTime: updated.scheduledTime,

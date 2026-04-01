@@ -1,6 +1,17 @@
 import * as withdrawalsRepo from '../../repositories/admin/withdrawals.repository.js';
 import { createHttpError } from '../../utils/httpError.js';
 
+const formatDoctor = (doctor) => {
+  if (!doctor) {
+    return doctor;
+  }
+
+  return {
+    ...doctor,
+    specialization: doctor.specialization ?? doctor.specialties?.[0]?.specialty ?? null
+  };
+};
+
 export const getAllWithdrawals = async ({ page = 1, limit = 20, status, doctorId, dateFrom, dateTo, sort = 'createdAt' }) => {
   const parsedPage = parseInt(page);
   const parsedLimit = parseInt(limit);
@@ -21,7 +32,10 @@ export const getAllWithdrawals = async ({ page = 1, limit = 20, status, doctorId
   ]);
 
   return {
-    withdrawals,
+    withdrawals: withdrawals.map((withdrawal) => ({
+      ...withdrawal,
+      doctor: formatDoctor(withdrawal.doctor)
+    })),
     pagination: {
       page: parsedPage,
       limit: parsedLimit,
@@ -36,7 +50,10 @@ export const getWithdrawalById = async (id) => {
   if (!withdrawal) {
     throw createHttpError(404, 'WITHDRAWAL_NOT_FOUND', 'Withdrawal not found');
   }
-  return withdrawal;
+  return {
+    ...withdrawal,
+    doctor: formatDoctor(withdrawal.doctor)
+  };
 };
 
 export const approveWithdrawal = async (id, { notes }, context) => {

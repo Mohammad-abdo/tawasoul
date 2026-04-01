@@ -122,7 +122,12 @@ export const getUserById = async (req, res, next) => {
             doctor: {
               select: {
                 name: true,
-                specialization: true,
+                specialties: {
+                  select: {
+                    specialty: true
+                  },
+                  take: 1
+                },
                 // sessionPrices: {
                 //   select: {
                 //     duration: true,

@@ -158,16 +158,16 @@ const UserDetails = () => {
         </div>
       )
     },
-    {
-      header: 'السعر',
-      accessor: 'price',
-      render: (booking) => (
-        <div className="flex items-center gap-2">
-          <DollarSign size={16} className="text-green-600" />
-          <span className="text-sm font-bold text-gray-900">{booking.price} ج.م</span>
-        </div>
-      )
-    },
+    // {
+    //   header: 'السعر',
+    //   accessor: 'price',
+    //   render: (booking) => (
+    //     <div className="flex items-center gap-2">
+    //       <DollarSign size={16} className="text-green-600" />
+    //       <span className="text-sm font-bold text-gray-900">{booking.price} ج.م</span>
+    //     </div>
+    //   )
+    // },
     {
       header: 'الحالة',
       accessor: 'status',

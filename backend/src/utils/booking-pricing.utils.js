@@ -38,5 +38,8 @@ export const stripDoctorPricing = (doctor) => {
 
   //   const { sessionPrices, ...doctorWithoutSessionPrices } = doctor;
   //   return doctorWithoutSessionPrices;
-  return doctor;
+  return {
+    ...doctor,
+    specialization: doctor.specialization ?? doctor.specialties?.[0]?.specialty ?? null
+  };
 };

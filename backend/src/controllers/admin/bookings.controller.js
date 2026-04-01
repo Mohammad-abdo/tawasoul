@@ -136,7 +136,6 @@ export const getBookingById = async (req, res, next) => {
             //     price: true
             //   }
             // }
-            hourlyRate: true
           }
         },
         user: true

@@ -1,6 +1,17 @@
 import { prisma } from '../../config/database.js';
 import { logger } from '../../utils/logger.js';
 
+const formatAuthor = (author) => {
+  if (!author) {
+    return author;
+  }
+
+  return {
+    ...author,
+    specialization: author.specialization ?? author.specialties?.[0]?.specialty ?? null
+  };
+};
+
 /**
  * Get All Articles
  */
@@ -60,7 +71,12 @@ export const getAllArticles = async (req, res, next) => {
             select: {
               id: true,
               name: true,
-              specialization: true,
+              specialties: {
+                select: {
+                  specialty: true
+                },
+                take: 1
+              },
               avatar: true,
               isVerified: true
             }
@@ -76,7 +92,7 @@ export const getAllArticles = async (req, res, next) => {
       title: article.title,
       excerpt: article.excerpt,
       content: article.content,
-      author: article.author,
+      author: formatAuthor(article.author),
       views: article.views,
       likes: article.likes,
       comments: article.comments,
@@ -118,7 +134,12 @@ export const getArticleById = async (req, res, next) => {
           select: {
             id: true,
             name: true,
-            specialization: true,
+            specialties: {
+              select: {
+                specialty: true
+              },
+              take: 1
+            },
             avatar: true,
             isVerified: true,
             rating: true
@@ -152,7 +173,7 @@ export const getArticleById = async (req, res, next) => {
       title: article.title,
       excerpt: article.excerpt,
       content: article.content,
-      author: article.author,
+      author: formatAuthor(article.author),
       views: article.views + 1, // Incremented view
       likes: article.likes,
       comments: article.comments,
