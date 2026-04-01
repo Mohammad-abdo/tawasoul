@@ -1550,11 +1550,21 @@ enum VbMappAssessmentMethod {
   TIMED        // مدة المراقبة (م.م)
 }
 
+/// Milestones, EESA echoic items: 0 / 0.5 / 1 scale (plus not tested).
 enum VbMappScoreValue {
   ACHIEVED      // ✓ (يساوي 1)
   PARTIAL       // / (يساوي 0.5)
   NOT_ACHIEVED  // ✗ (يساوي 0)
   NOT_TESTED    // لم يتم اختباره
+}
+
+/// Transitions assessment: strict 1–5 scale only (not the milestone 0/0.5/1 scale).
+enum VbMappTransitionScoreValue {
+  ONE
+  TWO
+  THREE
+  FOUR
+  FIVE
 }
 
 enum VbMappSessionNumber {
@@ -1648,6 +1658,35 @@ model VbMappTransitionCriteria {
 }
 
 // ==============================
+// VB-MAPP EESA — Early Echoic Skills Assessment (static + per-session scores)
+// ==============================
+
+model VbMappEesaGroup {
+  id     Int             @id @default(autoincrement())
+  code   String?         @unique
+  nameAr String
+  nameEn String
+  order  Int
+  items  VbMappEesaItem[]
+
+  @@map("vb_mapp_eesa_groups")
+}
+
+model VbMappEesaItem {
+  id            Int               @id @default(autoincrement())
+  groupId       Int
+  group         VbMappEesaGroup   @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  /// Stimulus word or syllable target (VB-MAPP echoic list).
+  word          String
+  syllableCount Int
+  order         Int
+  scores        VbMappEesaScore[]
+
+  @@index([groupId])
+  @@map("vb_mapp_eesa_items")
+}
+
+// ==============================
 // VB-MAPP DYNAMIC DATA (الجلسات والتقييمات)
 // ==============================
 
@@ -1670,6 +1709,7 @@ model VbMappSession {
   taskStepScores   VbMappTaskStepScore[]
   barrierScores    VbMappBarrierScores[]
   transitionScores VbMappTransitionScores[]
+  eesaScores       VbMappEesaScore[]
   iepGoals         VbMappIEPGoal[]
 
 
@@ -1694,15 +1734,18 @@ model VbMappMilestoneScore {
   @@map("vb_mapp_milestone_scores")
 }
 
+/// Task analysis steps: checklist only (achieved / not achieved + optional achievement date).
 model VbMappTaskStepScore {
-  id        String           @id @default(uuid())
-  sessionId String
-  session   VbMappSession    @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  stepId    Int
-  step      VbMappTaskStep   @relation(fields: [stepId], references: [id])
-  score     VbMappScoreValue
-  notes     String?          @db.Text
-  scoredAt  DateTime         @default(now())
+  id          String         @id @default(uuid())
+  sessionId   String
+  session     VbMappSession  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  stepId      Int
+  step        VbMappTaskStep  @relation(fields: [stepId], references: [id])
+  isAchieved  Boolean        @default(false)
+  achievedAt  DateTime?
+  notes       String?        @db.Text
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
 
   @@unique([sessionId, stepId])
   @@index([stepId])
@@ -1725,14 +1768,14 @@ model VbMappBarrierScores {
 }
 
 model VbMappTransitionScores {
-  id         String                   @id @default(uuid())
+  id         String                    @id @default(uuid())
   sessionId  String
-  session    VbMappSession            @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  session    VbMappSession             @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   criteriaId Int
-  criteria   VbMappTransitionCriteria @relation(fields: [criteriaId], references: [id])
-  score      VbMappScoreValue
-  notes      String?                  @db.Text
-  scoredAt   DateTime                 @default(now())
+  criteria   VbMappTransitionCriteria  @relation(fields: [criteriaId], references: [id])
+  score      VbMappTransitionScoreValue
+  notes      String?                   @db.Text
+  scoredAt   DateTime                  @default(now())
 
   @@unique([sessionId, criteriaId])
   @@index([criteriaId])
@@ -1756,4 +1799,20 @@ model VbMappIEPGoal {
   @@index([childId])
   @@index([sessionId])
   @@map("vb_mapp_iep_goals")
+}
+
+/// Per-session echoic (EESA) scores: standard 0 / 0.5 / 1 scale via VbMappScoreValue.
+model VbMappEesaScore {
+  id        String           @id @default(uuid())
+  sessionId String
+  session   VbMappSession    @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  itemId    Int
+  item      VbMappEesaItem   @relation(fields: [itemId], references: [id])
+  score     VbMappScoreValue
+  notes     String?          @db.Text
+  scoredAt  DateTime         @default(now())
+
+  @@unique([sessionId, itemId])
+  @@index([itemId])
+  @@map("vb_mapp_eesa_scores")
 }
