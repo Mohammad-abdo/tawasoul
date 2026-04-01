@@ -23,10 +23,10 @@ const handleKnownError = (res, error) => {
 };
 
 const ensureDoctorCanAccessChild = async (prisma, doctorId, childId) => {
-  const child = await prisma.child.findFirst({
-    where: { id: childId, doctorId }
+  const access = await prisma.booking.findFirst({
+    where: { childId, doctorId }
   });
-  if (!child) {
+  if (!access) {
     throw createHttpError(403, 'FORBIDDEN', 'You do not have access to this child');
   }
 };

@@ -138,3 +138,53 @@ export const doctorWallet = {
   requestWithdrawal: (data) =>
     apiClient.post('/doctor/wallet/withdraw', data),
 };
+
+export const doctorVbMapp = {
+  getSkillAreas: () =>
+    apiClient.get('/doctor/assessments/vbmapp/skill-areas'),
+    
+  getBarriers: () =>
+    apiClient.get('/doctor/assessments/vbmapp/barriers'),
+    
+  getTransitionCriteria: () =>
+    apiClient.get('/doctor/assessments/vbmapp/transition-criteria'),
+    
+  getEesaGroups: () =>
+    apiClient.get('/doctor/assessments/vbmapp/eesa-groups'),
+    
+  createSession: (data) =>
+    apiClient.post('/doctor/assessments/vbmapp/sessions', data),
+    
+  getSession: (sessionId) =>
+    apiClient.get(`/doctor/assessments/vbmapp/sessions/${sessionId}`),
+    
+  getChildSessions: (childId) =>
+    apiClient.get(`/doctor/assessments/vbmapp/children/${childId}/sessions`),
+    
+  updateSession: (sessionId, data) =>
+    apiClient.patch(`/doctor/assessments/vbmapp/sessions/${sessionId}`, data),
+    
+  submitMilestones: (sessionId, data) =>
+    apiClient.post(`/doctor/assessments/vbmapp/sessions/${sessionId}/milestones`, data),
+    
+  submitTaskSteps: (sessionId, data) =>
+    apiClient.post(`/doctor/assessments/vbmapp/sessions/${sessionId}/task-steps`, data),
+    
+  submitBarriers: (sessionId, data) =>
+    apiClient.post(`/doctor/assessments/vbmapp/sessions/${sessionId}/barriers`, data),
+    
+  submitTransitions: (sessionId, data) =>
+    apiClient.post(`/doctor/assessments/vbmapp/sessions/${sessionId}/transitions`, data),
+    
+  submitEesa: (sessionId, data) =>
+    apiClient.post(`/doctor/assessments/vbmapp/sessions/${sessionId}/eesa`, data),
+    
+  createIepGoal: (sessionId, data) =>
+    apiClient.post(`/doctor/assessments/vbmapp/sessions/${sessionId}/iep-goals`, data),
+    
+  updateIepGoal: (goalId, data) =>
+    apiClient.patch(`/doctor/assessments/vbmapp/iep-goals/${goalId}`, data),
+    
+  getSummary: (childId) =>
+    apiClient.get(`/doctor/assessments/vbmapp/children/${childId}/summary`),
+};

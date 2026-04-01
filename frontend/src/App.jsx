@@ -57,6 +57,8 @@ import TestsList from './pages/tests/TestsList';
 import TestDetail from './pages/tests/TestDetail';
 import Layout from './components/layout/Layout';
 import ProtectedRoute from './components/auth/ProtectedRoute';
+import VbMappAssessment from './pages/doctors/VbMappAssessment';
+import VbMappSessionDetail from './pages/doctors/VbMappSessionDetail';
 
 function App() {
   return (
@@ -132,6 +134,8 @@ function App() {
         <Route path="/doctor/children" element={<DoctorChildren />} />
         <Route path="/doctor/children/:id" element={<DoctorChildDetails />} />
         <Route path="/doctor/assessment/:testId/:childId" element={<DoctorAssessment />} />
+        <Route path="/doctor/vbmapp/:testId/:childId" element={<VbMappAssessment />} />
+        <Route path="/doctor/vbmapp/session/:sessionId" element={<VbMappSessionDetail />} />
         <Route path="/doctor/messages" element={<DoctorMessages />} />
         <Route path="/doctor/messages/:userId" element={<DoctorConversation />} />
         <Route path="/articles" element={<DoctorArticles />} />

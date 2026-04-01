@@ -229,9 +229,7 @@ export const getTests = async (req, res, next) => {
 
     res.json({
       success: true,
-      data: tests
-        .filter((test) => test.testType !== 'VB_MAPP')
-        .map((test) => buildTestSummary({ test }))
+      data: tests.map((test) => buildTestSummary({ test }))
     });
   } catch (error) {
     if (handleKnownError(res, error)) return;
@@ -258,15 +256,7 @@ export const getTestById = async (req, res, next) => {
       });
     }
 
-    if (test.testType === 'VB_MAPP') {
-      return res.status(422).json({
-        success: false,
-        error: {
-          code: 'INVALID_TEST_TYPE',
-          message: 'VB-MAPP is available through the dedicated VB-MAPP workflow'
-        }
-      });
-    }
+
 
     const data = await buildTestDetail({
       prisma,
@@ -304,15 +294,7 @@ export const getTestQuestions = async (req, res, next) => {
       });
     }
 
-    if (test.testType === 'VB_MAPP') {
-      return res.status(422).json({
-        success: false,
-        error: {
-          code: 'INVALID_TEST_TYPE',
-          message: 'VB-MAPP is available through the dedicated VB-MAPP workflow'
-        }
-      });
-    }
+
 
     const data = await buildTestDetail({
       prisma,

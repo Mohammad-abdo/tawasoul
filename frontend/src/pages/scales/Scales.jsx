@@ -37,7 +37,12 @@ const Scales = () => {
   };
 
   const selectChildAndStart = (childId) => {
-    navigate(`/doctor/assessment/${selectedTestId}/${childId}`);
+    const selectedTest = tests.find((t) => t.id === selectedTestId);
+    if (selectedTest?.testType === 'VB_MAPP') {
+      navigate(`/doctor/vbmapp/${selectedTestId}/${childId}`);
+    } else {
+      navigate(`/doctor/assessment/${selectedTestId}/${childId}`);
+    }
   };
 
   const normalizedSearch = searchTerm.trim().toLowerCase();
