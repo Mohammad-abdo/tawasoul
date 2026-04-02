@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router-dom';
-import { ChevronRight, Mic, Paperclip, Send, Square, Trash2 } from 'lucide-react';
+import { ChevronRight, Mic, Paperclip, Pause, Play, Send, Square, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { doctorMessages } from '../../api/doctor';
 
@@ -12,6 +12,73 @@ const FILE_TYPES = [
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
 ];
 
+// ─── VoiceMessage Component ───────────────────────────────────────────────────
+const VoiceMessage = ({ src, isOwn }) => {
+  const audioRef = useRef(null);
+  const [playing, setPlaying] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [duration, setDuration] = useState(0);
+
+  const togglePlay = () => {
+    if (!audioRef.current) return;
+    if (playing) {
+      audioRef.current.pause();
+    } else {
+      audioRef.current.play();
+    }
+    setPlaying(!playing);
+  };
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    const updateProgress = () => {
+      setProgress((audio.currentTime / audio.duration) * 100);
+    };
+    const setMeta = () => setDuration(audio.duration);
+    const handleEnded = () => setPlaying(false);
+
+    audio.addEventListener('timeupdate', updateProgress);
+    audio.addEventListener('loadedmetadata', setMeta);
+    audio.addEventListener('ended', handleEnded);
+    return () => {
+      audio.removeEventListener('timeupdate', updateProgress);
+      audio.removeEventListener('loadedmetadata', setMeta);
+      audio.removeEventListener('ended', handleEnded);
+    };
+  }, []);
+
+  const formatTime = (time) => {
+    if (!time) return '0:00';
+    const m = Math.floor(time / 60);
+    const s = Math.floor(time % 60);
+    return `${m}:${s.toString().padStart(2, '0')}`;
+  };
+
+  return (
+    <div
+      className={`flex items-center gap-2 p-2 rounded-2xl ${
+        isOwn ? 'bg-purple-500 text-white' : 'bg-gray-200 text-gray-800'
+      }`}
+    >
+      <button
+        onClick={togglePlay}
+        className="w-8 h-8 flex items-center justify-center bg-white text-black rounded-full flex-shrink-0"
+      >
+        {playing ? <Pause size={16} /> : <Play size={16} />}
+      </button>
+
+      <div className="w-40 h-2 bg-white/40 rounded overflow-hidden">
+        <div className="h-full bg-white transition-all" style={{ width: `${progress}%` }} />
+      </div>
+
+      <span className="text-xs tabular-nums">{formatTime(duration)}</span>
+      <audio ref={audioRef} src={src} />
+    </div>
+  );
+};
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 const resolveMessageType = (message) => {
   if (message?.messageType && message.messageType !== 'TEXT') return message.messageType;
   if (message?.voiceUrl) return 'VOICE';
@@ -29,7 +96,9 @@ const renderMessageContent = (message, isDoctor) => {
     return (
       <div className="space-y-2">
         <img src={message.imageUrl} alt="attachment" className="max-h-64 rounded-xl object-cover" />
-        {message.content ? <p className={`whitespace-pre-wrap text-sm ${captionClass}`}>{message.content}</p> : null}
+        {message.content && (
+          <p className={`whitespace-pre-wrap text-sm ${captionClass}`}>{message.content}</p>
+        )}
         <div className={`text-[10px] ${metaClass}`}>
           {message.createdAt ? new Date(message.createdAt).toLocaleString('ar-EG') : ''}
         </div>
@@ -37,11 +106,14 @@ const renderMessageContent = (message, isDoctor) => {
     );
   }
 
+  // ── VOICE: now uses the custom VoiceMessage component ──
   if (messageType === 'VOICE' && message.voiceUrl) {
     return (
-      <div className="space-y-2">
-        <audio controls src={message.voiceUrl} className="w-full" />
-        {message.content ? <p className={`whitespace-pre-wrap text-sm ${captionClass}`}>{message.content}</p> : null}
+      <div className="space-y-1">
+        <VoiceMessage src={message.voiceUrl} isOwn={isDoctor} />
+        {message.content && (
+          <p className={`whitespace-pre-wrap text-sm ${captionClass}`}>{message.content}</p>
+        )}
         <div className={`text-[10px] ${metaClass}`}>
           {message.createdAt ? new Date(message.createdAt).toLocaleString('ar-EG') : ''}
         </div>
@@ -52,7 +124,7 @@ const renderMessageContent = (message, isDoctor) => {
   if (messageType === 'FILE' && message.fileUrl) {
     return (
       <div className="space-y-2">
-        <a
+        
           href={message.fileUrl}
           target="_blank"
           rel="noreferrer"
@@ -61,11 +133,13 @@ const renderMessageContent = (message, isDoctor) => {
               ? 'border-white/30 bg-white/10 text-white hover:bg-white/20'
               : 'border-gray-300 bg-white text-gray-800 hover:bg-gray-50'
           }`}
-        >
+        <a>
           <Paperclip size={14} />
           {message.fileName || 'تحميل الملف'}
         </a>
-        {message.content ? <p className={`whitespace-pre-wrap text-sm ${captionClass}`}>{message.content}</p> : null}
+        {message.content && (
+          <p className={`whitespace-pre-wrap text-sm ${captionClass}`}>{message.content}</p>
+        )}
         <div className={`text-[10px] ${metaClass}`}>
           {message.createdAt ? new Date(message.createdAt).toLocaleString('ar-EG') : ''}
         </div>
@@ -83,6 +157,7 @@ const renderMessageContent = (message, isDoctor) => {
   );
 };
 
+// ─── Main Component ───────────────────────────────────────────────────────────
 const DoctorConversationEnhanced = () => {
   const { userId } = useParams();
   const queryClient = useQueryClient();
@@ -134,9 +209,7 @@ const DoctorConversationEnhanced = () => {
       await queryClient.invalidateQueries({ queryKey: ['doctor-messages-conversation', userId] });
       await queryClient.invalidateQueries({ queryKey: ['doctor-messages-conversations'] });
     },
-    onError: (e) => {
-      toast.error(e?.message || 'فشل إرسال الرسالة');
-    },
+    onError: (e) => toast.error(e?.message || 'فشل إرسال الرسالة'),
   });
 
   useEffect(() => {
@@ -163,16 +236,10 @@ const DoctorConversationEnhanced = () => {
       return;
     }
 
-    if (attachmentPreview) {
-      URL.revokeObjectURL(attachmentPreview);
-    }
+    if (attachmentPreview) URL.revokeObjectURL(attachmentPreview);
 
     const preview = isImage ? URL.createObjectURL(file) : null;
-    setAttachment({
-      file,
-      messageType: isImage ? 'IMAGE' : 'FILE',
-      fileName: file.name,
-    });
+    setAttachment({ file, messageType: isImage ? 'IMAGE' : 'FILE', fileName: file.name });
     setAttachmentPreview(preview);
     event.target.value = '';
   };
@@ -189,7 +256,6 @@ const DoctorConversationEnhanced = () => {
         toast.error('المتصفح لا يدعم تسجيل الصوت');
         return;
       }
-
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const recorder = new MediaRecorder(stream);
       chunksRef.current = [];
@@ -202,20 +268,15 @@ const DoctorConversationEnhanced = () => {
         stream.getTracks().forEach((track) => track.stop());
         const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
         const file = new File([blob], `voice-note-${Date.now()}.webm`, { type: 'audio/webm' });
-
         if (attachmentPreview) URL.revokeObjectURL(attachmentPreview);
-        setAttachment({
-          file,
-          messageType: 'VOICE',
-          fileName: file.name,
-        });
+        setAttachment({ file, messageType: 'VOICE', fileName: file.name });
         setAttachmentPreview(URL.createObjectURL(blob));
       };
 
       mediaRecorderRef.current = recorder;
       recorder.start();
       setIsRecording(true);
-    } catch (recordingError) {
+    } catch {
       toast.error('تعذر بدء تسجيل الصوت');
     }
   };
@@ -237,9 +298,7 @@ const DoctorConversationEnhanced = () => {
   if (isError) {
     return (
       <div className="glass-card rounded-2xl border border-gray-200 p-6">
-        <p className="text-sm text-red-600">
-          {error?.message || 'حدث خطأ أثناء تحميل الرسائل'}
-        </p>
+        <p className="text-sm text-red-600">{error?.message || 'حدث خطأ أثناء تحميل الرسائل'}</p>
       </div>
     );
   }
@@ -278,7 +337,7 @@ const DoctorConversationEnhanced = () => {
           )}
         </div>
 
-        {attachment ? (
+        {attachment && (
           <div className="mt-3 rounded-xl border border-gray-200 bg-gray-50 p-3">
             <div className="mb-2 flex items-center justify-between">
               <p className="text-xs font-semibold text-gray-700">معاينة قبل الإرسال</p>
@@ -291,22 +350,23 @@ const DoctorConversationEnhanced = () => {
               </button>
             </div>
 
-            {attachment.messageType === 'IMAGE' && attachmentPreview ? (
+            {attachment.messageType === 'IMAGE' && attachmentPreview && (
               <img src={attachmentPreview} alt="preview" className="max-h-40 rounded-lg object-cover" />
-            ) : null}
+            )}
 
-            {attachment.messageType === 'VOICE' && attachmentPreview ? (
-              <audio controls src={attachmentPreview} className="w-full" />
-            ) : null}
+            {/* ── Voice preview uses VoiceMessage too ── */}
+            {attachment.messageType === 'VOICE' && attachmentPreview && (
+              <VoiceMessage src={attachmentPreview} isOwn={false} />
+            )}
 
-            {attachment.messageType === 'FILE' ? (
+            {attachment.messageType === 'FILE' && (
               <div className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-700">
                 <Paperclip size={14} />
                 {attachment.fileName}
               </div>
-            ) : null}
+            )}
           </div>
-        ) : null}
+        )}
 
         <div className="mt-3 flex items-center gap-2">
           <label className="cursor-pointer rounded-xl border border-gray-200 bg-white p-2 text-gray-600 hover:border-primary-200 hover:text-primary-600">

@@ -15,7 +15,12 @@ import {
   serializeAssessmentResultDetail
 } from '../../utils/assessment-api.utils.js';
 import { createHttpError } from '../../utils/httpError.js';
-import { buildHelpAssessmentSubmission, TEST_TYPES } from '../../utils/assessment.utils.js';
+import {
+  buildHelpAssessmentSubmission,
+  countActiveHelpSkills,
+  findActiveHelpSkillById,
+  TEST_TYPES
+} from '../../utils/assessment.utils.js';
 import { streamAssessmentSessionPdf } from '../../utils/assessment-pdf.utils.js';
 
 const handleValidationErrors = (req, res) => {
@@ -847,9 +852,7 @@ export const submitHelpAssessment = async (req, res, next) => {
       testId,
       expectedType: 'HELP'
     });
-    const expectedSkillCount = await prisma.helpSkill.count({
-      where: { archivedAt: null }
-    });
+    const expectedSkillCount = await countActiveHelpSkills({ prisma });
 
     ensureExactAnswerCount({
       answers,
@@ -1012,11 +1015,9 @@ export const evaluateHelpAssessment = async (req, res, next) => {
       });
     }
 
-    const skill = await prisma.helpSkill.findFirst({
-      where: {
-        id: req.body.skillId,
-        archivedAt: null
-      }
+    const skill = await findActiveHelpSkillById({
+      prisma,
+      skillId: req.body.skillId
     });
 
     if (!skill) {

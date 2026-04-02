@@ -23,6 +23,11 @@ const createAssessmentValidationError = (message) => {
   return error;
 };
 
+const isUnknownArchivedAtError = (error) =>
+  error?.name === 'PrismaClientValidationError'
+  && typeof error?.message === 'string'
+  && error.message.includes('Unknown argument `archivedAt`');
+
 const baseUrlFromReq = (req) => process.env.BASE_URL || `${req.protocol}://${req.get('host')}`;
 
 const normalizePublicAssetPath = (assetPath) => {
@@ -86,6 +91,56 @@ export const getQuestionModelForTestType = (testType) => {
       return 'VbMappSession';
     default:
       return 'Question';
+  }
+};
+
+export const getActiveHelpSkills = async ({ prisma, orderBy }) => {
+  try {
+    return await prisma.helpSkill.findMany({
+      where: { archivedAt: null },
+      ...(orderBy ? { orderBy } : {})
+    });
+  } catch (error) {
+    if (!isUnknownArchivedAtError(error)) {
+      throw error;
+    }
+
+    return prisma.helpSkill.findMany({
+      ...(orderBy ? { orderBy } : {})
+    });
+  }
+};
+
+export const countActiveHelpSkills = async ({ prisma }) => {
+  try {
+    return await prisma.helpSkill.count({
+      where: { archivedAt: null }
+    });
+  } catch (error) {
+    if (!isUnknownArchivedAtError(error)) {
+      throw error;
+    }
+
+    return prisma.helpSkill.count();
+  }
+};
+
+export const findActiveHelpSkillById = async ({ prisma, skillId }) => {
+  try {
+    return await prisma.helpSkill.findFirst({
+      where: {
+        id: skillId,
+        archivedAt: null
+      }
+    });
+  } catch (error) {
+    if (!isUnknownArchivedAtError(error)) {
+      throw error;
+    }
+
+    return prisma.helpSkill.findFirst({
+      where: { id: skillId }
+    });
   }
 };
 
@@ -275,8 +330,8 @@ export const fetchAssessmentQuestions = async ({ prisma, test, req, includeCorre
     }
 
     case TEST_TYPES.HELP: {
-      const skills = await prisma.helpSkill.findMany({
-        where: { archivedAt: null },
+      const skills = await getActiveHelpSkills({
+        prisma,
         orderBy: [{ domain: 'asc' }, { skillNumber: 'asc' }, { id: 'asc' }]
       });
 
@@ -322,7 +377,7 @@ export const countAssessmentQuestions = async ({ prisma, test }) => {
     case TEST_TYPES.IMAGE_SEQUENCE_ORDER:
       return prisma.q_SequenceOrder.count({ where: { testId: test.id } });
     case TEST_TYPES.HELP:
-      return prisma.helpSkill.count({ where: { archivedAt: null } });
+      return countActiveHelpSkills({ prisma });
     case TEST_TYPES.VB_MAPP:
       return 0;
     default:
@@ -337,9 +392,7 @@ export const buildHelpAssessmentSubmission = async ({ prisma, answers }) => {
     throw createAssessmentValidationError('At least one HELP evaluation is required');
   }
 
-  const skills = await prisma.helpSkill.findMany({
-    where: { archivedAt: null }
-  });
+  const skills = await getActiveHelpSkills({ prisma });
   const skillMap = new Map(skills.map((skill) => [skill.id, skill]));
   const seenSkillIds = new Set();
   const evaluations = [];
