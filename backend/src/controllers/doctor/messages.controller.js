@@ -196,3 +196,40 @@ export const sendMessageToUser = async (req, res, next) => {
       next(error);
     }
   };
+
+export const uploadMessageAttachment = async (req, res, next) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        error: { message: 'No file uploaded' }
+      });
+    }
+
+    const ext = (req.file.originalname.split('.').pop() || '').toLowerCase();
+    const imageExtensions = ['jpg', 'jpeg', 'png', 'webp'];
+    const audioExtensions = ['mp3', 'wav', 'ogg', 'm4a', 'aac', 'webm'];
+    const messageType = imageExtensions.includes(ext)
+      ? 'IMAGE'
+      : audioExtensions.includes(ext)
+        ? 'VOICE'
+        : 'FILE';
+
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    const fileUrl = `${baseUrl}/uploads/messages/${req.file.filename}`;
+
+    return res.status(201).json({
+      success: true,
+      data: {
+        messageType,
+        fileUrl,
+        imageUrl: messageType === 'IMAGE' ? fileUrl : null,
+        voiceUrl: messageType === 'VOICE' ? fileUrl : null,
+        fileName: req.file.originalname
+      }
+    });
+  } catch (error) {
+    logger.error('Upload doctor message attachment error:', error);
+    next(error);
+  }
+};

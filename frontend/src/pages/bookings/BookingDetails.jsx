@@ -7,6 +7,7 @@ import { doctorBookings, doctorChildren, doctorAssessments } from '../../api/doc
 import { agoraApi } from '../../api/agora';
 import { useAuthStore } from '../../store/authStore';
 import AgoraSessionOverlay from '../../features/agora/AgoraSessionOverlay';
+import SessionSidePanel from '../../features/agora/SessionSidePanel';
 import { 
   ArrowRight, 
   Calendar, 
@@ -56,6 +57,16 @@ const BookingDetails = () => {
       return response.data.data.assessmentResults;
     },
     enabled: !!booking?.childId && role === 'doctor',
+  });
+
+  const { data: availableTests } = useQuery({
+    queryKey: ['agora-side-available-tests'],
+    queryFn: async () => {
+      if (role !== 'doctor') return [];
+      const response = await doctorAssessments.getTests();
+      return response.data.data || [];
+    },
+    enabled: role === 'doctor' && isAgoraOpen,
   });
 
   const [assessmentNote, setAssessmentNote] = useState('');
@@ -623,6 +634,14 @@ const BookingDetails = () => {
         booking={booking}
         fetchToken={fetchAgoraToken}
         allowScreenShare={role === 'doctor'}
+        sidePanel={
+          role === 'doctor' ? (
+            <SessionSidePanel
+              booking={booking}
+              availableTests={availableTests || []}
+            />
+          ) : null
+        }
         onClose={() => setIsAgoraOpen(false)}
       />
     </div>

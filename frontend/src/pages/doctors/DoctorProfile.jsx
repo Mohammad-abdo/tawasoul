@@ -52,6 +52,21 @@ const DoctorProfile = () => {
     }
   });
 
+  const avatarUploadMutation = useMutation({
+    mutationFn: (file) => doctorAuth.uploadProfileAvatar(file),
+    onSuccess: async (response) => {
+      const updatedDoctor = response?.data?.data;
+      if (updatedDoctor?.avatar) {
+        setFormData((previous) => ({ ...previous, avatar: updatedDoctor.avatar }));
+      }
+      toast.success('تم رفع صورة الملف الشخصي بنجاح');
+      await refetch();
+    },
+    onError: () => {
+      toast.error('فشل رفع صورة الملف الشخصي');
+    }
+  });
+
   const handleChange = (event) => {
     const { name, value } = event.target;
     setFormData((previous) => ({ ...previous, [name]: value }));
@@ -61,6 +76,29 @@ const DoctorProfile = () => {
     event.preventDefault();
     updateMutation.mutate(formData);
   };
+
+  const handleAvatarUpload = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      toast.error('صيغة الصورة غير مدعومة. المسموح JPG وPNG وWEBP');
+      event.target.value = '';
+      return;
+    }
+
+    avatarUploadMutation.mutate(file);
+    event.target.value = '';
+  };
+
+  const doctorInitials = (formData.name || 'D')
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join('')
+    .toUpperCase();
 
   if (isLoading) {
     return (
@@ -87,18 +125,25 @@ const DoctorProfile = () => {
                 {formData.avatar ? (
                   <img src={formData.avatar} alt={formData.name} className="h-full w-full object-cover" />
                 ) : (
-                  <User className="text-primary-600" size={40} />
+                  <span className="text-2xl font-bold text-primary-700">{doctorInitials || 'D'}</span>
                 )}
               </div>
-              <button
-                type="button"
-                className="absolute -bottom-2 -right-2 rounded-xl border border-gray-100 bg-white p-2 text-primary-600 shadow-lg transition-transform hover:scale-110"
-              >
+              <label className="absolute -bottom-2 -right-2 cursor-pointer rounded-xl border border-gray-100 bg-white p-2 text-primary-600 shadow-lg transition-transform hover:scale-110">
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  className="hidden"
+                  onChange={handleAvatarUpload}
+                  disabled={avatarUploadMutation.isPending}
+                />
                 <Camera size={16} />
-              </button>
+              </label>
             </div>
             <div>
               <h3 className="text-lg font-bold text-gray-900">{formData.name}</h3>
+              {avatarUploadMutation.isPending ? (
+                <p className="mt-1 text-xs text-primary-600">جارٍ رفع الصورة...</p>
+              ) : null}
               <p className="text-sm text-gray-500">{formData.specialization || 'طبيب مختص'}</p>
             </div>
           </div>

@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useParams, Link } from 'react-router-dom';
-import { doctorAssessments, doctorChildren } from '../../api/doctor';
+import { doctorAssessments, doctorChildren, doctorVbMapp } from '../../api/doctor';
 import {
   Baby,
   ChevronRight,
@@ -118,6 +118,21 @@ const getModalityLabel = (modality) => {
   return 'تقييم';
 };
 
+const getVbMappSessionLabel = (sessionNumber) => {
+  switch (sessionNumber) {
+    case 'FIRST':
+      return 'الجلسة الأولى';
+    case 'SECOND':
+      return 'الجلسة الثانية';
+    case 'THIRD':
+      return 'الجلسة الثالثة';
+    case 'FOURTH':
+      return 'الجلسة الرابعة';
+    default:
+      return sessionNumber || 'جلسة';
+  }
+};
+
 const DoctorChildDetails = () => {
   const { id } = useParams();
 
@@ -127,6 +142,15 @@ const DoctorChildDetails = () => {
       const response = await doctorChildren.getById(id);
       return response.data.data;
     },
+  });
+
+  const { data: vbMappSummary, isLoading: isVbMappSummaryLoading } = useQuery({
+    queryKey: ['doctor-vbmapp-summary', id],
+    queryFn: async () => {
+      const response = await doctorVbMapp.getSummary(id);
+      return response.data.data;
+    },
+    enabled: Boolean(id),
   });
 
   if (isLoading) {
@@ -226,6 +250,115 @@ const DoctorChildDetails = () => {
         </div>
 
         <div className="space-y-6 lg:col-span-2">
+          <div className="glass-card rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50 via-white to-sky-50 p-6">
+            <div className="mb-5 flex items-center justify-between">
+              <h3 className="flex items-center gap-2 text-lg font-bold text-gray-900">
+                <Activity size={20} className="text-indigo-500" />
+                ملخص تقييم VB-MAPP
+              </h3>
+              <Link
+                to="/scales"
+                className="rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-indigo-700 shadow-sm ring-1 ring-indigo-100 transition-colors hover:bg-indigo-100"
+              >
+                فتح التقييمات
+              </Link>
+            </div>
+
+            {isVbMappSummaryLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-indigo-500" />
+              </div>
+            ) : vbMappSummary?.totalSessions > 0 ? (
+              <div className="space-y-5">
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
+                  <div className="rounded-xl border border-indigo-100 bg-white p-3">
+                    <p className="text-xs text-gray-500">آخر جلسة</p>
+                    <p className="mt-1 text-sm font-bold text-gray-900">
+                      {getVbMappSessionLabel(vbMappSummary.latestSession?.sessionNumber)}
+                    </p>
+                  </div>
+                  <div className="rounded-xl border border-indigo-100 bg-white p-3">
+                    <p className="text-xs text-gray-500">أحدث نتيجة</p>
+                    <p className="mt-1 text-sm font-bold text-indigo-700">
+                      {vbMappSummary.latestSession?.totalScore ?? 0}/{vbMappSummary.totalMaxScore ?? 170}
+                    </p>
+                  </div>
+                  <div className="rounded-xl border border-indigo-100 bg-white p-3">
+                    <p className="text-xs text-gray-500">إجمالي الجلسات</p>
+                    <p className="mt-1 text-sm font-bold text-gray-900">{vbMappSummary.totalSessions}</p>
+                  </div>
+                  <div className="rounded-xl border border-indigo-100 bg-white p-3">
+                    <p className="text-xs text-gray-500">التغير عن السابقة</p>
+                    <p
+                      className={`mt-1 text-sm font-bold ${
+                        (vbMappSummary.scoreChange ?? 0) >= 0 ? 'text-emerald-700' : 'text-red-700'
+                      }`}
+                    >
+                      {(vbMappSummary.scoreChange ?? 0) >= 0 ? '+' : ''}
+                      {vbMappSummary.scoreChange ?? 0}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-gray-100 bg-white p-4">
+                  <p className="mb-3 text-sm font-bold text-gray-800">تقدم مجالات المهارات</p>
+                  <div className="space-y-3">
+                    {(vbMappSummary.skillAreaProgress || []).slice(0, 6).map((area) => {
+                      const width = Math.min((Number(area.latestScore || 0) / 20) * 100, 100);
+                      return (
+                        <div key={area.code} className="space-y-1">
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="font-semibold text-gray-700">{area.nameAr || area.code}</span>
+                            <span className="font-bold text-indigo-700">{area.latestScore ?? 0}</span>
+                          </div>
+                          <div className="h-2 rounded-full bg-gray-100">
+                            <div
+                              className="h-2 rounded-full bg-indigo-500 transition-all duration-500"
+                              style={{ width: `${width}%` }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-gray-100 bg-white p-4">
+                  <p className="mb-3 text-sm font-bold text-gray-800">ملخص سجل الجلسات</p>
+                  <div className="space-y-2">
+                    {(vbMappSummary.sessions || []).slice(-4).reverse().map((session) => (
+                      <div
+                        key={session.id}
+                        className="flex items-center justify-between rounded-lg border border-gray-100 bg-gray-50 px-3 py-2"
+                      >
+                        <div>
+                          <p className="text-xs font-bold text-gray-800">
+                            {getVbMappSessionLabel(session.sessionNumber)}
+                          </p>
+                          <p className="text-[11px] text-gray-500">
+                            {new Date(session.assessmentDate).toLocaleDateString('ar-EG')}
+                          </p>
+                        </div>
+                        <div className="text-left">
+                          <p className="text-xs font-bold text-indigo-700">
+                            {session.totalScore ?? 0}/{vbMappSummary.totalMaxScore ?? 170}
+                          </p>
+                          <p className="text-[11px] text-gray-500">
+                            إنجاز {session.achievedMilestones ?? 0} معلم
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="rounded-xl border border-dashed border-indigo-200 bg-white p-8 text-center text-sm text-gray-500">
+                لا توجد جلسات VB-MAPP مسجلة لهذا الطفل حتى الآن.
+              </div>
+            )}
+          </div>
+
           <div className="glass-card rounded-2xl border border-gray-200 p-6">
             <div className="mb-6 flex items-center justify-between">
               <h3 className="flex items-center gap-2 text-lg font-bold text-gray-900">

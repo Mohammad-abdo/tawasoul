@@ -1,13 +1,16 @@
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ChevronRight, Plus, Activity, BookOpen, AlertCircle } from 'lucide-react';
+import { ChevronRight, Plus, Activity, BookOpen, AlertCircle, FileText } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { doctorVbMapp } from '../../api/doctor';
 import apiClient from '../../api/client';
+import MonthlyReportModal from '../../features/vbmapp/reports/MonthlyReportModal';
 
 const VbMappAssessment = () => {
   const { testId, childId } = useParams();
   const navigate = useNavigate();
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
 
   // Fetch child info directly for basic display (using existing endpoint)
   const { data: child, isLoading: isChildLoading } = useQuery({
@@ -82,7 +85,7 @@ const VbMappAssessment = () => {
             <div>
               <h3 className="font-bold text-blue-900">مرحباً بك في أداة تقييم VB-MAPP</h3>
               <p className="mt-2 text-sm leading-relaxed text-blue-800">
-                هذه الشاشة تمثل الأساس لتقييم VB-MAPP الشامل الذي يحتوي على تقييم المهارات (Milestones)، والعوائق (Barriers)، ومؤشرات الانتقال (Transitions). سيتم إضافة واجهة الاستخدام الكاملة للجداول في المراحل القادمة.
+                هذه الشاشة تمثل الأساس لتقييم VB-MAPP الشامل الذي يحتوي على تقييم المهارات (Milestones)، والعوائق (Barriers)، ومؤشرات الانتقال (Transitions).
               </p>
             </div>
           </div>
@@ -90,13 +93,22 @@ const VbMappAssessment = () => {
 
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-bold text-gray-900">الجلسات السابقة (التقييمات)</h2>
-          <button 
-            onClick={handleCreateSession}
-            className="btn-primary flex items-center gap-2 px-4 shadow-sm"
-          >
-            <Plus size={18} />
-            فتح تقييم جديد
-          </button>
+          <div className="flex gap-2">
+            <button 
+              onClick={() => setIsReportModalOpen(true)}
+              className="flex items-center gap-2 px-4 py-2 border border-blue-200 bg-blue-50 text-blue-700 rounded-xl font-bold hover:bg-blue-100 transition-colors"
+            >
+              <FileText size={18} />
+              تقرير شهري
+            </button>
+            <button 
+              onClick={handleCreateSession}
+              className="btn-primary flex items-center gap-2 px-4 shadow-sm"
+            >
+              <Plus size={18} />
+              فتح تقييم جديد
+            </button>
+          </div>
         </div>
 
         {sessions && sessions.length > 0 ? (
@@ -129,6 +141,12 @@ const VbMappAssessment = () => {
           </div>
         )}
       </div>
+
+      <MonthlyReportModal 
+        isOpen={isReportModalOpen} 
+        onClose={() => setIsReportModalOpen(false)} 
+        childId={childId} 
+      />
     </div>
   );
 };

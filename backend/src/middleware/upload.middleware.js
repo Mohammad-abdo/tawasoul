@@ -212,3 +212,39 @@ export const uploadAssessmentAudioSingle = multer({
   fileFilter: audioFilter
 }).single('file');
 
+const chatAttachmentStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const folderPath = path.join(uploadsDir, 'messages');
+    if (!fs.existsSync(folderPath)) {
+      fs.mkdirSync(folderPath, { recursive: true });
+    }
+    cb(null, folderPath);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
+    const ext = path.extname(file.originalname) || '';
+    cb(null, `message-attachment-${uniqueSuffix}${ext}`);
+  }
+});
+
+const chatAttachmentFilter = (req, file, cb) => {
+  const ext = path.extname(file.originalname).toLowerCase();
+  const imageExtensions = ['.jpg', '.jpeg', '.png', '.webp'];
+  const audioExtensions = ['.mp3', '.wav', '.ogg', '.m4a', '.aac', '.webm'];
+  const documentExtensions = ['.pdf', '.doc', '.docx'];
+  const allowedExtensions = [...imageExtensions, ...audioExtensions, ...documentExtensions];
+
+  if (!allowedExtensions.includes(ext)) {
+    cb(new Error('Unsupported attachment type'));
+    return;
+  }
+
+  cb(null, true);
+};
+
+export const uploadChatAttachmentSingle = multer({
+  storage: chatAttachmentStorage,
+  limits: { fileSize: 15 * 1024 * 1024 },
+  fileFilter: chatAttachmentFilter
+}).single('file');
+

@@ -10,6 +10,7 @@ import withdrawalsRoutes from './doctor/withdrawals.routes.js';
 import childrenRoutes from './doctor/children.routes.js';
 import assessmentRoutes from './doctor/assessment.routes.js';
 import doctorMessagesRoutes from './doctor/messages.routes.js';
+import doctorSupportRoutes from './doctor/support.routes.js';
 
 const router = express.Router();
 
@@ -24,5 +25,6 @@ router.use('/withdrawals', withdrawalsRoutes);
 router.use('/children', childrenRoutes);
 router.use('/assessments', assessmentRoutes);
 router.use('/messages', doctorMessagesRoutes);
+router.use('/support', doctorSupportRoutes);
 
 export default router;

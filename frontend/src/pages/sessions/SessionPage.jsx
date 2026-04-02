@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   AlertCircle,
   ChevronLeft,
@@ -8,16 +8,18 @@ import {
   ClipboardList,
   Info,
   Maximize2,
+  MessageSquare,
   Mic,
   MicOff,
   Minimize2,
   Save,
+  Send,
   Video,
   VideoOff,
   X,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { doctorBookings, doctorAssessments } from '../../api/doctor';
+import { doctorBookings, doctorAssessments, doctorMessages } from '../../api/doctor';
 import AssessmentQuestionRenderer from '../../features/assessments/AssessmentQuestionRenderer';
 import { getAssessmentConfig } from '../../features/assessments/assessmentRegistry';
 import {
@@ -29,11 +31,13 @@ import {
 const SessionPage = () => {
   const { bookingId } = useParams();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const jitsiContainerRef = useRef(null);
   const [isVideoEnabled, setIsVideoEnabled] = useState(true);
   const [isAudioEnabled, setIsAudioEnabled] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [showTestPanel, setShowTestPanel] = useState(false);
+  const [showTestPanel, setShowTestPanel] = useState(true);
+  const [activeSideTab, setActiveSideTab] = useState('tests');
   const [currentTest, setCurrentTest] = useState(null);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [testScores, setTestScores] = useState({});
@@ -41,6 +45,8 @@ const SessionPage = () => {
   const [audio, setAudio] = useState(null);
   const [sessionNotes, setSessionNotes] = useState('');
   const [sessionRating, setSessionRating] = useState(10);
+  const [chatMessage, setChatMessage] = useState('');
+  const chatListRef = useRef(null);
 
   const { data: booking, isLoading: bookingLoading } = useQuery({
     queryKey: ['session-booking', bookingId],
@@ -81,6 +87,39 @@ const SessionPage = () => {
 
   const submitTestMutation = useMutation({
     mutationFn: (data) => doctorAssessments.submitResult(data),
+  });
+
+  const conversationUserId = booking?.userId || booking?.user?.id || null;
+
+  const { data: conversationData } = useQuery({
+    queryKey: ['session-panel-chat', bookingId, conversationUserId],
+    queryFn: async () => {
+      const response = await doctorMessages.getConversationMessages(conversationUserId, { page: 1, limit: 100 });
+      return response.data.data;
+    },
+    enabled: Boolean(conversationUserId && showTestPanel && activeSideTab === 'chat'),
+    refetchInterval: activeSideTab === 'chat' ? 5000 : false,
+  });
+
+  const sendChatMessageMutation = useMutation({
+    mutationFn: async () => {
+      const content = chatMessage.trim();
+      if (!content || !conversationUserId) return;
+      await doctorMessages.sendMessageToUser({
+        userId: conversationUserId,
+        content,
+        messageType: 'TEXT',
+      });
+    },
+    onSuccess: async () => {
+      setChatMessage('');
+      await queryClient.invalidateQueries({
+        queryKey: ['session-panel-chat', bookingId, conversationUserId],
+      });
+    },
+    onError: (error) => {
+      toast.error(error?.response?.data?.error?.message || 'فشل إرسال الرسالة');
+    },
   });
 
   useEffect(() => {
@@ -180,6 +219,11 @@ const SessionPage = () => {
       }
     };
   }, [audio]);
+
+  useEffect(() => {
+    if (!chatListRef.current) return;
+    chatListRef.current.scrollTop = chatListRef.current.scrollHeight;
+  }, [conversationData?.messages?.length, activeSideTab]);
 
   useEffect(() => {
     setCurrentQuestionIndex(0);
@@ -339,7 +383,7 @@ const SessionPage = () => {
             }`}
           >
             <ClipboardList size={18} />
-            {showTestPanel ? 'إخفاء الاختبارات' : 'إجراء اختبار'}
+            {showTestPanel ? 'إخفاء اللوحة' : 'إظهار اللوحة'}
           </button>
 
           <button
@@ -370,49 +414,84 @@ const SessionPage = () => {
       <div className="relative flex flex-1 overflow-hidden">
         <div
           ref={jitsiContainerRef}
-          className={`flex-1 transition-all duration-300 ${showTestPanel ? 'w-2/3' : 'w-full'}`}
+          className={`h-full transition-all duration-300 ${showTestPanel ? 'w-full lg:w-[80%]' : 'w-full'}`}
           style={{ minHeight: '500px' }}
         />
 
         {showTestPanel ? (
-          <div className="flex w-1/3 flex-col overflow-hidden border-l border-gray-200 bg-white">
-            {!currentTest ? (
-              <div className="overflow-y-auto p-6">
-                <h3 className="mb-4 flex items-center gap-2 text-xl font-bold text-gray-900">
-                  <ClipboardList className="text-primary-600" size={24} />
+          <>
+            <div
+              className="absolute inset-0 z-10 bg-black/40 lg:hidden"
+              onClick={() => setShowTestPanel(false)}
+            />
+            <button
+              type="button"
+              onClick={() => setShowTestPanel(false)}
+              className="absolute right-3 top-3 z-30 rounded-full bg-black/60 p-2 text-white transition-colors hover:bg-black/80 lg:hidden"
+              title="Close panel"
+            >
+              <X size={16} />
+            </button>
+            <div className="absolute inset-y-0 right-0 z-20 flex w-[88%] max-w-sm flex-col overflow-hidden border-l border-gray-200 bg-white text-[13px] shadow-2xl lg:static lg:w-[20%] lg:max-w-none lg:shadow-none">
+            <div className="grid grid-cols-2 border-b border-gray-200 bg-gray-50 p-1">
+              <button
+                type="button"
+                onClick={() => setActiveSideTab('tests')}
+                className={`rounded-md px-2 py-1.5 text-xs font-bold transition-colors ${
+                  activeSideTab === 'tests' ? 'bg-white text-primary-700 shadow-sm' : 'text-gray-600 hover:bg-white'
+                }`}
+              >
+                الاختبارات
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveSideTab('chat')}
+                className={`rounded-md px-2 py-1.5 text-xs font-bold transition-colors ${
+                  activeSideTab === 'chat' ? 'bg-white text-primary-700 shadow-sm' : 'text-gray-600 hover:bg-white'
+                }`}
+              >
+                الدردشة
+              </button>
+            </div>
+
+            {activeSideTab === 'tests' ? (
+              !currentTest ? (
+              <div className="overflow-y-auto p-3">
+                <h3 className="mb-3 flex items-center gap-2 text-sm font-bold text-gray-900">
+                  <ClipboardList className="text-primary-600" size={18} />
                   اختر اختبار للتقييم
                 </h3>
-                <div className="space-y-3">
+                <div className="space-y-2">
                   {availableTests?.map((test) => (
                     <button
                       key={test.id}
                       onClick={() => handleStartTest(test)}
-                      className="w-full rounded-xl border border-gray-200 bg-gray-50 p-4 text-right transition-all hover:border-primary-300 hover:bg-primary-50"
+                      className="w-full rounded-lg border border-gray-200 bg-gray-50 p-2 text-right transition-all hover:border-primary-300 hover:bg-primary-50"
                     >
-                      <h4 className="font-bold text-gray-900">{getTestDisplayTitle(test)}</h4>
-                      <p className="mt-1 text-sm text-gray-500">{getModalityLabel(test.type)}</p>
+                      <h4 className="text-[13px] font-bold text-gray-900">{getTestDisplayTitle(test)}</h4>
+                      <p className="mt-1 text-xs text-gray-500">{getModalityLabel(test.type)}</p>
                     </button>
                   ))}
                 </div>
               </div>
             ) : (
               <div className="flex h-full flex-col">
-                <div className="flex items-center justify-between bg-primary-600 p-4 text-white">
+                <div className="flex items-center justify-between bg-primary-600 px-3 py-2 text-white">
                   <button
                     onClick={handleCloseCurrentTest}
                     className="rounded p-1 transition-colors hover:bg-primary-700"
                   >
-                    <X size={18} />
+                    <X size={16} />
                   </button>
-                  <h3 className="truncate px-3 text-center font-bold">
+                  <h3 className="truncate px-2 text-center text-xs font-bold">
                     {getTestDisplayTitle(activeTestDetail || currentTest)}
                   </h3>
-                  <span className="text-sm">
+                  <span className="text-xs">
                     {Math.min(currentQuestionIndex + 1, Math.max(questions.length, 1))} / {questions.length}
                   </span>
                 </div>
 
-                <div className="flex-1 overflow-y-auto p-6">
+                <div className="flex-1 overflow-y-auto p-3">
                   {activeTestLoading ? (
                     <div className="flex min-h-[200px] items-center justify-center">
                       <div className="h-10 w-10 animate-spin rounded-full border-b-2 border-primary-600" />
@@ -434,14 +513,14 @@ const SessionPage = () => {
 
                       <div className="mt-6">
                         {supportsManualScoring ? (
-                          <div className="space-y-3">
-                            <p className="text-center text-sm font-bold text-gray-500">اختر درجة الاستجابة</p>
-                            <div className="flex flex-wrap items-center justify-center gap-2">
+                          <div className="space-y-2">
+                            <p className="text-center text-xs font-bold text-gray-500">اختر درجة الاستجابة</p>
+                            <div className="flex flex-wrap items-center justify-center gap-1.5">
                               {scoreOptions.map((scoreOption) => (
                                 <button
                                   key={scoreOption}
                                   onClick={() => handleScoreChange(scoreOption)}
-                                  className={`h-10 w-10 rounded-lg text-sm font-bold transition-all ${
+                                  className={`h-8 w-8 rounded-md text-xs font-bold transition-all ${
                                     testScores[currentQuestion.id] === scoreOption
                                       ? 'scale-110 bg-primary-600 text-white shadow-lg'
                                       : 'border-2 border-gray-200 bg-white text-gray-400 hover:border-primary-300'
@@ -453,12 +532,12 @@ const SessionPage = () => {
                             </div>
                           </div>
                         ) : (
-                          <div className="rounded-xl border border-blue-100 bg-blue-50 p-4 text-right">
-                            <div className="mb-2 flex items-center gap-2 text-sm font-bold text-blue-800">
-                              <Info size={16} />
+                          <div className="rounded-lg border border-blue-100 bg-blue-50 p-3 text-right">
+                            <div className="mb-2 flex items-center gap-2 text-xs font-bold text-blue-800">
+                              <Info size={14} />
                               طريقة التنفيذ
                             </div>
-                            <p className="text-xs leading-relaxed text-blue-700">
+                            <p className="text-[11px] leading-relaxed text-blue-700">
                               {assessmentConfig.scoreNotice}
                             </p>
                           </div>
@@ -472,13 +551,13 @@ const SessionPage = () => {
                   )}
                 </div>
 
-                <div className="flex items-center justify-between gap-2 border-t border-gray-200 bg-gray-50 p-4">
+                <div className="flex items-center justify-between gap-1.5 border-t border-gray-200 bg-gray-50 p-2">
                   <button
                     onClick={handlePrevQuestion}
                     disabled={currentQuestionIndex === 0 || questions.length === 0}
-                    className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 disabled:opacity-30"
+                    className="flex items-center gap-1 rounded-md border border-gray-200 bg-white px-2.5 py-1.5 text-xs disabled:opacity-30"
                   >
-                    <ChevronRight size={18} />
+                    <ChevronRight size={14} />
                     السابق
                   </button>
 
@@ -486,24 +565,95 @@ const SessionPage = () => {
                     <button
                       onClick={handleFinishTest}
                       disabled={submitTestMutation.isPending}
-                      className="flex items-center gap-2 rounded-lg bg-green-600 px-6 py-2 text-white transition-colors hover:bg-green-700 disabled:opacity-50"
+                      className="flex items-center gap-1 rounded-md bg-green-600 px-3 py-1.5 text-xs text-white transition-colors hover:bg-green-700 disabled:opacity-50"
                     >
-                      <Save size={18} />
+                      <Save size={14} />
                       {submitTestMutation.isPending ? 'جارٍ الحفظ...' : assessmentConfig.completionLabel}
                     </button>
                   ) : (
                     <button
                       onClick={handleNextQuestion}
-                      className="flex items-center gap-2 rounded-lg bg-primary-600 px-6 py-2 text-white transition-colors hover:bg-primary-700"
+                      className="flex items-center gap-1 rounded-md bg-primary-600 px-3 py-1.5 text-xs text-white transition-colors hover:bg-primary-700"
                     >
                       التالي
-                      <ChevronLeft size={18} />
+                      <ChevronLeft size={14} />
                     </button>
                   )}
                 </div>
               </div>
+            )
+            ) : (
+              <div className="flex h-full flex-col">
+                <div ref={chatListRef} className="flex-1 space-y-2 overflow-y-auto bg-gray-50 p-2">
+                  {(conversationData?.messages || []).length === 0 ? (
+                    <div className="flex h-full flex-col items-center justify-center text-center text-xs text-gray-500">
+                      <MessageSquare size={18} className="mb-1 text-gray-400" />
+                      لا توجد رسائل بعد
+                    </div>
+                  ) : (
+                    [...(conversationData?.messages || [])].reverse().map((message) => {
+                      const isDoctor = message.senderRole === 'DOCTOR';
+                      return (
+                        <div key={message.id} className={`flex ${isDoctor ? 'justify-end' : 'justify-start'}`}>
+                          <div
+                            className={`max-w-[92%] rounded-lg px-2 py-1 text-xs leading-tight ${
+                              isDoctor ? 'bg-primary-600 text-white' : 'bg-white text-gray-800 border border-gray-200'
+                            }`}
+                          >
+                            <p className="whitespace-pre-wrap break-words">{message.content || '...'}</p>
+                            <p className={`mt-1 text-[10px] ${isDoctor ? 'text-white/75' : 'text-gray-500'}`}>
+                              {new Date(message.createdAt).toLocaleTimeString('ar-EG', {
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              })}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+
+                <div className="border-t border-gray-200 bg-white p-2">
+                  <div className="flex items-end gap-1.5">
+                    <textarea
+                      value={chatMessage}
+                      onChange={(event) => setChatMessage(event.target.value)}
+                      rows={2}
+                      placeholder="اكتب رسالة..."
+                      className="w-full resize-none rounded-md border border-gray-200 px-2 py-1.5 text-xs text-gray-800 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' && !event.shiftKey) {
+                          event.preventDefault();
+                          sendChatMessageMutation.mutate();
+                        }
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => sendChatMessageMutation.mutate()}
+                      disabled={sendChatMessageMutation.isPending || !chatMessage.trim()}
+                      className="rounded-md bg-primary-600 p-2 text-white transition-colors hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <Send size={14} />
+                    </button>
+                  </div>
+                </div>
+              </div>
             )}
-          </div>
+            </div>
+          </>
+        ) : null}
+
+        {!showTestPanel ? (
+          <button
+            type="button"
+            onClick={() => setShowTestPanel(true)}
+            className="absolute bottom-4 right-4 z-20 rounded-full bg-primary-600 p-3 text-white shadow-xl transition-colors hover:bg-primary-700 lg:hidden"
+            title="Open panel"
+          >
+            <ClipboardList size={18} />
+          </button>
         ) : null}
       </div>
 

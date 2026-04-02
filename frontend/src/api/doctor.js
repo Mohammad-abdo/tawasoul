@@ -10,6 +10,12 @@ export const doctorAuth = {
 
   updateProfile: (data) => 
     apiClient.put('/doctor/auth/profile', data),
+
+  uploadProfileAvatar: (file) => {
+    const formData = new FormData();
+    formData.append('avatar', file);
+    return apiClient.post('/doctor/auth/profile/avatar', formData);
+  },
 };
 
 // Dashboard
@@ -127,8 +133,28 @@ export const doctorMessages = {
   getConversationMessages: (userId, params) =>
     apiClient.get(`/doctor/messages/conversation/${userId}`, { params }),
 
+  uploadAttachment: (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return apiClient.post('/doctor/messages/upload', formData);
+  },
+
   sendMessageToUser: (data) =>
     apiClient.post('/doctor/messages/send', data),
+};
+
+export const doctorSupport = {
+  getTickets: (params) =>
+    apiClient.get('/doctor/support/tickets', { params }),
+
+  createTicket: (data) =>
+    apiClient.post('/doctor/support/tickets', data),
+
+  getTicketById: (ticketId) =>
+    apiClient.get(`/doctor/support/tickets/${ticketId}`),
+
+  addReply: (ticketId, data) =>
+    apiClient.post(`/doctor/support/tickets/${ticketId}/replies`, data),
 };
 
 export const doctorWallet = {
@@ -187,4 +213,7 @@ export const doctorVbMapp = {
     
   getSummary: (childId) =>
     apiClient.get(`/doctor/assessments/vbmapp/children/${childId}/summary`),
+    
+  getMonthlyReport: (childId, month, year) =>
+    apiClient.get('/doctor/assessments/vbmapp/reports/monthly', { params: { childId, month, year } })
 };

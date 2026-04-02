@@ -1,6 +1,7 @@
 import express from 'express';
 import { authenticateDoctor } from '../../middleware/auth.middleware.js';
 import { moderateTextMiddleware } from '../../middleware/moderateText.middleware.js';
+import { uploadChatAttachmentSingle } from '../../middleware/upload.middleware.js';
 import * as doctorMessagesController from '../../controllers/doctor/messages.controller.js';
 
 const router = express.Router();
@@ -16,5 +17,6 @@ router.get('/conversation/:userId', doctorMessagesController.getConversationMess
 
 // إرسال رسالة من الدكتور لليوزر
 router.post('/send', moderateTextMiddleware, doctorMessagesController.sendMessageToUser);
+router.post('/upload', uploadChatAttachmentSingle, doctorMessagesController.uploadMessageAttachment);
 
 export default router;

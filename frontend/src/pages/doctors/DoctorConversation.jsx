@@ -2,14 +2,89 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router-dom';
 import { doctorMessages } from '../../api/doctor';
-import { ChevronRight, Send } from 'lucide-react';
+import { ChevronRight, Mic, Paperclip, Send, Square, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
+
+const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/jpg'];
+const FILE_TYPES = [
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+];
+
+const resolveMessageType = (message) => {
+  if (message?.messageType && message.messageType !== 'TEXT') return message.messageType;
+  if (message?.voiceUrl) return 'VOICE';
+  if (message?.imageUrl) return 'IMAGE';
+  if (message?.fileUrl) return 'FILE';
+  return 'TEXT';
+};
+
+const renderMessageContent = (message, isDoctor) => {
+  const messageType = resolveMessageType(message);
+  const captionClass = isDoctor ? 'text-white/80' : 'text-gray-700';
+  const metaClass = isDoctor ? 'text-white/70' : 'text-gray-500';
+
+  if (messageType === 'IMAGE' && message.imageUrl) {
+    return (
+      <div className="space-y-2">
+        <img src={message.imageUrl} alt="attachment" className="max-h-64 rounded-xl object-cover" />
+        {message.content ? <p className={`whitespace-pre-wrap text-sm ${captionClass}`}>{message.content}</p> : null}
+        <div className={`text-[10px] ${metaClass}`}>{message.createdAt ? new Date(message.createdAt).toLocaleString('ar-EG') : ''}</div>
+      </div>
+    );
+  }
+
+  if (messageType === 'VOICE' && message.voiceUrl) {
+    return (
+      <div className="space-y-2">
+        <audio controls src={message.voiceUrl} className="w-full" />
+        {message.content ? <p className={`whitespace-pre-wrap text-sm ${captionClass}`}>{message.content}</p> : null}
+        <div className={`text-[10px] ${metaClass}`}>{message.createdAt ? new Date(message.createdAt).toLocaleString('ar-EG') : ''}</div>
+      </div>
+    );
+  }
+
+  if (messageType === 'FILE' && message.fileUrl) {
+    return (
+      <div className="space-y-2">
+        <a
+          href={message.fileUrl}
+          target="_blank"
+          rel="noreferrer"
+          className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold ${
+            isDoctor
+              ? 'border-white/30 bg-white/10 text-white hover:bg-white/20'
+              : 'border-gray-300 bg-white text-gray-800 hover:bg-gray-50'
+          }`}
+        >
+          <Paperclip size={14} />
+          {message.fileName || 'تحميل الملف'}
+        </a>
+        {message.content ? <p className={`whitespace-pre-wrap text-sm ${captionClass}`}>{message.content}</p> : null}
+        <div className={`text-[10px] ${metaClass}`}>{message.createdAt ? new Date(message.createdAt).toLocaleString('ar-EG') : ''}</div>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <div className="whitespace-pre-wrap">{message.content || '—'}</div>
+      <div className={`mt-1 text-[10px] ${metaClass}`}>{message.createdAt ? new Date(message.createdAt).toLocaleString('ar-EG') : ''}</div>
+    </>
+  );
+};
 
 const DoctorConversation = () => {
   const { userId } = useParams();
   const queryClient = useQueryClient();
   const [content, setContent] = useState('');
+  const [attachment, setAttachment] = useState(null);
+  const [attachmentPreview, setAttachmentPreview] = useState(null);
+  const [isRecording, setIsRecording] = useState(false);
   const listRef = useRef(null);
+  const mediaRecorderRef = useRef(null);
+  const chunksRef = useRef([]);
 
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ['doctor-messages-conversation', userId],

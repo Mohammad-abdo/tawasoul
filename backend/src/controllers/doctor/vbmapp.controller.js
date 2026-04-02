@@ -558,28 +558,155 @@ export const getVbMappSummary = async (req, res, next) => {
     if (handleValidationErrors(req, res)) return;
 
     const { childId } = req.params;
+    const VB_MAPP_TOTAL_MAX_SCORE = 170;
+    const milestoneScoreToPoints = (scoreValue) => {
+      if (scoreValue === 'ACHIEVED') return 1;
+      if (scoreValue === 'PARTIAL') return 0.5;
+      return 0;
+    };
 
     await ensureDoctorCanAccessChild(prisma, req.doctor.id, childId);
 
     const sessions = await prisma.vbMappSession.findMany({
       where: { childId },
-      orderBy: [{ sessionNumber: 'asc' }],
+      orderBy: [{ assessmentDate: 'asc' }, { createdAt: 'asc' }],
       include: {
-        milestoneScores: true,
+        milestoneScores: {
+          include: {
+            milestone: {
+              include: {
+                skillArea: true
+              }
+            }
+          }
+        },
         taskStepScores: true,
         barrierScores: true,
-        transitionScores: true
+        transitionScores: true,
+        eesaScores: true
       }
     });
 
+    const scoreTimeline = sessions.map((session) => {
+      const computedTotal = session.milestoneScores.reduce(
+        (sum, milestoneScore) => sum + milestoneScoreToPoints(milestoneScore.score),
+        0
+      );
+
+      return {
+        sessionId: session.id,
+        sessionNumber: session.sessionNumber,
+        assessmentDate: session.assessmentDate,
+        totalScore: computedTotal
+      };
+    });
+
+    const latestTimelineItem = scoreTimeline[scoreTimeline.length - 1] || null;
+    const previousTimelineItem =
+      scoreTimeline.length > 1 ? scoreTimeline[scoreTimeline.length - 2] : null;
+
+    const latestSession =
+      latestTimelineItem !== null
+        ? sessions.find((session) => session.id === latestTimelineItem.sessionId) || null
+        : null;
+
+    const skillAreasMap = {};
+
+    sessions.forEach((session) => {
+      session.milestoneScores.forEach((milestoneScore) => {
+        const area = milestoneScore.milestone?.skillArea;
+        if (!area) return;
+
+        if (!skillAreasMap[area.code]) {
+          skillAreasMap[area.code] = {
+            code: area.code,
+            nameAr: area.nameAr,
+            nameEn: area.nameEn,
+            sessionScores: []
+          };
+        }
+
+        const currentArea = skillAreasMap[area.code];
+        let areaSession = currentArea.sessionScores.find(
+          (sessionScore) => sessionScore.sessionId === session.id
+        );
+
+        if (!areaSession) {
+          areaSession = {
+            sessionId: session.id,
+            sessionNumber: session.sessionNumber,
+            assessmentDate: session.assessmentDate,
+            score: 0
+          };
+          currentArea.sessionScores.push(areaSession);
+        }
+
+        areaSession.score += milestoneScoreToPoints(milestoneScore.score);
+      });
+    });
+
+    const skillAreaProgress = Object.values(skillAreasMap)
+      .map((area) => {
+        const orderedScores = area.sessionScores.sort(
+          (a, b) => new Date(a.assessmentDate) - new Date(b.assessmentDate)
+        );
+        const firstScore = orderedScores[0]?.score ?? 0;
+        const latestScore = orderedScores[orderedScores.length - 1]?.score ?? 0;
+
+        return {
+          code: area.code,
+          nameAr: area.nameAr,
+          nameEn: area.nameEn,
+          latestScore,
+          firstScore,
+          progressDelta: latestScore - firstScore,
+          sessionScores: orderedScores
+        };
+      })
+      .sort((a, b) => b.latestScore - a.latestScore);
+
     const summary = {
       totalSessions: sessions.length,
+      totalMaxScore: VB_MAPP_TOTAL_MAX_SCORE,
+      latestSession: latestSession
+        ? {
+            id: latestSession.id,
+            sessionNumber: latestSession.sessionNumber,
+            assessmentDate: latestSession.assessmentDate,
+            totalScore: latestTimelineItem?.totalScore ?? latestSession.totalScore ?? 0,
+            milestoneCount: latestSession.milestoneScores.length,
+            achievedMilestones: latestSession.milestoneScores.filter(
+              (score) => score.score === 'ACHIEVED'
+            ).length,
+            partialMilestones: latestSession.milestoneScores.filter(
+              (score) => score.score === 'PARTIAL'
+            ).length,
+            taskStepsAchieved: latestSession.taskStepScores.filter((score) => score.isAchieved)
+              .length,
+            barrierCount: latestSession.barrierScores.length,
+            transitionCount: latestSession.transitionScores.length,
+            eesaCount: latestSession.eesaScores.length
+          }
+        : null,
+      scoreChange:
+        latestTimelineItem && previousTimelineItem
+          ? latestTimelineItem.totalScore - previousTimelineItem.totalScore
+          : 0,
+      scoreTimeline,
+      skillAreaProgress,
       sessions: sessions.map((session) => ({
         id: session.id,
         sessionNumber: session.sessionNumber,
         assessmentDate: session.assessmentDate,
-        totalScore: session.totalScore,
+        totalScore:
+          scoreTimeline.find((timelineItem) => timelineItem.sessionId === session.id)?.totalScore ??
+          session.totalScore ??
+          0,
         milestoneCount: session.milestoneScores.length,
+        achievedMilestones: session.milestoneScores.filter((score) => score.score === 'ACHIEVED')
+          .length,
+        partialMilestones: session.milestoneScores.filter((score) => score.score === 'PARTIAL')
+          .length,
         taskStepsAchieved: session.taskStepScores.filter((s) => s.isAchieved).length,
         barriers: session.barrierScores,
         transitions: session.transitionScores
@@ -590,6 +717,143 @@ export const getVbMappSummary = async (req, res, next) => {
   } catch (error) {
     if (handleKnownError(res, error)) return;
     logger.error('Get VB-MAPP summary error:', error);
+    next(error);
+  }
+};
+
+export const getMonthlyReport = async (req, res, next) => {
+  try {
+    if (handleValidationErrors(req, res)) return;
+
+    const { childId, month, year } = req.query;
+    await ensureDoctorCanAccessChild(prisma, req.doctor.id, childId);
+
+    const m = parseInt(month, 10);
+    const y = parseInt(year, 10);
+
+    const periodStart = new Date(Date.UTC(y, m - 1, 1));
+    const periodEnd = new Date(Date.UTC(y, m, 1));
+
+    const child = await prisma.child.findUnique({
+      where: { id: childId },
+      select: { name: true, age: true }
+    });
+
+    const sessions = await prisma.vbMappSession.findMany({
+      where: {
+        childId,
+        assessmentDate: { gte: periodStart, lt: periodEnd }
+      },
+      orderBy: { assessmentDate: 'asc' },
+      include: {
+        milestoneScores: {
+          include: {
+            milestone: {
+              include: { skillArea: true }
+            }
+          }
+        }
+      }
+    });
+
+    const skillAreasMap = {};
+    const totalScorePerSession = [];
+    const achievedMilestones = [];
+
+    sessions.forEach(session => {
+      let sessionTotal = 0;
+      session.milestoneScores.forEach(scoreObj => {
+        if (!scoreObj.milestone || !scoreObj.milestone.skillArea) return;
+        
+        const area = scoreObj.milestone.skillArea;
+        const areaCode = area.code;
+        
+        let pts = 0;
+        if (scoreObj.score === 'ACHIEVED') {
+          pts = 1;
+          achievedMilestones.push({
+             areaCode,
+             areaName: area.nameAr,
+             milestoneNumber: scoreObj.milestone.milestoneNumber,
+             descriptionAr: scoreObj.milestone.descriptionAr,
+             date: session.assessmentDate
+          });
+        }
+        else if (scoreObj.score === 'PARTIAL') pts = 0.5;
+
+        sessionTotal += pts;
+
+        if (!skillAreasMap[areaCode]) {
+          skillAreasMap[areaCode] = {
+            code: areaCode,
+            nameAr: area.nameAr,
+            max: area.milestonesCount || 15,
+            sessionScores: []
+          };
+        }
+
+        let existingSessionData = skillAreasMap[areaCode].sessionScores.find(s => s.sessionId === session.id);
+        if (!existingSessionData) {
+          existingSessionData = {
+            sessionId: session.id,
+            sessionNumber: session.sessionNumber,
+            date: session.assessmentDate,
+            score: 0
+          };
+          skillAreasMap[areaCode].sessionScores.push(existingSessionData);
+        }
+        existingSessionData.score += pts;
+      });
+
+      totalScorePerSession.push({
+        sessionId: session.id,
+        sessionNumber: session.sessionNumber,
+        date: session.assessmentDate,
+        totalScore: sessionTotal
+      });
+    });
+
+    const skillAreaProgress = Object.values(skillAreasMap).map(area => {
+       const scores = area.sessionScores.sort((a, b) => new Date(a.date) - new Date(b.date));
+       let improvement = 0;
+       if (scores.length >= 2) {
+         improvement = scores[scores.length - 1].score - scores[0].score;
+       }
+       return {
+         ...area,
+         sessionScores: scores,
+         improvement
+       };
+    });
+
+    const activeIepGoals = await prisma.vbMappIEPGoal.findMany({
+      where: {
+        childId,
+        status: 'ACTIVE'
+      },
+      include: { milestone: { include: { skillArea: true } } }
+    });
+
+    res.json({
+      success: true,
+      data: {
+        child,
+        period: { month: m, year: y },
+        sessions: sessions.map(s => ({ id: s.id, sessionNumber: s.sessionNumber, date: s.assessmentDate })),
+        skillAreaProgress,
+        totalScorePerSession,
+        achievedMilestones,
+        activeIepGoals: activeIepGoals.map(g => ({
+          goalDescription: g.goalDescription,
+          targetDate: g.targetDate,
+          milestone: g.milestone ? `${g.milestone.skillArea?.nameAr || ''} ${g.milestone.milestoneNumber}` : null
+        }))
+      }
+    });
+
+  } catch (error) {
+    if (handleKnownError(res, error)) return;
+    logger.error('Get VB-MAPP monthly report error:', error);
     next(error);
   }
 };

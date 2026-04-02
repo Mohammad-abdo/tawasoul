@@ -73,3 +73,33 @@ export const updateProfile = async (req, res, next) => {
     next(error);
   }
 };
+
+export const uploadProfileAvatar = async (req, res, next) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Avatar image is required'
+        }
+      });
+    }
+
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    const avatarUrl = `${baseUrl}/uploads/general/${req.file.filename}`;
+    const data = await authService.updateProfile(req.doctor.id, { avatar: avatarUrl });
+
+    res.json({
+      success: true,
+      message: 'Profile avatar uploaded successfully',
+      data
+    });
+  } catch (error) {
+    if (handleServiceError(res, error)) {
+      return;
+    }
+    logger.error('Upload profile avatar error:', error);
+    next(error);
+  }
+};

@@ -1,5 +1,6 @@
 import express from 'express';
 import { authenticateDoctor } from '../../middleware/auth.middleware.js';
+import { uploadSingleImage } from '../../middleware/upload.middleware.js';
 import * as authController from '../../controllers/doctor/auth.controller.js';
 
 const router = express.Router();
@@ -8,5 +9,11 @@ router.post('/register', authController.register);
 router.post('/login', authController.login);
 router.get('/me', authenticateDoctor, authController.getMe);
 router.put('/profile', authenticateDoctor, authController.updateProfile);
+router.post(
+  '/profile/avatar',
+  authenticateDoctor,
+  uploadSingleImage('avatar'),
+  authController.uploadProfileAvatar
+);
 
 export default router;

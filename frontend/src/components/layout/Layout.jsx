@@ -159,6 +159,7 @@ const Layout = ({ children = null }) => {
     { path: '/doctor/children', icon: Users, label: 'ملفات الأطفال' },
     { path: '/bookings', icon: Calendar, label: 'مواعيدي' },
     { path: '/doctor/messages', icon: MessageSquare, label: 'الرسائل' },
+    { path: '/doctor/support', icon: Headphones, label: 'دعم الإدارة' },
     { path: '/availability', icon: Clock, label: 'مواعيد العمل' },
     { path: '/articles', icon: FileText, label: 'مقالاتي' },
     { path: '/payments', icon: DollarSign, label: 'محفظتي' },

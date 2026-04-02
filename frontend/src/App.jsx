@@ -41,7 +41,9 @@ import DoctorAssessment from './pages/doctors/DoctorAssessment';
 import Availability from './pages/doctors/Availability';
 import DoctorProfile from './pages/doctors/DoctorProfile';
 import DoctorMessages from './pages/doctors/DoctorMessages';
-import DoctorConversation from './pages/doctors/DoctorConversation';
+import DoctorConversationEnhanced from './pages/doctors/DoctorConversationEnhanced';
+import DoctorSupport from './pages/doctors/DoctorSupport';
+import DoctorSupportThread from './pages/doctors/DoctorSupportThread';
 import HomeSliders from './pages/home-sliders/HomeSliders';
 import HomeServices from './pages/home-services/HomeServices';
 import HomeArticles from './pages/home-articles/HomeArticles';
@@ -137,7 +139,9 @@ function App() {
         <Route path="/doctor/vbmapp/:testId/:childId" element={<VbMappAssessment />} />
         <Route path="/doctor/vbmapp/session/:sessionId" element={<VbMappSessionDetail />} />
         <Route path="/doctor/messages" element={<DoctorMessages />} />
-        <Route path="/doctor/messages/:userId" element={<DoctorConversation />} />
+        <Route path="/doctor/messages/:userId" element={<DoctorConversationEnhanced />} />
+        <Route path="/doctor/support" element={<DoctorSupport />} />
+        <Route path="/doctor/support/:ticketId" element={<DoctorSupportThread />} />
         <Route path="/articles" element={<DoctorArticles />} />
         <Route path="/availability" element={<Availability />} />
         <Route path="/doctor/profile" element={<DoctorProfile />} />

@@ -207,6 +207,15 @@ router.post(
 // ==========================================
 
 router.get(
+  '/vbmapp/reports/monthly',
+  authenticateDoctor,
+  query('childId').isString().trim().notEmpty(),
+  query('month').isInt({ min: 1, max: 12 }),
+  query('year').isInt({ min: 1900 }),
+  vbmappController.getMonthlyReport
+);
+
+router.get(
   '/vbmapp/skill-areas',
   authenticateDoctor,
   vbmappController.getVbMappSkillAreas
