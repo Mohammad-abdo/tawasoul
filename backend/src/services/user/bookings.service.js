@@ -1,6 +1,7 @@
 import * as bookingsRepo from '../../repositories/user/bookings.repository.js';
 import { ONE_HOUR_SESSION_DURATION, formatDateKey } from '../../utils/availability.js';
-import { getBookingDisplayPrice, omitDoctorSessionPrices } from '../../utils/booking-pricing.utils.js';
+// import { getBookingDisplayPrice, omitDoctorSessionPrices } from '../../utils/booking-pricing.utils.js';
+import { getBookingDisplayPrice, stripDoctorPricing } from '../../utils/booking-pricing.utils.js';
 import { getAvailableSlots } from './doctors.service.js';
 
 const parseScheduledDate = (scheduledAt, scheduledMonth, scheduledDay, scheduledTime) => {
@@ -31,12 +32,15 @@ const parseScheduledDate = (scheduledAt, scheduledMonth, scheduledDay, scheduled
   return { scheduledDate: d, month: parseInt(scheduledMonth), day: parseInt(scheduledDay), time: scheduledTime };
 };
 
-const getEffectiveSessionPrice = (sessionPrices) => {
-  if (!Array.isArray(sessionPrices) || sessionPrices.length === 0) {
+// const getEffectiveSessionPrice = (sessionPrices) => {
+const getDoctorRate = (doctor) => {
+  const normalizedRate = Number(doctor?.hourlyRate);
+  if (!Number.isFinite(normalizedRate) || normalizedRate <= 0) {
     return null;
   }
 
-  return sessionPrices.find((item) => item.duration === ONE_HOUR_SESSION_DURATION) || sessionPrices[0];
+  //   return sessionPrices.find((item) => item.duration === ONE_HOUR_SESSION_DURATION) || sessionPrices[0];
+  return normalizedRate;
 };
 
 export const getUserBookings = async (userId, { status, page = 1, limit = 20 }) => {
@@ -52,7 +56,7 @@ export const getUserBookings = async (userId, { status, page = 1, limit = 20 }) 
 
   const formattedBookings = bookings.map(b => ({
     id: b.id,
-    doctor: omitDoctorSessionPrices(b.doctor),
+    doctor: stripDoctorPricing(b.doctor),
     sessionType: b.sessionType,
     duration: b.duration,
     price: getBookingDisplayPrice(b),
@@ -96,7 +100,8 @@ export const createBooking = async (userId, body) => {
     err.code = 'VALIDATION_ERROR'; err.status = 400; throw err;
   }
 
-  const doctor = await bookingsRepo.findDoctorWithPrices(doctorId);
+  // const doctor = await bookingsRepo.findDoctorWithPrices(doctorId);
+  const doctor = await bookingsRepo.findDoctorForBooking(doctorId);
   if (!doctor) {
     const err = new Error('Doctor not found'); err.code = 'DOCTOR_NOT_FOUND'; err.status = 404; throw err;
   }
@@ -105,9 +110,10 @@ export const createBooking = async (userId, body) => {
     const err = new Error('Doctor is not available for bookings'); err.code = 'DOCTOR_UNAVAILABLE'; err.status = 403; throw err;
   }
 
-  const sessionPrice = getEffectiveSessionPrice(doctor.sessionPrices);
-  if (!sessionPrice) {
-    const err = new Error('Doctor does not have a 60-minute session price configured'); err.code = 'INVALID_DURATION'; err.status = 400; throw err;
+  // const sessionPrice = getEffectiveSessionPrice(doctor.sessionPrices);
+  const bookingPrice = getDoctorRate(doctor);
+  if (!bookingPrice) {
+    const err = new Error('Doctor does not have a valid hourly rate configured'); err.code = 'INVALID_DURATION'; err.status = 400; throw err;
   }
 
   const { scheduledDate, month, day, time } = parseScheduledDate(scheduledAt, scheduledMonth, scheduledDay, scheduledTime);
@@ -145,8 +151,8 @@ export const createBooking = async (userId, body) => {
   });
 
   return {
-    id: booking.id, doctor: booking.doctor, sessionType: booking.sessionType,
-    duration: booking.duration, price: sessionPrice.price, status: booking.status,
+    id: booking.id, doctor: stripDoctorPricing(booking.doctor), sessionType: booking.sessionType,
+    duration: booking.duration, price: bookingPrice, status: booking.status,
     scheduledAt: booking.scheduledAt, createdAt: booking.createdAt
   };
 };
@@ -163,7 +169,7 @@ export const getBookingById = async (userId, id) => {
   }
 
   return {
-    id: booking.id, doctor: omitDoctorSessionPrices(booking.doctor), sessionType: booking.sessionType,
+    id: booking.id, doctor: stripDoctorPricing(booking.doctor), sessionType: booking.sessionType,
     duration: booking.duration, price: getBookingDisplayPrice(booking), status: booking.status,
     scheduledAt: booking.scheduledAt, completedAt: booking.completedAt,
     cancelledAt: booking.cancelledAt, cancellationReason: booking.cancellationReason,
@@ -231,7 +237,7 @@ export const rescheduleBooking = async (userId, id, body) => {
   });
 
   return {
-    id: updated.id, doctor: updated.doctor, child: updated.child,
+    id: updated.id, doctor: stripDoctorPricing(updated.doctor), child: updated.child,
     sessionType: updated.sessionType, duration: updated.duration, price: getBookingDisplayPrice(updated),
     status: updated.status, scheduledAt: updated.scheduledAt,
     scheduledMonth: updated.scheduledMonth, scheduledDay: updated.scheduledDay, scheduledTime: updated.scheduledTime,

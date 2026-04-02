@@ -187,7 +187,8 @@ export const serializeAssessmentQuestion = ({ req, testType, question, includeCo
         domain: question.domain,
         skillNumber: question.skillNumber,
         description: question.description,
-        ageRange: question.ageRange
+        ageRange: question.ageRange,
+        archivedAt: question.archivedAt ?? null
       };
 
     default:
@@ -275,6 +276,7 @@ export const fetchAssessmentQuestions = async ({ prisma, test, req, includeCorre
 
     case TEST_TYPES.HELP: {
       const skills = await prisma.helpSkill.findMany({
+        where: { archivedAt: null },
         orderBy: [{ domain: 'asc' }, { skillNumber: 'asc' }, { id: 'asc' }]
       });
 
@@ -320,7 +322,7 @@ export const countAssessmentQuestions = async ({ prisma, test }) => {
     case TEST_TYPES.IMAGE_SEQUENCE_ORDER:
       return prisma.q_SequenceOrder.count({ where: { testId: test.id } });
     case TEST_TYPES.HELP:
-      return prisma.helpSkill.count();
+      return prisma.helpSkill.count({ where: { archivedAt: null } });
     case TEST_TYPES.VB_MAPP:
       return 0;
     default:
@@ -335,7 +337,9 @@ export const buildHelpAssessmentSubmission = async ({ prisma, answers }) => {
     throw createAssessmentValidationError('At least one HELP evaluation is required');
   }
 
-  const skills = await prisma.helpSkill.findMany();
+  const skills = await prisma.helpSkill.findMany({
+    where: { archivedAt: null }
+  });
   const skillMap = new Map(skills.map((skill) => [skill.id, skill]));
   const seenSkillIds = new Set();
   const evaluations = [];

@@ -11,6 +11,7 @@ const AssessmentAssetFileField = ({
   value,
   onChange,
   upload,
+  uploadData = undefined,
   disabled = false,
 }) => {
   const [busy, setBusy] = useState(false);
@@ -22,7 +23,7 @@ const AssessmentAssetFileField = ({
     if (!file) return;
     setBusy(true);
     try {
-      const response = await upload(file);
+      const response = await upload(file, uploadData);
       const nextPath = response.data?.data?.path;
       if (!nextPath) {
         throw new Error('Server did not return a file path.');

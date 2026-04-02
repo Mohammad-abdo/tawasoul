@@ -402,7 +402,13 @@ router.patch('/verbal-nonsense/questions/:questionId', authenticateAdmin, requir
 router.post('/image-sequence-order/:testId/questions', authenticateAdmin, requiredIdParam('testId', 'testId'), sequenceOrderValidators, assessmentsController.createImageSequenceOrderQuestion);
 router.patch('/image-sequence-order/questions/:questionId', authenticateAdmin, requiredIdParam('questionId', 'questionId'), patchSequenceOrderValidators, assessmentsController.updateImageSequenceOrderQuestion);
 
-router.get('/help/skills', authenticateAdmin, query('domain').optional().isIn(HELP_DOMAINS).withMessage(`domain must be one of: ${HELP_DOMAINS.join(', ')}`), assessmentsController.getHelpSkills);
+router.get(
+  '/help/skills',
+  authenticateAdmin,
+  query('domain').optional().isIn(HELP_DOMAINS).withMessage(`domain must be one of: ${HELP_DOMAINS.join(', ')}`),
+  query('includeArchived').optional().isBoolean().withMessage('includeArchived must be true or false').toBoolean(),
+  assessmentsController.getHelpSkills
+);
 router.post('/help/skills', authenticateAdmin, helpSkillValidators, assessmentsController.createHelpSkill);
 router.patch(
   '/help/skills/:skillId',
@@ -411,6 +417,9 @@ router.patch(
   patchHelpSkillValidators,
   assessmentsController.updateHelpSkill
 );
+router.put('/help/skills/:skillId/activate', authenticateAdmin, requiredIdParam('skillId', 'skillId'), assessmentsController.activateHelpSkill);
+router.put('/help/skills/:skillId/deactivate', authenticateAdmin, requiredIdParam('skillId', 'skillId'), assessmentsController.deactivateHelpSkill);
+router.patch('/help/skills/:skillId/restore', authenticateAdmin, requiredIdParam('skillId', 'skillId'), assessmentsController.restoreHelpSkill);
 router.delete('/help/skills/:skillId', authenticateAdmin, requiredIdParam('skillId', 'skillId'), assessmentsController.deleteHelpSkill);
 
 router.post('/generic/:testId/questions', authenticateAdmin, requiredIdParam('testId', 'testId'), genericQuestionValidators, assessmentsController.createGenericQuestion);

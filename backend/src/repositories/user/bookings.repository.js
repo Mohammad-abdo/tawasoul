@@ -11,11 +11,17 @@ export const findMany = ({ where, skip, take }) =>
         select: {
           id: true,
           name: true,
-          specialization: true,
+          specialties: {
+            select: {
+              specialty: true
+            },
+            take: 1
+          },
           avatar: true,
           rating: true,
           isVerified: true,
-          sessionPrices: { select: { duration: true, price: true } }
+          // sessionPrices: { select: { duration: true, price: true } }
+          hourlyRate: true
         }
       }
     }
@@ -31,12 +37,18 @@ export const findById = (id) =>
         select: {
           id: true,
           name: true,
-          specialization: true,
+          specialties: {
+            select: {
+              specialty: true
+            },
+            take: 1
+          },
           avatar: true,
           rating: true,
           isVerified: true,
           phone: true,
-          sessionPrices: { select: { duration: true, price: true } }
+          // sessionPrices: { select: { duration: true, price: true } }
+          hourlyRate: true
         }
       }
     }
@@ -44,15 +56,39 @@ export const findById = (id) =>
 
 export const findByIdSimple = (id) => prisma.booking.findUnique({ where: { id } });
 
-export const findDoctorWithPrices = (doctorId) =>
-  prisma.doctor.findUnique({ where: { id: doctorId }, include: { sessionPrices: true } });
+// export const findDoctorWithPrices = (doctorId) =>
+//   prisma.doctor.findUnique({ where: { id: doctorId }, include: { sessionPrices: true } });
+export const findDoctorForBooking = (doctorId) =>
+  prisma.doctor.findUnique({
+    where: { id: doctorId },
+    select: {
+      id: true,
+      isActive: true,
+      isApproved: true,
+      hourlyRate: true
+    }
+  });
 
 export const findChild = (childId) => prisma.child.findUnique({ where: { id: childId } });
 
 export const createBooking = (data) =>
   prisma.booking.create({
     data,
-    include: { doctor: { select: { id: true, name: true, specialization: true, avatar: true } } }
+    include: {
+      doctor: {
+        select: {
+          id: true,
+          name: true,
+          specialties: {
+            select: {
+              specialty: true
+            },
+            take: 1
+          },
+          avatar: true
+        }
+      }
+    }
   });
 
 export const cancelBooking = (id, reason) =>
@@ -66,7 +102,20 @@ export const rescheduleBooking = (id, data) =>
     where: { id },
     data,
     include: {
-      doctor: { select: { id: true, name: true, specialization: true, avatar: true, rating: true } },
+      doctor: {
+        select: {
+          id: true,
+          name: true,
+          specialties: {
+            select: {
+              specialty: true
+            },
+            take: 1
+          },
+          avatar: true,
+          rating: true
+        }
+      },
       child: { select: { id: true, name: true, profileImage: true } }
     }
   });

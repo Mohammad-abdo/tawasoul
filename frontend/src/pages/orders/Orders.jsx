@@ -44,10 +44,17 @@ const Orders = () => {
       )
     },
     {
-      header: 'المبلغ',
-      accessor: 'totalAmount',
+      header: 'المبلغ الفرعي',
+      accessor: 'subtotal',
       render: (row) => (
-        <span className="text-lg font-bold text-primary-600">{row.totalAmount} ج.م</span>
+        <span className="text-lg font-bold text-primary-600">{row.subtotal ?? 0} ج.م</span>
+      )
+    },
+    {
+      header: 'الإجمالي',
+      accessor: 'total',
+      render: (row) => (
+        <span className="text-lg font-bold text-primary-600">{row.total ?? 0} ج.م</span>
       )
     },
     {

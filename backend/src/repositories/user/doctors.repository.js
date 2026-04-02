@@ -8,7 +8,7 @@ export const findMany = ({ where, skip, take, orderBy }) =>
     where, skip, take, orderBy,
     include: {
       specialties: { select: { specialty: true } },
-      sessionPrices: { select: { duration: true, price: true } },
+      // sessionPrices: { select: { duration: true, price: true } },
       _count: { select: { bookings: true } }
     }
   });
@@ -23,7 +23,7 @@ export const findById = (id) =>
       experiences: { orderBy: { startDate: 'desc' }, select: { id: true, title: true, workplace: true, startDate: true, endDate: true } },
       certificates: { orderBy: { startDate: 'desc' }, select: { id: true, title: true, issuer: true, startDate: true, endDate: true, certificateLink: true } },
       education: { orderBy: { startDate: 'desc' }, select: { id: true, degree: true, institution: true, startDate: true, endDate: true } },
-      sessionPrices: { select: { duration: true, price: true } },
+      // sessionPrices: { select: { duration: true, price: true } },
       availability: { where: { isActive: true }, select: { dayOfWeek: true, timeSlots: true } },
       _count: { select: { bookings: true, articles: true } }
     }

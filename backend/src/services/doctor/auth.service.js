@@ -2,7 +2,6 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import * as authRepo from '../../repositories/doctor/auth.repository.js';
 import { createHttpError } from '../../utils/httpError.js';
-import { ONE_HOUR_SESSION_DURATION } from '../../utils/availability.js';
 
 const signToken = (doctorId) =>
   jwt.sign(
@@ -11,39 +10,40 @@ const signToken = (doctorId) =>
     { expiresIn: '30d' }
   );
 
-const getSingleSessionPriceInput = (sessionPrices) => {
-  if (!Array.isArray(sessionPrices) || sessionPrices.length === 0) {
-    return null;
-  }
-
-  const matchingEntry = sessionPrices.find((item) => parseInt(item?.duration, 10) === ONE_HOUR_SESSION_DURATION);
-  const selectedEntry = matchingEntry || sessionPrices[0];
-  const price = parseFloat(selectedEntry?.price);
-
-  if (Number.isNaN(price) || price <= 0) {
-    throw createHttpError(400, 'VALIDATION_ERROR', 'A valid 60-minute session price is required');
-  }
-
-  return price;
-};
-
-const normalizeSessionPrices = (sessionPrices) => {
-  if (!Array.isArray(sessionPrices) || sessionPrices.length === 0) {
-    return [];
-  }
-
-  const preferredEntry = sessionPrices.find((item) => item.duration === ONE_HOUR_SESSION_DURATION)
-    || sessionPrices[0];
-
-  return preferredEntry
-    ? [{ ...preferredEntry, duration: ONE_HOUR_SESSION_DURATION }]
-    : [];
-};
-
-const normalizeDoctorSessionPrices = (doctor) => ({
+// const getSingleSessionPriceInput = (sessionPrices) => {
+//   if (!Array.isArray(sessionPrices) || sessionPrices.length === 0) {
+//     return null;
+//   }
+//
+//   const matchingEntry = sessionPrices.find((item) => parseInt(item?.duration, 10) === ONE_HOUR_SESSION_DURATION);
+//   const selectedEntry = matchingEntry || sessionPrices[0];
+//   const price = parseFloat(selectedEntry?.price);
+//
+//   if (Number.isNaN(price) || price <= 0) {
+//     throw createHttpError(400, 'VALIDATION_ERROR', 'A valid 60-minute session price is required');
+//   }
+//
+//   return price;
+// };
+//
+// const normalizeSessionPrices = (sessionPrices) => {
+//   if (!Array.isArray(sessionPrices) || sessionPrices.length === 0) {
+//     return [];
+//   }
+//
+//   const preferredEntry = sessionPrices.find((item) => item.duration === ONE_HOUR_SESSION_DURATION)
+//     || sessionPrices[0];
+//
+//   return preferredEntry
+//     ? [{ ...preferredEntry, duration: ONE_HOUR_SESSION_DURATION }]
+//     : [];
+// };
+//
+// const normalizeDoctorSessionPrices = (doctor) => ({
+const normalizeDoctorProfile = (doctor) => ({
   ...doctor,
   specialization: doctor.specialties?.[0]?.specialty ?? null,
-  sessionPrices: normalizeSessionPrices(doctor.sessionPrices)
+  //   sessionPrices: normalizeSessionPrices(doctor.sessionPrices)
 });
 
 const normalizeHourlyRateInput = (hourlyRate) => {
@@ -98,7 +98,7 @@ export const register = async ({ name, email, phone, password, specialization, h
     isApproved: false
   });
 
-  const normalizedDoctor = normalizeDoctorSessionPrices(doctor);
+  const normalizedDoctor = normalizeDoctorProfile(doctor);
   const { password: _password, ...doctorWithoutPassword } = normalizedDoctor;
 
   return {
@@ -123,7 +123,7 @@ export const login = async ({ email, password }) => {
   }
 
   const token = signToken(doctor.id);
-  const normalizedDoctor = normalizeDoctorSessionPrices(doctor);
+  const normalizedDoctor = normalizeDoctorProfile(doctor);
   const { password: _password, ...doctorWithoutPassword } = normalizedDoctor;
 
   return {
@@ -138,7 +138,7 @@ export const getMe = async (doctorId) => {
     throw createHttpError(404, 'DOCTOR_NOT_FOUND', 'Doctor not found');
   }
 
-  const { password: _password, ...doctorWithoutPassword } = normalizeDoctorSessionPrices(doctor);
+  const { password: _password, ...doctorWithoutPassword } = normalizeDoctorProfile(doctor);
   return doctorWithoutPassword;
 };
 
@@ -150,7 +150,7 @@ export const updateProfile = async (doctorId, body) => {
     bio,
     avatar,
     specialties,
-    sessionPrices,
+    // sessionPrices,
     hourlyRate
   } = body;
 
@@ -174,10 +174,10 @@ export const updateProfile = async (doctorId, body) => {
     await authRepo.replaceSpecialties(doctorId, normalizedSpecialties);
   }
 
-  // The current Prisma schema no longer exposes Doctor.sessionPrices.
-  // Keep accepting the form payload for compatibility, but don't persist it here.
-  void sessionPrices;
+  // // The current Prisma schema no longer exposes Doctor.sessionPrices.
+  // // Keep accepting the form payload for compatibility, but don't persist it here.
+  // void sessionPrices;
 
   const refreshedDoctor = await authRepo.findById(doctorId);
-  return normalizeDoctorSessionPrices(refreshedDoctor || updatedDoctor);
+  return normalizeDoctorProfile(refreshedDoctor || updatedDoctor);
 };

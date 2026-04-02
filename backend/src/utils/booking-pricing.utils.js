@@ -16,23 +16,30 @@ const normalizePrice = (value) => {
   return Number.isFinite(numericValue) ? numericValue : null;
 };
 
-export const getBookingDisplayPrice = (booking, sessionPrices = booking?.doctor?.sessionPrices) => {
-  if (!Array.isArray(sessionPrices) || sessionPrices.length === 0) {
-    return null;
-  }
+// export const getBookingDisplayPrice = (booking, sessionPrices = booking?.doctor?.sessionPrices) => {
+//   if (!Array.isArray(sessionPrices) || sessionPrices.length === 0) {
+//     return null;
+//   }
+//
+//   const duration = Number(booking?.duration);
+//   const matchedSessionPrice =
+//     sessionPrices.find((entry) => Number(entry?.duration) === duration) || sessionPrices[0];
+//
+//   return normalizePrice(matchedSessionPrice?.price);
+// };
+export const getBookingDisplayPrice = (booking) =>
+  normalizePrice(booking?.price ?? booking?.doctor?.hourlyRate);
 
-  const duration = Number(booking?.duration);
-  const matchedSessionPrice =
-    sessionPrices.find((entry) => Number(entry?.duration) === duration) || sessionPrices[0];
-
-  return normalizePrice(matchedSessionPrice?.price);
-};
-
-export const omitDoctorSessionPrices = (doctor) => {
+// export const omitDoctorSessionPrices = (doctor) => {
+export const stripDoctorPricing = (doctor) => {
   if (!doctor) {
     return doctor;
   }
 
-  const { sessionPrices, ...doctorWithoutSessionPrices } = doctor;
-  return doctorWithoutSessionPrices;
+  //   const { sessionPrices, ...doctorWithoutSessionPrices } = doctor;
+  //   return doctorWithoutSessionPrices;
+  return {
+    ...doctor,
+    specialization: doctor.specialization ?? doctor.specialties?.[0]?.specialty ?? null
+  };
 };

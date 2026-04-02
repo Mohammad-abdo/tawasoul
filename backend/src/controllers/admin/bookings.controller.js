@@ -1,6 +1,7 @@
 import { prisma } from '../../config/database.js';
 import { logger } from '../../utils/logger.js';
-import { getBookingDisplayPrice, omitDoctorSessionPrices } from '../../utils/booking-pricing.utils.js';
+// import { getBookingDisplayPrice, omitDoctorSessionPrices } from '../../utils/booking-pricing.utils.js';
+import { getBookingDisplayPrice, stripDoctorPricing } from '../../utils/booking-pricing.utils.js';
 import { creditDoctorWalletForCompletedBooking } from '../../utils/wallet.utils.js';
 
 const bookingDoctorSelect = {
@@ -26,7 +27,7 @@ const serializeBookingDoctor = (doctor) => {
 
 const serializeBooking = (booking) => ({
   ...booking,
-  doctor: serializeBookingDoctor(omitDoctorSessionPrices(booking.doctor)),
+  doctor: serializeBookingDoctor(stripDoctorPricing(booking.doctor)),
   price: getBookingDisplayPrice(booking)
 });
 
@@ -77,12 +78,13 @@ export const getAllBookings = async (req, res, next) => {
           doctor: {
             select: {
               ...bookingDoctorSelect,
-              sessionPrices: {
-                select: {
-                  duration: true,
-                  price: true
-                }
-              }
+              // sessionPrices: {
+              //   select: {
+              //     duration: true,
+              //     price: true
+              //   }
+              // }
+              hourlyRate: true
             }
           },
           user: {
@@ -128,12 +130,12 @@ export const getBookingById = async (req, res, next) => {
         doctor: {
           include: {
             specialties: true,
-            sessionPrices: {
-              select: {
-                duration: true,
-                price: true
-              }
-            }
+            // sessionPrices: {
+            //   select: {
+            //     duration: true,
+            //     price: true
+            //   }
+            // }
           }
         },
         user: true

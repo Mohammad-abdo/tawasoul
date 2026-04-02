@@ -445,7 +445,7 @@ const DataTable = ({
                     )}
                   </button>
                 )}
-                {exportable && (
+                {/* {exportable && (
                   <div className="relative" ref={exportMenuRef}>
                     <button
                       onClick={() => setShowExportMenu(!showExportMenu)}
@@ -474,7 +474,7 @@ const DataTable = ({
                       </div>
                     )}
                   </div>
-                )}
+                )} */}
               </div>
             </div>
 

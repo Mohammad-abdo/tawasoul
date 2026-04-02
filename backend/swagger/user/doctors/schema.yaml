@@ -40,10 +40,6 @@ DoctorSummary:
       type: array
       items:
         type: string
-    sessionPrices:
-      type: array
-      items:
-        $ref: "#/components/schemas/SessionPrice"
     stats:
       type: object
       properties:

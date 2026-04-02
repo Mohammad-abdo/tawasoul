@@ -1,11 +1,12 @@
 import bcrypt from 'bcryptjs';
 import { prisma } from '../../config/database.js';
 import { logger } from '../../utils/logger.js';
-import { getBookingDisplayPrice, omitDoctorSessionPrices } from '../../utils/booking-pricing.utils.js';
+// import { getBookingDisplayPrice, omitDoctorSessionPrices } from '../../utils/booking-pricing.utils.js';
+import { getBookingDisplayPrice, stripDoctorPricing } from '../../utils/booking-pricing.utils.js';
 
 const serializeUserBooking = (booking) => ({
   ...booking,
-  doctor: omitDoctorSessionPrices(booking.doctor),
+  doctor: stripDoctorPricing(booking.doctor),
   price: getBookingDisplayPrice(booking)
 });
 
@@ -121,13 +122,19 @@ export const getUserById = async (req, res, next) => {
             doctor: {
               select: {
                 name: true,
-                specialization: true,
-                sessionPrices: {
+                specialties: {
                   select: {
-                    duration: true,
-                    price: true
-                  }
-                }
+                    specialty: true
+                  },
+                  take: 1
+                },
+                // sessionPrices: {
+                //   select: {
+                //     duration: true,
+                //     price: true
+                //   }
+                // }
+                hourlyRate: true
               }
             }
           }

@@ -18,12 +18,13 @@ export const findManyByDoctor = ({ where, skip, take }) =>
       doctor: {
         select: {
           id: true,
-          sessionPrices: {
-            select: {
-              duration: true,
-              price: true
-            }
-          }
+          // sessionPrices: {
+          //   select: {
+          //     duration: true,
+          //     price: true
+          //   }
+          // }
+          hourlyRate: true
         }
       }
     }
@@ -57,12 +58,13 @@ export const findDetailedById = (id) =>
           phone: true,
           email: true,
           rating: true,
-          sessionPrices: {
-            select: {
-              duration: true,
-              price: true
-            }
-          }
+          // sessionPrices: {
+          //   select: {
+          //     duration: true,
+          //     price: true
+          //   }
+          // }
+          hourlyRate: true
         }
       }
     }

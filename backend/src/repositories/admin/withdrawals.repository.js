@@ -29,7 +29,12 @@ export const findById = (id) =>
           name: true,
           email: true,
           phone: true,
-          specialization: true
+          specialties: {
+            select: {
+              specialty: true
+            },
+            take: 1
+          }
         }
       }
     }

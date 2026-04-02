@@ -1,6 +1,7 @@
 import * as bookingsRepo from '../../repositories/doctor/bookings.repository.js';
 import { createHttpError } from '../../utils/httpError.js';
-import { getBookingDisplayPrice, omitDoctorSessionPrices } from '../../utils/booking-pricing.utils.js';
+// import { getBookingDisplayPrice, omitDoctorSessionPrices } from '../../utils/booking-pricing.utils.js';
+import { getBookingDisplayPrice, stripDoctorPricing } from '../../utils/booking-pricing.utils.js';
 import { prisma } from '../../config/database.js';
 import { creditDoctorWalletForCompletedBooking } from '../../utils/wallet.utils.js';
 
@@ -74,7 +75,7 @@ export const getBookingById = async (doctorId, id) => {
   return {
     id: booking.id,
     user: booking.user,
-    doctor: formatDoctorDetails(omitDoctorSessionPrices(booking.doctor)),
+    doctor: formatDoctorDetails(stripDoctorPricing(booking.doctor)),
     childId: booking.childId,
     sessionType: booking.sessionType ?? booking.category,
     category: booking.category ?? booking.sessionType ?? null,

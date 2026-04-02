@@ -110,7 +110,7 @@ export const getDoctorById = async (req, res, next) => {
         experiences: true,
         certificates: true,
         education: true,
-        sessionPrices: true,
+        // sessionPrices: true,
         availability: true,
         bookings: {
           orderBy: { scheduledAt: 'desc' },
@@ -186,7 +186,8 @@ export const getDoctorById = async (req, res, next) => {
     doctor.bookings.forEach(booking => {
       const bookingWithPrice = {
         ...booking,
-        price: getBookingDisplayPrice(booking, doctor.sessionPrices)
+        // price: getBookingDisplayPrice(booking, doctor.sessionPrices)
+        price: getBookingDisplayPrice({ ...booking, doctor })
       };
 
       if (booking.scheduledAt) {
@@ -204,7 +205,8 @@ export const getDoctorById = async (req, res, next) => {
         ...doctor,
         bookings: doctor.bookings.map((booking) => ({
           ...booking,
-          price: getBookingDisplayPrice(booking, doctor.sessionPrices)
+          // price: getBookingDisplayPrice(booking, doctor.sessionPrices)
+          price: getBookingDisplayPrice({ ...booking, doctor })
         })),
         specialization: doctor.specialties?.[0]?.specialty || null,
         walletBalance,

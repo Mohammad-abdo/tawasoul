@@ -1,6 +1,5 @@
 import * as doctorsRepo from '../../repositories/user/doctors.repository.js';
 import {
-  ONE_HOUR_SESSION_DURATION,
   buildSlotDate,
   formatDateKey,
   parseTimeSlots
@@ -17,6 +16,8 @@ const childStatusToSpecialty = {
   COCHLEAR_IMPLANTS: 'سمع',
   OTHER: null
 };
+
+const getDoctorSpecialization = (doctor) => doctor.specialization ?? doctor.specialties?.[0]?.specialty ?? null;
 
 export const getAllDoctors = async (userId, query) => {
   const { page = 1, limit = 20, specialty, rating, price, sort = 'rating', search, recommendedForChildId } = query;
@@ -43,7 +44,7 @@ export const getAllDoctors = async (userId, query) => {
   if (search) {
     where.OR = [
       { name: { contains: search } },
-      { specialization: { contains: search } },
+      { specialties: { some: { specialty: { contains: search } } } },
       { bio: { contains: search } }
     ];
   }
@@ -56,28 +57,35 @@ export const getAllDoctors = async (userId, query) => {
     doctorsRepo.count(where)
   ]);
 
-  const getSingleSessionPrices = (doctor) => {
-    const orderedPrices = [...doctor.sessionPrices].sort((a, b) => (a.duration || 0) - (b.duration || 0));
-    const hourlyPrice = orderedPrices.find((item) => item.duration === ONE_HOUR_SESSION_DURATION) || orderedPrices[0];
-
-    return hourlyPrice ? [{ ...hourlyPrice, duration: ONE_HOUR_SESSION_DURATION }] : [];
+  //   const getSingleSessionPrices = (doctor) => {
+  //     const orderedPrices = [...doctor.sessionPrices].sort((a, b) => (a.duration || 0) - (b.duration || 0));
+  //     const hourlyPrice = orderedPrices.find((item) => item.duration === ONE_HOUR_SESSION_DURATION) || orderedPrices[0];
+  //
+  //     return hourlyPrice ? [{ ...hourlyPrice, duration: ONE_HOUR_SESSION_DURATION }] : [];
+  //   };
+  const getDoctorPrice = (doctor) => {
+    const normalizedPrice = Number(doctor?.hourlyRate);
+    return Number.isFinite(normalizedPrice) ? normalizedPrice : null;
   };
 
   let filteredDoctors = doctors;
   if (price) {
     const maxPrice = parseFloat(price);
     filteredDoctors = doctors.filter((doctor) => {
-      const sessionPrice = getSingleSessionPrices(doctor)[0];
-      return sessionPrice ? sessionPrice.price <= maxPrice : false;
+      //       const sessionPrice = getSingleSessionPrices(doctor)[0];
+      const doctorPrice = getDoctorPrice(doctor);
+      return doctorPrice !== null ? doctorPrice <= maxPrice : false;
     });
   }
 
   const formattedDoctors = filteredDoctors.map(d => ({
-    id: d.id, name: d.name, specialization: d.specialization, bio: d.bio,
+    id: d.id, name: d.name, specialization: getDoctorSpecialization(d), bio: d.bio,
     avatar: d.avatar, rating: d.rating, totalSessions: d.totalSessions,
     isVerified: d.isVerified, isFeatured: d.isFeatured,
     specialties: d.specialties.map(s => s.specialty),
-    sessionPrices: getSingleSessionPrices(d),
+    //     sessionPrices: getSingleSessionPrices(d),
+    price: getDoctorPrice(d),
+    hourlyRate: getDoctorPrice(d),
     stats: { bookings: d._count.bookings },
     createdAt: d.createdAt
   }));
@@ -100,18 +108,21 @@ export const getDoctorById = async (id) => {
     timeSlots: parseTimeSlots(a.timeSlots)
   }));
 
-  const orderedPrices = [...doctor.sessionPrices].sort((a, b) => (a.duration || 0) - (b.duration || 0));
-  const preferredPrice = orderedPrices.find((item) => item.duration === ONE_HOUR_SESSION_DURATION) || orderedPrices[0];
-  const sessionPrices = preferredPrice ? [{ ...preferredPrice, duration: ONE_HOUR_SESSION_DURATION }] : [];
+  // const orderedPrices = [...doctor.sessionPrices].sort((a, b) => (a.duration || 0) - (b.duration || 0));
+  // const preferredPrice = orderedPrices.find((item) => item.duration === ONE_HOUR_SESSION_DURATION) || orderedPrices[0];
+  // const sessionPrices = preferredPrice ? [{ ...preferredPrice, duration: ONE_HOUR_SESSION_DURATION }] : [];
+  const doctorPrice = Number(doctor?.hourlyRate);
 
   return {
     id: doctor.id, name: doctor.name, email: doctor.email, phone: doctor.phone,
-    specialization: doctor.specialization, bio: doctor.bio, avatar: doctor.avatar,
+    specialization: getDoctorSpecialization(doctor), bio: doctor.bio, avatar: doctor.avatar,
     rating: doctor.rating, totalSessions: doctor.totalSessions, totalRatings: doctor.totalRatings,
     isVerified: doctor.isVerified, isFeatured: doctor.isFeatured,
     specialties: doctor.specialties.map(s => s.specialty),
     experiences: doctor.experiences, certificates: doctor.certificates, education: doctor.education,
-    sessionPrices,
+    //     sessionPrices,
+    price: Number.isFinite(doctorPrice) ? doctorPrice : null,
+    hourlyRate: Number.isFinite(doctorPrice) ? doctorPrice : null,
     availability: formattedAvailability,
     stats: { bookings: doctor._count.bookings, articles: doctor._count.articles },
     createdAt: doctor.createdAt

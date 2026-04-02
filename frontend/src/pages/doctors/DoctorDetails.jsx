@@ -256,7 +256,7 @@ const DoctorDetails = () => {
       )}
 
       {/* Session Prices */}
-      {doctor.sessionPrices && doctor.sessionPrices.length > 0 && (
+      {/* {doctor.sessionPrices && doctor.sessionPrices.length > 0 && (
         <div className="glass-card rounded-2xl p-6 border border-gray-200">
           <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
             <DollarSign size={24} className="text-primary-600" />
@@ -274,7 +274,7 @@ const DoctorDetails = () => {
             ))}
           </div>
         </div>
-      )}
+      )} */}
 
       {/* Experience & Education Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

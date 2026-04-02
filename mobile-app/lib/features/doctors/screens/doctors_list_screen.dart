@@ -101,18 +101,18 @@ class _DoctorsListScreenState extends State<DoctorsListScreen> {
   }
 
   String _priceFromDoctor(Map<String, dynamic> doc) {
-    final sp = doc['sessionPrices'];
-    if (sp is List && sp.isNotEmpty) {
-      num? minP;
-      for (final e in sp) {
-        if (e is Map && e['price'] != null) {
-          final p = (e['price'] is num) ? e['price'] as num : num.tryParse(e['price'].toString());
-          if (p != null && (minP == null || p < minP)) minP = p;
-        }
-      }
-      if (minP != null) return minP.toString();
-    }
-    return doc['price']?.toString() ?? '';
+    // final sp = doc['sessionPrices'];
+    // if (sp is List && sp.isNotEmpty) {
+    //   num? minP;
+    //   for (final e in sp) {
+    //     if (e is Map && e['price'] != null) {
+    //       final p = (e['price'] is num) ? e['price'] as num : num.tryParse(e['price'].toString());
+    //       if (p != null && (minP == null || p < minP)) minP = p;
+    //     }
+    //   }
+    //   if (minP != null) return minP.toString();
+    // }
+    return doc['price']?.toString() ?? doc['hourlyRate']?.toString() ?? '';
   }
 
   static String? _initialsFromName(String? name) {

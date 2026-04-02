@@ -74,6 +74,9 @@ export const doctors = {
   verify: (id) =>
     apiClient.put(`/admin/doctors/${id}/verify`),
 
+  unverify: (id) =>
+    apiClient.put(`/admin/doctors/${id}/unverify`),
+
   activate: (id) =>
     apiClient.put(`/admin/doctors/${id}/activate`),
 
@@ -537,9 +540,14 @@ export const assessments = {
   deleteTest: (id) =>
     apiClient.delete(`/admin/assessments/tests/${id}`),
 
-  uploadAssessmentImage: (file) => {
+  uploadAssessmentImage: (file, fields = {}) => {
     const formData = new FormData();
     formData.append('file', file);
+    Object.entries(fields).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        formData.append(key, String(value));
+      }
+    });
     return apiClient.post('/admin/assessments/upload/image', formData);
   },
 
@@ -596,6 +604,9 @@ export const assessments = {
   getHelpSkills: (params) => apiClient.get('/admin/assessments/help/skills', { params }),
   createHelpSkill: (data) => apiClient.post('/admin/assessments/help/skills', data),
   updateHelpSkill: (skillId, data) => apiClient.patch(`/admin/assessments/help/skills/${skillId}`, data),
+  activateHelpSkill: (skillId) => apiClient.put(`/admin/assessments/help/skills/${skillId}/activate`),
+  deactivateHelpSkill: (skillId) => apiClient.put(`/admin/assessments/help/skills/${skillId}/deactivate`),
+  restoreHelpSkill: (skillId) => apiClient.patch(`/admin/assessments/help/skills/${skillId}/restore`),
   deleteHelpSkill: (skillId) => apiClient.delete(`/admin/assessments/help/skills/${skillId}`),
 };
 

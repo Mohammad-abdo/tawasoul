@@ -911,6 +911,7 @@ model HelpSkill {
   skillNumber String
   description String
   ageRange    String
+  archivedAt  DateTime?
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
   evaluations HelpEvaluation[]

@@ -1,6 +1,17 @@
 import { prisma } from '../../config/database.js';
 import { logger } from '../../utils/logger.js';
 
+const formatBookingDoctor = (doctor) => {
+  if (!doctor) {
+    return doctor;
+  }
+
+  return {
+    ...doctor,
+    specialization: doctor.specialization ?? doctor.specialties?.[0]?.specialty ?? null
+  };
+};
+
 /**
  * Get All Children (Admin)
  */
@@ -86,7 +97,12 @@ export const getChildById = async (req, res, next) => {
                 id: true,
                 name: true,
                 avatar: true,
-                specialization: true
+                specialties: {
+                  select: {
+                    specialty: true
+                  },
+                  take: 1
+                }
               }
             }
           }
@@ -106,7 +122,15 @@ export const getChildById = async (req, res, next) => {
 
     res.json({
       success: true,
-      data: { child }
+      data: {
+        child: {
+          ...child,
+          bookings: child.bookings.map((booking) => ({
+            ...booking,
+            doctor: formatBookingDoctor(booking.doctor)
+          }))
+        }
+      }
     });
   } catch (error) {
     logger.error('Get child error:', error);

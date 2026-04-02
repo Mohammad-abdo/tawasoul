@@ -94,6 +94,30 @@ const TestQuestionModal = ({
     onSubmit(buildPayloadFromFormState(testType, formState));
   };
 
+  const buildAnalogyQuestionImageUploadData = (questionNumber) => ({
+    assessmentName: 'analogy',
+    questionNumber,
+    type: 'question',
+  });
+
+  const buildAnalogyChoiceImageUploadData = (questionNumber, choiceNumber) => ({
+    assessmentName: 'analogy',
+    questionNumber,
+    choiceNumber,
+    type: 'choice',
+  });
+
+  const buildVisualMemoryImageUploadData = (sceneNumber) => ({
+    assessmentName: 'visual-memory',
+    sceneNumber,
+  });
+
+  const buildSequenceOrderImageUploadData = (sequenceNumber, routineNumber) => ({
+    assessmentName: 'sequence-order',
+    sequenceNumber,
+    routineNumber,
+  });
+
   const renderCarsForm = () => (
     <div className="space-y-5">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -199,6 +223,7 @@ const TestQuestionModal = ({
         value={formState.questionImageUrl}
         onChange={(path) => setTopLevelField('questionImageUrl', path)}
         upload={assessments.uploadAssessmentImage}
+        uploadData={buildAnalogyQuestionImageUploadData(formState.order)}
         disabled={isSubmitting}
       />
 
@@ -245,6 +270,7 @@ const TestQuestionModal = ({
                 value={choice.imagePath}
                 onChange={(path) => setArrayField('choices', index, (entry) => ({ ...entry, imagePath: path }))}
                 upload={assessments.uploadAssessmentImage}
+                uploadData={buildAnalogyChoiceImageUploadData(formState.order, index + 1)}
                 disabled={isSubmitting}
               />
             </div>
@@ -444,6 +470,7 @@ const TestQuestionModal = ({
         value={formState.imageUrl}
         onChange={(path) => setTopLevelField('imageUrl', path)}
         upload={assessments.uploadAssessmentImage}
+        uploadData={buildVisualMemoryImageUploadData(formState.order)}
         disabled={isSubmitting}
       />
 
@@ -622,6 +649,7 @@ const TestQuestionModal = ({
                 value={image.assetPath}
                 onChange={(path) => setArrayField('images', index, (entry) => ({ ...entry, assetPath: path }))}
                 upload={assessments.uploadAssessmentImage}
+                uploadData={buildSequenceOrderImageUploadData(formState.order, image.position)}
                 disabled={isSubmitting}
               />
             </div>
