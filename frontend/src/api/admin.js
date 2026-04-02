@@ -599,6 +599,9 @@ export const assessments = {
   getHelpSkills: (params) => apiClient.get('/admin/assessments/help/skills', { params }),
   createHelpSkill: (data) => apiClient.post('/admin/assessments/help/skills', data),
   updateHelpSkill: (skillId, data) => apiClient.patch(`/admin/assessments/help/skills/${skillId}`, data),
+  activateHelpSkill: (skillId) => apiClient.put(`/admin/assessments/help/skills/${skillId}/activate`),
+  deactivateHelpSkill: (skillId) => apiClient.put(`/admin/assessments/help/skills/${skillId}/deactivate`),
+  restoreHelpSkill: (skillId) => apiClient.patch(`/admin/assessments/help/skills/${skillId}/restore`),
   deleteHelpSkill: (skillId) => apiClient.delete(`/admin/assessments/help/skills/${skillId}`),
 };
 

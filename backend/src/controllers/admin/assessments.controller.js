@@ -1073,10 +1073,13 @@ export const getHelpSkills = async (req, res, next) => {
     if (req.query.domain) {
       where.domain = req.query.domain;
     }
+    if (!req.query.includeArchived) {
+      where.archivedAt = null;
+    }
 
     const skills = await prisma.helpSkill.findMany({
       where,
-      orderBy: [{ domain: 'asc' }, { skillNumber: 'asc' }, { id: 'asc' }]
+      orderBy: [{ archivedAt: 'asc' }, { domain: 'asc' }, { skillNumber: 'asc' }, { id: 'asc' }]
     });
 
     res.json({
@@ -1155,14 +1158,7 @@ export const deleteHelpSkill = async (req, res, next) => {
     if (handleValidationErrors(req, res)) return;
 
     const skill = await prisma.helpSkill.findUnique({
-      where: { id: req.params.skillId },
-      include: {
-        _count: {
-          select: {
-            evaluations: true
-          }
-        }
-      }
+      where: { id: req.params.skillId }
     });
 
     if (!skill) {
@@ -1175,26 +1171,128 @@ export const deleteHelpSkill = async (req, res, next) => {
       });
     }
 
-    if (skill._count.evaluations > 0) {
-      return res.status(409).json({
-        success: false,
-        error: {
-          code: 'HELP_SKILL_IN_USE',
-          message: 'Cannot delete a help skill that has linked evaluations'
-        }
-      });
-    }
-
-    await prisma.helpSkill.delete({
-      where: { id: req.params.skillId }
+    const archived = await prisma.helpSkill.update({
+      where: { id: req.params.skillId },
+      data: {
+        archivedAt: new Date()
+      }
     });
 
     res.json({
       success: true,
-      message: 'Help skill deleted successfully'
+      message: 'Help skill archived successfully',
+      data: archived
     });
   } catch (error) {
-    logger.error('Delete HELP skill error:', error);
+    logger.error('Archive HELP skill error:', error);
+    next(error);
+  }
+};
+
+export const activateHelpSkill = async (req, res, next) => {
+  try {
+    if (handleValidationErrors(req, res)) return;
+
+    const skill = await prisma.helpSkill.findUnique({
+      where: { id: req.params.skillId }
+    });
+
+    if (!skill) {
+      return res.status(404).json({
+        success: false,
+        error: {
+          code: 'HELP_SKILL_NOT_FOUND',
+          message: 'Help skill not found'
+        }
+      });
+    }
+
+    const activated = await prisma.helpSkill.update({
+      where: { id: req.params.skillId },
+      data: {
+        archivedAt: null
+      }
+    });
+
+    res.json({
+      success: true,
+      message: 'Help skill activated successfully',
+      data: activated
+    });
+  } catch (error) {
+    logger.error('Activate HELP skill error:', error);
+    next(error);
+  }
+};
+
+export const deactivateHelpSkill = async (req, res, next) => {
+  try {
+    if (handleValidationErrors(req, res)) return;
+
+    const skill = await prisma.helpSkill.findUnique({
+      where: { id: req.params.skillId }
+    });
+
+    if (!skill) {
+      return res.status(404).json({
+        success: false,
+        error: {
+          code: 'HELP_SKILL_NOT_FOUND',
+          message: 'Help skill not found'
+        }
+      });
+    }
+
+    const deactivated = await prisma.helpSkill.update({
+      where: { id: req.params.skillId },
+      data: {
+        archivedAt: new Date()
+      }
+    });
+
+    res.json({
+      success: true,
+      message: 'Help skill deactivated successfully',
+      data: deactivated
+    });
+  } catch (error) {
+    logger.error('Deactivate HELP skill error:', error);
+    next(error);
+  }
+};
+
+export const restoreHelpSkill = async (req, res, next) => {
+  try {
+    if (handleValidationErrors(req, res)) return;
+
+    const skill = await prisma.helpSkill.findUnique({
+      where: { id: req.params.skillId }
+    });
+
+    if (!skill) {
+      return res.status(404).json({
+        success: false,
+        error: {
+          code: 'HELP_SKILL_NOT_FOUND',
+          message: 'Help skill not found'
+        }
+      });
+    }
+
+    const restored = await prisma.helpSkill.update({
+      where: { id: req.params.skillId },
+      data: {
+        archivedAt: null
+      }
+    });
+
+    res.json({
+      success: true,
+      message: 'Help skill restored successfully',
+      data: restored
+    });
+  } catch (error) {
+    logger.error('Restore HELP skill error:', error);
     next(error);
   }
 };

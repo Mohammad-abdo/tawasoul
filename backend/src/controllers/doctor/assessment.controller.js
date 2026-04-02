@@ -865,7 +865,9 @@ export const submitHelpAssessment = async (req, res, next) => {
       testId,
       expectedType: 'HELP'
     });
-    const expectedSkillCount = await prisma.helpSkill.count();
+    const expectedSkillCount = await prisma.helpSkill.count({
+      where: { archivedAt: null }
+    });
 
     ensureExactAnswerCount({
       answers,
@@ -1028,8 +1030,11 @@ export const evaluateHelpAssessment = async (req, res, next) => {
       });
     }
 
-    const skill = await prisma.helpSkill.findUnique({
-      where: { id: req.body.skillId }
+    const skill = await prisma.helpSkill.findFirst({
+      where: {
+        id: req.body.skillId,
+        archivedAt: null
+      }
     });
 
     if (!skill) {
