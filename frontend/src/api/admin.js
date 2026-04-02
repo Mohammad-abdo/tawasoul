@@ -540,9 +540,14 @@ export const assessments = {
   deleteTest: (id) =>
     apiClient.delete(`/admin/assessments/tests/${id}`),
 
-  uploadAssessmentImage: (file) => {
+  uploadAssessmentImage: (file, fields = {}) => {
     const formData = new FormData();
     formData.append('file', file);
+    Object.entries(fields).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        formData.append(key, String(value));
+      }
+    });
     return apiClient.post('/admin/assessments/upload/image', formData);
   },
 

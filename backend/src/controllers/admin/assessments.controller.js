@@ -1,4 +1,7 @@
 import { validationResult } from 'express-validator';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { prisma } from '../../config/database.js';
 import { logger } from '../../utils/logger.js';
 import {
@@ -10,6 +13,22 @@ import {
 } from '../../utils/assessment-api.utils.js';
 import { createHttpError } from '../../utils/httpError.js';
 import { parseMaybeJson, serializeAssessmentQuestion } from '../../utils/assessment.utils.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const uploadsDir = path.join(__dirname, '../../../uploads');
+
+const removeUploadedTempFile = (filePath) => {
+  if (!filePath || !fs.existsSync(filePath)) {
+    return;
+  }
+
+  try {
+    fs.unlinkSync(filePath);
+  } catch (error) {
+    logger.warn('Failed to remove temporary uploaded file:', error);
+  }
+};
 
 const handleValidationErrors = (req, res) => {
   const errors = validationResult(req);
@@ -1308,7 +1327,155 @@ export const uploadAssessmentImage = async (req, res, next) => {
         }
       });
     }
-    const relativePath = `assessments/images/${req.file.filename}`;
+
+    const {
+      assessmentName,
+      questionNumber,
+      choiceNumber,
+      type,
+      sequenceNumber,
+      routineNumber,
+      sceneNumber
+    } = req.body;
+
+    const normalizedAssessmentName = String(assessmentName || '').trim().toLowerCase();
+
+    if (!normalizedAssessmentName) {
+      removeUploadedTempFile(req.file.path);
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'assessmentName is required'
+        }
+      });
+    }
+
+    let relativePath = '';
+
+    if (normalizedAssessmentName === 'analogy') {
+      if (!type) {
+        removeUploadedTempFile(req.file.path);
+        return res.status(400).json({
+          success: false,
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'type is required for analogy uploads'
+          }
+        });
+      }
+
+      if (!questionNumber) {
+        removeUploadedTempFile(req.file.path);
+        return res.status(400).json({
+          success: false,
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'questionNumber is required for analogy uploads'
+          }
+        });
+      }
+
+      if (type !== 'question' && type !== 'choice') {
+        removeUploadedTempFile(req.file.path);
+        return res.status(400).json({
+          success: false,
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'type must be either "question" or "choice" for analogy uploads'
+          }
+        });
+      }
+
+      if (type === 'choice' && !choiceNumber) {
+        removeUploadedTempFile(req.file.path);
+        return res.status(400).json({
+          success: false,
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'choiceNumber is required when uploading an analogy choice image'
+          }
+        });
+      }
+
+      const fileName = type === 'choice'
+        ? `a${questionNumber}.${choiceNumber}.png`
+        : `q${questionNumber}.png`;
+
+      relativePath = path.posix.join(
+        'assets',
+        'assessments',
+        'analogy',
+        `q${questionNumber}`,
+        fileName
+      );
+    } else if (normalizedAssessmentName === 'sequence-order') {
+      if (!sequenceNumber) {
+        removeUploadedTempFile(req.file.path);
+        return res.status(400).json({
+          success: false,
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'sequenceNumber is required for sequence-order uploads'
+          }
+        });
+      }
+
+      if (!routineNumber) {
+        removeUploadedTempFile(req.file.path);
+        return res.status(400).json({
+          success: false,
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'routineNumber is required for sequence-order uploads'
+          }
+        });
+      }
+
+      relativePath = path.posix.join(
+        'assets',
+        'assessments',
+        'sequence-order',
+        `sequence-${sequenceNumber}`,
+        `routine-${routineNumber}.png`
+      );
+    } else if (normalizedAssessmentName === 'visual-memory') {
+      if (!sceneNumber) {
+        removeUploadedTempFile(req.file.path);
+        return res.status(400).json({
+          success: false,
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'sceneNumber is required for visual-memory uploads'
+          }
+        });
+      }
+
+      relativePath = path.posix.join(
+        'assets',
+        'assessments',
+        'visual-memory',
+        `scene-${sceneNumber}.png`
+      );
+    } else {
+      removeUploadedTempFile(req.file.path);
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'assessmentName must be one of: analogy, sequence-order, visual-memory'
+        }
+      });
+    }
+
+    const finalFilePath = path.join(uploadsDir, ...relativePath.split('/'));
+
+    fs.mkdirSync(path.dirname(finalFilePath), { recursive: true });
+    if (fs.existsSync(finalFilePath)) {
+      fs.unlinkSync(finalFilePath);
+    }
+    fs.renameSync(req.file.path, finalFilePath);
+
     res.json({
       success: true,
       data: { path: relativePath }
