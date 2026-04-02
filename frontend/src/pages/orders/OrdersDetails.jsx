@@ -52,8 +52,13 @@ const OrdersDetails = () => {
           </div>
 
           <div>
-            <label className="text-sm text-gray-500 mb-2 block">المبلغ الإجمالي</label>
-            <p className="text-2xl font-bold text-primary-600">{order.totalAmount} ج.م</p>
+            <label className="text-sm text-gray-500 mb-2 block">المبلغ الفرعي</label>
+            <p className="text-2xl font-bold text-primary-600">{order.subtotal ?? 0} ج.م</p>
+          </div>
+
+          <div>
+            <label className="text-sm text-gray-500 mb-2 block">الإجمالي</label>
+            <p className="text-2xl font-bold text-primary-600">{order.total ?? 0} ج.م</p>
           </div>
         </div>
 
