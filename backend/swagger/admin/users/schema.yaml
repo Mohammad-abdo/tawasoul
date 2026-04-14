@@ -1,5 +1,0 @@
-# Admin user management schemas extend UserProfile from user/auth/schema.yaml
-# No additional schemas needed — reuses UserProfile, UserRegisterRequest, UpdateUserSettingsRequest
-AdminUserNote:
-  type: object
-  description: Placeholder — reuses UserProfile from user/auth module

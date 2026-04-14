@@ -1,4 +1,0 @@
-# Reuses Payment and Withdrawal schemas from doctor/payments and doctor/withdrawals modules
-AdminPaymentsNote:
-  type: object
-  description: Placeholder — reuses Payment from doctor/payments and Withdrawal from doctor/withdrawals modules

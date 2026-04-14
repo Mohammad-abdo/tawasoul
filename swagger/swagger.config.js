@@ -83,14 +83,15 @@ export const swaggerSpec = buildSpec();
 // ---------------------------------------------------------------------------
 
 export function configureSwagger(app) {
-  // Swagger UI
-  app.use(
+  // Serve the Swagger UI shell and let it fetch the live JSON spec.
+  app.use('/api/docs', swaggerUi.serve);
+  app.get(
     '/api/docs',
-    swaggerUi.serve,
-    swaggerUi.setup(swaggerSpec, {
+    swaggerUi.setup(null, {
       customCss: '.swagger-ui .topbar { display: none }',
       customSiteTitle: 'Tawasoul API Docs',
       swaggerOptions: {
+        url: '/api/docs.json',
         persistAuthorization: true,
         displayRequestDuration: true,
         filter: true,
@@ -105,6 +106,6 @@ export function configureSwagger(app) {
   // Raw JSON spec (useful for Postman import)
   app.get('/api/docs.json', (_req, res) => {
     res.setHeader('Content-Type', 'application/json');
-    res.send(swaggerSpec);
+    res.send(buildSpec());
   });
 }
