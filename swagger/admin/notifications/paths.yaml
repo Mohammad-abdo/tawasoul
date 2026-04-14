@@ -1,0 +1,114 @@
+/admin/notifications:
+  get:
+    tags: [Admin Notifications]
+    summary: Get admin notifications
+    operationId: adminGetNotifications
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: page
+        in: query
+        schema:
+          type: integer
+          default: 1
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          default: 20
+      - name: unreadOnly
+        in: query
+        schema:
+          type: boolean
+      - name: type
+        in: query
+        schema:
+          type: string
+    responses:
+      "200":
+        description: Notifications list
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  type: object
+                  properties:
+                    notifications:
+                      type: array
+                      items:
+                        $ref: "#/components/schemas/AdminNotification"
+                    unreadCount:
+                      type: integer
+                    pagination:
+                      $ref: "#/components/schemas/PaginationMeta"
+  delete:
+    tags: [Admin Notifications]
+    summary: Clear all notifications
+    operationId: adminClearAllNotifications
+    security:
+      - BearerAuth: []
+    responses:
+      "200":
+        description: All notifications cleared
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MessageResponse"
+
+/admin/notifications/mark-all-read:
+  post:
+    tags: [Admin Notifications]
+    summary: Mark all notifications as read
+    operationId: adminMarkAllNotificationsRead
+    security:
+      - BearerAuth: []
+    responses:
+      "200":
+        description: All notifications marked as read
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MessageResponse"
+
+/admin/notifications/{id}/read:
+  patch:
+    tags: [Admin Notifications]
+    summary: Mark a notification as read
+    operationId: adminMarkNotificationRead
+    security:
+      - BearerAuth: []
+    parameters:
+      - $ref: "#/components/schemas/IdPathParam"
+    responses:
+      "200":
+        description: Notification marked as read
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  $ref: "#/components/schemas/AdminNotification"
+
+/admin/notifications/{id}:
+  delete:
+    tags: [Admin Notifications]
+    summary: Delete a notification
+    operationId: adminDeleteNotification
+    security:
+      - BearerAuth: []
+    parameters:
+      - $ref: "#/components/schemas/IdPathParam"
+    responses:
+      "200":
+        description: Notification deleted
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MessageResponse"

@@ -1,0 +1,49 @@
+AdminBooking:
+  type: object
+  properties:
+    id:
+      type: string
+      format: uuid
+    user:
+      type: object
+      properties:
+        id:
+          type: string
+        username:
+          type: string
+          nullable: true
+        fullName:
+          type: string
+          nullable: true
+    doctor:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+    childId:
+      type: string
+      nullable: true
+    sessionType:
+      type: string
+      enum: [VIDEO, AUDIO, TEXT]
+    category:
+      type: string
+      enum: [EVALUATION, INDIVIDUAL, GROUP, COURSE]
+    duration:
+      type: integer
+    price:
+      type: number
+    status:
+      type: string
+      enum: [PENDING, CONFIRMED, COMPLETED, CANCELLED]
+    scheduledAt:
+      type: string
+      format: date-time
+    rating:
+      type: integer
+      nullable: true
+    createdAt:
+      type: string
+      format: date-time

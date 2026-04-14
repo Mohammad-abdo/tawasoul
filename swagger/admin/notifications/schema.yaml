@@ -1,0 +1,25 @@
+AdminNotification:
+  type: object
+  properties:
+    id:
+      type: string
+    type:
+      type: string
+    isRead:
+      type: boolean
+    userId:
+      type: string
+      nullable: true
+    user:
+      type: object
+      nullable: true
+      properties:
+        id:
+          type: string
+        username:
+          type: string
+        email:
+          type: string
+    createdAt:
+      type: string
+      format: date-time

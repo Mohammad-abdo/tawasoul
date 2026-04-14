@@ -1,0 +1,67 @@
+SupportTicket:
+  type: object
+  properties:
+    id:
+      type: string
+      format: uuid
+    userId:
+      type: string
+      nullable: true
+    doctorId:
+      type: string
+      nullable: true
+    subject:
+      type: string
+    message:
+      type: string
+    status:
+      type: string
+      enum: [OPEN, IN_PROGRESS, RESOLVED, CLOSED]
+    priority:
+      type: string
+      enum: [LOW, MEDIUM, HIGH, URGENT]
+    assignedTo:
+      type: string
+      nullable: true
+    createdAt:
+      type: string
+      format: date-time
+    updatedAt:
+      type: string
+      format: date-time
+
+SupportReply:
+  type: object
+  properties:
+    id:
+      type: string
+      format: uuid
+    ticketId:
+      type: string
+      format: uuid
+    adminId:
+      type: string
+      nullable: true
+    userId:
+      type: string
+      nullable: true
+    doctorId:
+      type: string
+      nullable: true
+    message:
+      type: string
+    isInternal:
+      type: boolean
+    createdAt:
+      type: string
+      format: date-time
+
+SupportTicketDetail:
+  allOf:
+    - $ref: "#/components/schemas/SupportTicket"
+    - type: object
+      properties:
+        replies:
+          type: array
+          items:
+            $ref: "#/components/schemas/SupportReply"

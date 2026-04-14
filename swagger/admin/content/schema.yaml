@@ -1,0 +1,286 @@
+HomeSlider:
+  type: object
+  properties:
+    id:
+      type: string
+    titleAr:
+      type: string
+      nullable: true
+    titleEn:
+      type: string
+      nullable: true
+    descriptionAr:
+      type: string
+      nullable: true
+    descriptionEn:
+      type: string
+      nullable: true
+    image:
+      type: string
+    buttonText:
+      type: string
+      nullable: true
+    buttonLink:
+      type: string
+      nullable: true
+    order:
+      type: integer
+    isActive:
+      type: boolean
+    createdAt:
+      type: string
+      format: date-time
+
+HomeSliderRequest:
+  type: object
+  properties:
+    titleAr:
+      type: string
+    titleEn:
+      type: string
+    descriptionAr:
+      type: string
+    descriptionEn:
+      type: string
+    image:
+      type: string
+      format: binary
+      description: Image file upload (or provide `image` URL as string)
+    buttonText:
+      type: string
+    buttonLink:
+      type: string
+    order:
+      type: integer
+    isActive:
+      type: boolean
+
+HomeService:
+  type: object
+  properties:
+    id:
+      type: string
+    titleAr:
+      type: string
+    titleEn:
+      type: string
+      nullable: true
+    descriptionAr:
+      type: string
+      nullable: true
+    descriptionEn:
+      type: string
+      nullable: true
+    image:
+      type: string
+    link:
+      type: string
+      nullable: true
+    order:
+      type: integer
+    isActive:
+      type: boolean
+    createdAt:
+      type: string
+      format: date-time
+
+HomeServiceRequest:
+  type: object
+  properties:
+    titleAr:
+      type: string
+    titleEn:
+      type: string
+    descriptionAr:
+      type: string
+    descriptionEn:
+      type: string
+    image:
+      type: string
+      format: binary
+    link:
+      type: string
+    order:
+      type: integer
+    isActive:
+      type: boolean
+
+HomeArticle:
+  type: object
+  properties:
+    id:
+      type: string
+    titleAr:
+      type: string
+    titleEn:
+      type: string
+      nullable: true
+    descriptionAr:
+      type: string
+      nullable: true
+    descriptionEn:
+      type: string
+      nullable: true
+    image:
+      type: string
+    link:
+      type: string
+      nullable: true
+    order:
+      type: integer
+    isActive:
+      type: boolean
+    createdAt:
+      type: string
+      format: date-time
+
+HomeArticleRequest:
+  type: object
+  properties:
+    titleAr:
+      type: string
+    titleEn:
+      type: string
+    descriptionAr:
+      type: string
+    descriptionEn:
+      type: string
+    image:
+      type: string
+      format: binary
+    link:
+      type: string
+    order:
+      type: integer
+    isActive:
+      type: boolean
+
+AdminFAQ:
+  type: object
+  properties:
+    id:
+      type: string
+    questionAr:
+      type: string
+    questionEn:
+      type: string
+      nullable: true
+    answerAr:
+      type: string
+    answerEn:
+      type: string
+      nullable: true
+    category:
+      type: string
+      nullable: true
+    order:
+      type: integer
+    isActive:
+      type: boolean
+    createdAt:
+      type: string
+      format: date-time
+
+FAQRequest:
+  type: object
+  properties:
+    questionAr:
+      type: string
+    questionEn:
+      type: string
+    answerAr:
+      type: string
+    answerEn:
+      type: string
+    category:
+      type: string
+    order:
+      type: integer
+    isActive:
+      type: boolean
+
+AdminOnboarding:
+  type: object
+  properties:
+    id:
+      type: string
+    title:
+      type: string
+    titleAr:
+      type: string
+    description:
+      type: string
+      nullable: true
+    descriptionAr:
+      type: string
+      nullable: true
+    image:
+      type: string
+      nullable: true
+    order:
+      type: integer
+    isActive:
+      type: boolean
+    platform:
+      type: string
+      enum: [ALL, MOBILE, WEB]
+    createdAt:
+      type: string
+      format: date-time
+
+OnboardingRequest:
+  type: object
+  properties:
+    title:
+      type: string
+    titleAr:
+      type: string
+    description:
+      type: string
+    descriptionAr:
+      type: string
+    image:
+      type: string
+      format: binary
+    order:
+      type: integer
+    isActive:
+      type: boolean
+    platform:
+      type: string
+      enum: [ALL, MOBILE, WEB]
+      default: ALL
+
+AdminPageContent:
+  type: object
+  properties:
+    id:
+      type: string
+    pageType:
+      type: string
+      enum: [PRIVACY_POLICY, TERMS_AND_CONDITIONS, ABOUT_APP, COMMUNITY_GUIDELINES, HELP_CENTER]
+    titleAr:
+      type: string
+    titleEn:
+      type: string
+    contentAr:
+      type: string
+    contentEn:
+      type: string
+    lastUpdatedBy:
+      type: string
+      nullable: true
+    lastUpdatedByAdmin:
+      type: object
+      nullable: true
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+    createdAt:
+      type: string
+      format: date-time
+    updatedAt:
+      type: string
+      format: date-time

@@ -1,0 +1,62 @@
+/doctor/availability:
+  get:
+    tags: [Doctor Availability]
+    summary: Get doctor's weekly availability
+    operationId: getDoctorAvailability
+    security:
+      - BearerAuth: []
+    responses:
+      "200":
+        description: Doctor's availability for all configured days
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/AvailabilityEntry"
+  put:
+    tags: [Doctor Availability]
+    summary: Replace doctor's full weekly availability
+    operationId: updateDoctorAvailability
+    security:
+      - BearerAuth: []
+    description: Deletes all existing availability and recreates from the provided array.
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [availability]
+            properties:
+              availability:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AvailabilityEntryRequest"
+    responses:
+      "200":
+        description: Availability updated
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/AvailabilityEntry"
+                message:
+                  type: string
+      "400":
+        description: Invalid dayOfWeek or timeSlots format
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"

@@ -1,0 +1,206 @@
+/admin/admins:
+  get:
+    tags: [Admin Management]
+    summary: Get all admins
+    operationId: adminGetAllAdmins
+    security:
+      - BearerAuth: []
+    description: SUPER_ADMIN only.
+    parameters:
+      - name: page
+        in: query
+        schema:
+          type: integer
+          default: 1
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          default: 20
+      - name: role
+        in: query
+        schema:
+          type: string
+          enum: [SUPER_ADMIN, ADMIN, MODERATOR, SUPPORT]
+      - name: isActive
+        in: query
+        schema:
+          type: boolean
+      - name: sort
+        in: query
+        schema:
+          type: string
+          default: createdAt
+    responses:
+      "200":
+        description: List of admins
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  type: object
+                  properties:
+                    admins:
+                      type: array
+                      items:
+                        $ref: "#/components/schemas/AdminUser"
+                    pagination:
+                      $ref: "#/components/schemas/PaginationMeta"
+  post:
+    tags: [Admin Management]
+    summary: Create a new admin
+    operationId: adminCreateAdmin
+    security:
+      - BearerAuth: []
+    description: SUPER_ADMIN only.
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/CreateAdminRequest"
+    responses:
+      "201":
+        description: Admin created
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  $ref: "#/components/schemas/AdminUser"
+
+/admin/admins/{id}:
+  get:
+    tags: [Admin Management]
+    summary: Get admin by ID
+    operationId: adminGetAdminById
+    security:
+      - BearerAuth: []
+    parameters:
+      - $ref: "#/components/schemas/IdPathParam"
+    responses:
+      "200":
+        description: Admin details
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  $ref: "#/components/schemas/AdminUser"
+  put:
+    tags: [Admin Management]
+    summary: Update admin
+    operationId: adminUpdateAdmin
+    security:
+      - BearerAuth: []
+    description: SUPER_ADMIN only. Cannot update self.
+    parameters:
+      - $ref: "#/components/schemas/IdPathParam"
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/UpdateAdminRequest"
+    responses:
+      "200":
+        description: Admin updated
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  $ref: "#/components/schemas/AdminUser"
+  delete:
+    tags: [Admin Management]
+    summary: Delete admin
+    operationId: adminDeleteAdmin
+    security:
+      - BearerAuth: []
+    description: SUPER_ADMIN only. Cannot delete self.
+    parameters:
+      - $ref: "#/components/schemas/IdPathParam"
+    responses:
+      "200":
+        description: Admin deleted
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MessageResponse"
+
+/admin/admins/{id}/activate:
+  patch:
+    tags: [Admin Management]
+    summary: Activate an admin
+    operationId: adminActivateAdmin
+    security:
+      - BearerAuth: []
+    parameters:
+      - $ref: "#/components/schemas/IdPathParam"
+    responses:
+      "200":
+        description: Admin activated
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MessageResponse"
+
+/admin/admins/{id}/deactivate:
+  patch:
+    tags: [Admin Management]
+    summary: Deactivate an admin
+    operationId: adminDeactivateAdmin
+    security:
+      - BearerAuth: []
+    description: Cannot deactivate self.
+    parameters:
+      - $ref: "#/components/schemas/IdPathParam"
+    responses:
+      "200":
+        description: Admin deactivated
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MessageResponse"
+
+/admin/admins/{id}/change-password:
+  patch:
+    tags: [Admin Management]
+    summary: Change admin password
+    operationId: adminChangeAdminPassword
+    security:
+      - BearerAuth: []
+    description: SUPER_ADMIN only.
+    parameters:
+      - $ref: "#/components/schemas/IdPathParam"
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [newPassword]
+            properties:
+              newPassword:
+                type: string
+                format: password
+    responses:
+      "200":
+        description: Password changed
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MessageResponse"

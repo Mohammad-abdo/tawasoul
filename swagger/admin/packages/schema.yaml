@@ -1,0 +1,24 @@
+CreatePackageRequest:
+  type: object
+  required: [name, nameAr, price, sessionsCount, durationMonths]
+  properties:
+    name:
+      type: string
+    nameAr:
+      type: string
+    description:
+      type: string
+      nullable: true
+    descriptionAr:
+      type: string
+      nullable: true
+    price:
+      type: number
+      format: float
+    sessionsCount:
+      type: integer
+    durationMonths:
+      type: integer
+    isFeatured:
+      type: boolean
+      default: false

@@ -1,0 +1,530 @@
+/user/assessments/tests:
+  get:
+    tags: [User Assessments]
+    summary: List assessment tests
+    description: Returns user-facing assessment test summaries without question payloads.
+    parameters:
+      - name: testType
+        in: query
+        required: false
+        schema:
+          type: string
+          enum: [CARS, ANALOGY, VISUAL_MEMORY, AUDITORY_MEMORY, VERBAL_NONSENSE, HELP, IMAGE_SEQUENCE_ORDER]
+    responses:
+      "200":
+        description: Test summaries
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/TestSummary"
+      "400":
+        description: Bad request
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "500":
+        description: Internal server error
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+
+/user/assessments/tests/{testId}:
+  get:
+    tags: [User Assessments]
+    summary: Get test detail
+    description: Loads a full assessment test record and its question payloads before the child starts the test.
+    parameters:
+      - name: testId
+        in: path
+        required: true
+        schema:
+          type: string
+    responses:
+      "200":
+        description: Full test payload
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  $ref: "#/components/schemas/TestDetail"
+      "400":
+        description: Bad request
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "404":
+        description: Test not found
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "500":
+        description: Internal server error
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+
+/user/assessments/cars/submit:
+  post:
+    tags: [User Assessments]
+    summary: Submit CARS answers
+    description: Validates child ownership, validates the test type, scores each answer from the selected choice score, then writes the AssessmentResult and Q_CARS_Answer rows in one transaction.
+    security:
+      - BearerAuth: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/SubmitCARSBody"
+    responses:
+      "201":
+        description: CARS assessment submitted
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  type: object
+                  properties:
+                    assessmentResultId:
+                      type: string
+                    totalScore:
+                      type: integer
+                    maxScore:
+                      type: integer
+                    answers:
+                      type: array
+                      items:
+                        type: object
+      "400":
+        description: Bad request
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "401":
+        description: Missing or invalid token
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "403":
+        description: Child does not belong to the authenticated user
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "404":
+        description: Test not found
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "422":
+        description: Wrong test type, invalid question, or chosenIndex out of bounds
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "500":
+        description: Internal server error
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+
+/user/assessments/analogy/submit:
+  post:
+    tags: [User Assessments]
+    summary: Submit analogy answers
+    description: Validates child ownership and test type, scores each answer against question.correctIndex, then creates the AssessmentResult and Q_Analogy_Answer rows in one transaction.
+    security:
+      - BearerAuth: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/SubmitAnalogyBody"
+    responses:
+      "201":
+        description: Analogy assessment submitted
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  type: object
+      "400":
+        description: Bad request
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "401":
+        description: Missing or invalid token
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "403":
+        description: Child does not belong to the authenticated user
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "404":
+        description: Test not found
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "422":
+        description: Wrong test type, invalid question, or chosenIndex out of bounds
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "500":
+        description: Internal server error
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+
+/user/assessments/visual-memory/submit:
+  post:
+    tags: [User Assessments]
+    summary: Submit visual memory answers
+    description: Validates child ownership and test type, then scores each YES_NO or MCQ visual memory answer inside one transaction.
+    security:
+      - BearerAuth: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/SubmitVisualMemoryBody"
+    responses:
+      "201":
+        description: Visual memory assessment submitted
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  type: object
+      "400":
+        description: Bad request
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "401":
+        description: Missing or invalid token
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "403":
+        description: Child does not belong to the authenticated user
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "404":
+        description: Test not found
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "422":
+        description: Wrong test type, invalid question, or answer shape violation
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "500":
+        description: Internal server error
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+
+/user/assessments/auditory-memory/submit:
+  post:
+    tags: [User Assessments]
+    summary: Submit auditory memory answers
+    description: Validates child ownership and test type, computes per-item recall scores, then writes the AssessmentResult and Q_AuditoryMemory_Answer rows in one transaction.
+    security:
+      - BearerAuth: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/SubmitAuditoryMemoryBody"
+    responses:
+      "201":
+        description: Auditory memory assessment submitted
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  type: object
+      "400":
+        description: Bad request
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "401":
+        description: Missing or invalid token
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "403":
+        description: Child does not belong to the authenticated user
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "404":
+        description: Test not found
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "422":
+        description: Wrong test type or invalid question linkage
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "500":
+        description: Internal server error
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+
+/user/assessments/image-sequence-order/submit:
+  post:
+    tags: [User Assessments]
+    summary: Submit image sequence order answers
+    description: Validates child ownership and test type, scores each submitted image position against the correct sequence order, then writes the AssessmentResult and Q_SequenceOrder_Answer rows in one transaction.
+    security:
+      - BearerAuth: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/SubmitImageSequenceOrderBody"
+    responses:
+      "201":
+        description: Image sequence order assessment submitted
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  type: object
+      "400":
+        description: Bad request
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "401":
+        description: Missing or invalid token
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "403":
+        description: Child does not belong to the authenticated user
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "404":
+        description: Test not found
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "422":
+        description: Wrong test type, invalid question linkage, or invalid submitted order
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "500":
+        description: Internal server error
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+
+/user/assessments/results/{childId}:
+  get:
+    tags: [User Assessments]
+    summary: List child assessment results
+    description: Returns the authenticated user's child assessment results grouped by testType without answer breakdowns.
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: childId
+        in: path
+        required: true
+        schema:
+          type: string
+    responses:
+      "200":
+        description: Grouped assessment result summaries
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      testType:
+                        type: string
+                      results:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/AssessmentResultSummary"
+      "400":
+        description: Bad request
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "401":
+        description: Missing or invalid token
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "403":
+        description: Child does not belong to the authenticated user
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "500":
+        description: Internal server error
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+
+/user/assessments/results/{childId}/{sessionId}:
+  get:
+    tags: [User Assessments]
+    summary: Get one assessment session detail
+    description: Returns the full session breakdown for the authenticated user's child, including the answer relation that matches the session's testType.
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: childId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: sessionId
+        in: path
+        required: true
+        schema:
+          type: string
+    responses:
+      "200":
+        description: Assessment session detail
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  type: object
+                  properties:
+                    childId:
+                      type: string
+                    sessionId:
+                      type: string
+                    results:
+                      type: array
+                      items:
+                        $ref: "#/components/schemas/AssessmentResultDetail"
+      "400":
+        description: Bad request
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "401":
+        description: Missing or invalid token
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "403":
+        description: Child does not belong to the authenticated user
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "404":
+        description: Session not found
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "500":
+        description: Internal server error
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"

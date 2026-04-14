@@ -1,0 +1,419 @@
+/admin/mahara/categories:
+  get:
+    tags: [Admin Mahara]
+    summary: Get all activity categories
+    operationId: adminGetActivityCategories
+    security:
+      - BearerAuth: []
+    responses:
+      "200":
+        description: Activity categories
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/ActivityCategory"
+  post:
+    tags: [Admin Mahara]
+    summary: Create activity category
+    operationId: adminCreateActivityCategory
+    security:
+      - BearerAuth: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [name]
+            properties:
+              name:
+                type: string
+    responses:
+      "201":
+        description: Category created
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  $ref: "#/components/schemas/ActivityCategory"
+
+/admin/mahara/categories/{id}:
+  get:
+    tags: [Admin Mahara]
+    summary: Get activity category by ID
+    operationId: adminGetActivityCategoryById
+    security:
+      - BearerAuth: []
+    parameters:
+      - $ref: "#/components/schemas/IdPathParam"
+    responses:
+      "200":
+        description: Activity category
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  $ref: "#/components/schemas/ActivityCategory"
+  put:
+    tags: [Admin Mahara]
+    summary: Update activity category
+    operationId: adminUpdateActivityCategory
+    security:
+      - BearerAuth: []
+    parameters:
+      - $ref: "#/components/schemas/IdPathParam"
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              name:
+                type: string
+    responses:
+      "200":
+        description: Category updated
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  $ref: "#/components/schemas/ActivityCategory"
+  delete:
+    tags: [Admin Mahara]
+    summary: Delete activity category
+    operationId: adminDeleteActivityCategory
+    security:
+      - BearerAuth: []
+    parameters:
+      - $ref: "#/components/schemas/IdPathParam"
+    responses:
+      "200":
+        description: Category deleted
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MessageResponse"
+
+/admin/mahara/skill-groups:
+  get:
+    tags: [Admin Mahara]
+    summary: Get all skill groups
+    operationId: adminGetSkillGroups
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: categoryId
+        in: query
+        schema:
+          type: string
+    responses:
+      "200":
+        description: Skill groups
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/SkillGroup"
+  post:
+    tags: [Admin Mahara]
+    summary: Create skill group
+    operationId: adminCreateSkillGroup
+    security:
+      - BearerAuth: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [categoryId, name]
+            properties:
+              categoryId:
+                type: string
+              name:
+                type: string
+    responses:
+      "201":
+        description: Skill group created
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  $ref: "#/components/schemas/SkillGroup"
+
+/admin/mahara/skill-groups/{id}:
+  get:
+    tags: [Admin Mahara]
+    summary: Get skill group by ID
+    operationId: adminGetSkillGroupById
+    security:
+      - BearerAuth: []
+    parameters:
+      - $ref: "#/components/schemas/IdPathParam"
+    responses:
+      "200":
+        description: Skill group
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  $ref: "#/components/schemas/SkillGroup"
+  put:
+    tags: [Admin Mahara]
+    summary: Update skill group
+    operationId: adminUpdateSkillGroup
+    security:
+      - BearerAuth: []
+    parameters:
+      - $ref: "#/components/schemas/IdPathParam"
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              name:
+                type: string
+    responses:
+      "200":
+        description: Skill group updated
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  $ref: "#/components/schemas/SkillGroup"
+  delete:
+    tags: [Admin Mahara]
+    summary: Delete skill group
+    operationId: adminDeleteSkillGroup
+    security:
+      - BearerAuth: []
+    parameters:
+      - $ref: "#/components/schemas/IdPathParam"
+    responses:
+      "200":
+        description: Skill group deleted
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MessageResponse"
+
+/admin/mahara/activities:
+  get:
+    tags: [Admin Mahara]
+    summary: Get all activities
+    operationId: adminGetActivities
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: skillGroupId
+        in: query
+        schema:
+          type: string
+    responses:
+      "200":
+        description: Activities list
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/AdminActivity"
+  post:
+    tags: [Admin Mahara]
+    summary: Create activity
+    operationId: adminCreateActivity
+    security:
+      - BearerAuth: []
+    description: |
+      Accepts multipart/form-data. Media files are required depending on the activity type:
+      - **LISTEN_WATCH / AUDIO_ASSOCIATION**: exactly 1 image + 1 audio
+      - **LISTEN_CHOOSE_IMAGE**: 2–3 images + 1 audio + `correctImageIndex`
+      - **MATCHING**: N images + N audios + `matchPairs` (JSON array of {imageIndex, audioIndex})
+      - **SEQUENCE_ORDER**: ≥2 images + 1 audio + `sequence` (JSON array of image indices in correct order)
+      All types require at least 1 audio.
+    requestBody:
+      required: true
+      content:
+        multipart/form-data:
+          schema:
+            type: object
+            required: [skillGroupId, type, levelOrder]
+            properties:
+              skillGroupId:
+                type: string
+              type:
+                type: string
+                enum: [LISTEN_WATCH, AUDIO_ASSOCIATION, LISTEN_CHOOSE_IMAGE, MATCHING, SEQUENCE_ORDER]
+              levelOrder:
+                type: integer
+              correctImageIndex:
+                type: integer
+                description: Index of the correct image (LISTEN_CHOOSE_IMAGE only)
+              matchPairs:
+                type: string
+                description: JSON array of {imageIndex, audioIndex} pairs (MATCHING only)
+              sequence:
+                type: string
+                description: JSON array of image indices in correct order (SEQUENCE_ORDER only)
+              images:
+                type: array
+                items:
+                  type: string
+                  format: binary
+              audios:
+                type: array
+                items:
+                  type: string
+                  format: binary
+    responses:
+      "201":
+        description: Activity created
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  $ref: "#/components/schemas/AdminActivity"
+
+/admin/mahara/activities/{id}:
+  get:
+    tags: [Admin Mahara]
+    summary: Get activity by ID
+    operationId: adminGetActivityById
+    security:
+      - BearerAuth: []
+    parameters:
+      - $ref: "#/components/schemas/IdPathParam"
+    responses:
+      "200":
+        description: Activity details
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  $ref: "#/components/schemas/AdminActivity"
+  put:
+    tags: [Admin Mahara]
+    summary: Update activity
+    operationId: adminUpdateActivity
+    security:
+      - BearerAuth: []
+    description: |
+      Accepts multipart/form-data. Activity type cannot be changed.
+      Use `removeImageIds` and `removeAudioIds` to delete existing media.
+      New files appended to existing ones.
+    parameters:
+      - $ref: "#/components/schemas/IdPathParam"
+    requestBody:
+      required: true
+      content:
+        multipart/form-data:
+          schema:
+            type: object
+            properties:
+              levelOrder:
+                type: integer
+              correctImageId:
+                type: string
+                description: ID of the correct image (LISTEN_CHOOSE_IMAGE only)
+              matchPairs:
+                type: string
+                description: JSON array of {imageId, audioId} pairs (MATCHING only)
+              sequence:
+                type: string
+                description: JSON array of imageIds in correct order (SEQUENCE_ORDER only)
+              removeImageIds:
+                type: string
+                description: JSON array of image IDs to remove
+              removeAudioIds:
+                type: string
+                description: JSON array of audio IDs to remove
+              images:
+                type: array
+                items:
+                  type: string
+                  format: binary
+              audios:
+                type: array
+                items:
+                  type: string
+                  format: binary
+    responses:
+      "200":
+        description: Activity updated
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  $ref: "#/components/schemas/AdminActivity"
+  delete:
+    tags: [Admin Mahara]
+    summary: Delete activity
+    operationId: adminDeleteActivity
+    security:
+      - BearerAuth: []
+    parameters:
+      - $ref: "#/components/schemas/IdPathParam"
+    responses:
+      "200":
+        description: Activity deleted
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MessageResponse"

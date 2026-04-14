@@ -1,0 +1,4 @@
+# Reuses DoctorFullProfile, DoctorRegisterRequest, DoctorUpdateProfileRequest from doctor/auth module
+AdminDoctorNote:
+  type: object
+  description: Placeholder — reuses doctor schemas from doctor/auth module

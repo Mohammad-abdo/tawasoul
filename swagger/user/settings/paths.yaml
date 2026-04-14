@@ -1,0 +1,76 @@
+/user/settings:
+  get:
+    tags: [User Settings]
+    summary: Get user settings and profile
+    operationId: getUserSettings
+    security:
+      - BearerAuth: []
+    responses:
+      "200":
+        description: User settings
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  $ref: "#/components/schemas/UserSettings"
+  put:
+    tags: [User Settings]
+    summary: Update user settings and profile
+    operationId: updateUserSettings
+    security:
+      - BearerAuth: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/UpdateUserSettingsRequest"
+    responses:
+      "200":
+        description: Settings updated
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  $ref: "#/components/schemas/UserSettings"
+
+/user/settings/password:
+  put:
+    tags: [User Settings]
+    summary: Change user password
+    operationId: changePassword
+    security:
+      - BearerAuth: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ChangePasswordRequest"
+    responses:
+      "200":
+        description: Password changed
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MessageResponse"
+      "400":
+        description: Validation error
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "401":
+        description: Current password incorrect
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"

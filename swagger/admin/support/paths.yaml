@@ -1,0 +1,161 @@
+/admin/support/tickets:
+  get:
+    tags: [Admin Support]
+    summary: Get all support tickets
+    operationId: adminGetAllTickets
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: page
+        in: query
+        schema:
+          type: integer
+          default: 1
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          default: 20
+      - name: status
+        in: query
+        schema:
+          type: string
+          enum: [OPEN, IN_PROGRESS, RESOLVED, CLOSED]
+      - name: priority
+        in: query
+        schema:
+          type: string
+          enum: [LOW, MEDIUM, HIGH, URGENT]
+    responses:
+      "200":
+        description: Paginated ticket list
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  type: object
+                  properties:
+                    tickets:
+                      type: array
+                      items:
+                        $ref: "#/components/schemas/SupportTicket"
+                    pagination:
+                      $ref: "#/components/schemas/PaginationMeta"
+
+/admin/support/tickets/{id}:
+  get:
+    tags: [Admin Support]
+    summary: Get ticket by ID with replies
+    operationId: adminGetTicketById
+    security:
+      - BearerAuth: []
+    parameters:
+      - $ref: "#/components/schemas/IdPathParam"
+    responses:
+      "200":
+        description: Ticket details with replies
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  $ref: "#/components/schemas/SupportTicketDetail"
+
+/admin/support/tickets/{id}/replies:
+  post:
+    tags: [Admin Support]
+    summary: Add reply to a ticket
+    operationId: adminAddTicketReply
+    security:
+      - BearerAuth: []
+    parameters:
+      - $ref: "#/components/schemas/IdPathParam"
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [message]
+            properties:
+              message:
+                type: string
+              isInternal:
+                type: boolean
+                default: false
+                description: Internal notes are only visible to admins
+    responses:
+      "201":
+        description: Reply added
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  $ref: "#/components/schemas/SupportReply"
+
+/admin/support/tickets/{id}/status:
+  put:
+    tags: [Admin Support]
+    summary: Update ticket status
+    operationId: adminUpdateTicketStatus
+    security:
+      - BearerAuth: []
+    parameters:
+      - $ref: "#/components/schemas/IdPathParam"
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [status]
+            properties:
+              status:
+                type: string
+                enum: [OPEN, IN_PROGRESS, RESOLVED, CLOSED]
+    responses:
+      "200":
+        description: Status updated
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MessageResponse"
+
+/admin/support/tickets/{id}/assign:
+  put:
+    tags: [Admin Support]
+    summary: Assign ticket to an admin
+    operationId: adminAssignTicket
+    security:
+      - BearerAuth: []
+    parameters:
+      - $ref: "#/components/schemas/IdPathParam"
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [adminId]
+            properties:
+              adminId:
+                type: string
+                format: uuid
+    responses:
+      "200":
+        description: Ticket assigned
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MessageResponse"

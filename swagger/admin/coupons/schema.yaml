@@ -1,0 +1,79 @@
+Coupon:
+  type: object
+  properties:
+    id:
+      type: string
+      format: uuid
+    code:
+      type: string
+      example: SAVE20
+    type:
+      type: string
+      enum: [PERCENTAGE, FIXED_AMOUNT]
+    value:
+      type: number
+      format: float
+      description: Percentage (0-100) or fixed amount
+    minAmount:
+      type: number
+      nullable: true
+    maxDiscount:
+      type: number
+      nullable: true
+    usageLimit:
+      type: integer
+      nullable: true
+    usageLimitPerUser:
+      type: integer
+      nullable: true
+    usedCount:
+      type: integer
+    validFrom:
+      type: string
+      format: date-time
+    validUntil:
+      type: string
+      format: date-time
+    isActive:
+      type: boolean
+    createdAt:
+      type: string
+      format: date-time
+
+CreateCouponRequest:
+  type: object
+  required: [code, type, value, validFrom, validUntil]
+  properties:
+    code:
+      type: string
+      example: SAVE20
+    type:
+      type: string
+      enum: [PERCENTAGE, FIXED_AMOUNT]
+    value:
+      type: number
+      format: float
+    minAmount:
+      type: number
+      nullable: true
+    maxDiscount:
+      type: number
+      nullable: true
+    usageLimit:
+      type: integer
+      nullable: true
+    usageLimitPerUser:
+      type: integer
+      nullable: true
+    validFrom:
+      type: string
+      format: date-time
+    validUntil:
+      type: string
+      format: date-time
+    userIds:
+      type: array
+      items:
+        type: string
+        format: uuid
+      description: Optional list of specific users to pre-assign the coupon to

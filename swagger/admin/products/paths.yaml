@@ -1,0 +1,268 @@
+/admin/products:
+  get:
+    tags: [Admin Products & Orders]
+    summary: Get all products
+    operationId: adminGetAllProducts
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: page
+        in: query
+        schema:
+          type: integer
+          default: 1
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          default: 20
+    responses:
+      "200":
+        description: Paginated product list
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  type: object
+                  properties:
+                    products:
+                      type: array
+                      items:
+                        $ref: "#/components/schemas/Product"
+                    pagination:
+                      $ref: "#/components/schemas/PaginationMeta"
+  post:
+    tags: [Admin Products & Orders]
+    summary: Create a product
+    operationId: adminCreateProduct
+    security:
+      - BearerAuth: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/AdminProductRequest"
+    responses:
+      "201":
+        description: Product created
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  $ref: "#/components/schemas/Product"
+
+/admin/products/{id}:
+  get:
+    tags: [Admin Products & Orders]
+    summary: Get product by ID
+    operationId: adminGetProductById
+    security:
+      - BearerAuth: []
+    parameters:
+      - $ref: "#/components/schemas/IdPathParam"
+    responses:
+      "200":
+        description: Product details
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  $ref: "#/components/schemas/Product"
+  put:
+    tags: [Admin Products & Orders]
+    summary: Update a product
+    operationId: adminUpdateProduct
+    security:
+      - BearerAuth: []
+    parameters:
+      - $ref: "#/components/schemas/IdPathParam"
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/AdminProductRequest"
+    responses:
+      "200":
+        description: Product updated
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  $ref: "#/components/schemas/Product"
+  delete:
+    tags: [Admin Products & Orders]
+    summary: Delete a product
+    operationId: adminDeleteProduct
+    security:
+      - BearerAuth: []
+    parameters:
+      - $ref: "#/components/schemas/IdPathParam"
+    responses:
+      "200":
+        description: Product deleted
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MessageResponse"
+
+/admin/products/{id}/activate:
+  put:
+    tags: [Admin Products & Orders]
+    summary: Activate a product
+    operationId: adminActivateProduct
+    security:
+      - BearerAuth: []
+    parameters:
+      - $ref: "#/components/schemas/IdPathParam"
+    responses:
+      "200":
+        description: Product activated
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MessageResponse"
+
+/admin/products/{id}/deactivate:
+  put:
+    tags: [Admin Products & Orders]
+    summary: Deactivate a product
+    operationId: adminDeactivateProduct
+    security:
+      - BearerAuth: []
+    parameters:
+      - $ref: "#/components/schemas/IdPathParam"
+    responses:
+      "200":
+        description: Product deactivated
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MessageResponse"
+
+/admin/orders:
+  get:
+    tags: [Admin Products & Orders]
+    summary: Get all orders
+    operationId: adminGetAllOrders
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: page
+        in: query
+        schema:
+          type: integer
+          default: 1
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          default: 20
+      - name: status
+        in: query
+        schema:
+          type: string
+          enum: [PENDING, CONFIRMED, PROCESSING, SHIPPED, DELIVERED, CANCELLED]
+    responses:
+      "200":
+        description: Paginated order list
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  type: object
+                  properties:
+                    orders:
+                      type: array
+                      items:
+                        $ref: "#/components/schemas/Order"
+                    pagination:
+                      $ref: "#/components/schemas/PaginationMeta"
+
+/admin/orders/{id}:
+  get:
+    tags: [Admin Products & Orders]
+    summary: Get order by ID
+    operationId: adminGetOrderById
+    security:
+      - BearerAuth: []
+    parameters:
+      - $ref: "#/components/schemas/IdPathParam"
+    responses:
+      "200":
+        description: Order details
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  $ref: "#/components/schemas/Order"
+
+/admin/orders/{id}/status:
+  put:
+    tags: [Admin Products & Orders]
+    summary: Update order status
+    operationId: adminUpdateOrderStatus
+    security:
+      - BearerAuth: []
+    parameters:
+      - $ref: "#/components/schemas/IdPathParam"
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [status]
+            properties:
+              status:
+                type: string
+                enum: [PENDING, CONFIRMED, PROCESSING, SHIPPED, DELIVERED, CANCELLED]
+    responses:
+      "200":
+        description: Order status updated
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MessageResponse"
+
+/admin/orders/{id}/cancel:
+  put:
+    tags: [Admin Products & Orders]
+    summary: Cancel an order
+    operationId: adminCancelOrder
+    security:
+      - BearerAuth: []
+    parameters:
+      - $ref: "#/components/schemas/IdPathParam"
+    responses:
+      "200":
+        description: Order cancelled
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MessageResponse"

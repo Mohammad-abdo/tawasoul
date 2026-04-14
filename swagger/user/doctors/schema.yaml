@@ -1,0 +1,170 @@
+SessionPrice:
+  type: object
+  properties:
+    duration:
+      type: integer
+      description: Duration in minutes
+      enum: [30, 45, 60]
+    price:
+      type: number
+      format: float
+
+DoctorSummary:
+  type: object
+  properties:
+    id:
+      type: string
+      format: uuid
+    name:
+      type: string
+    specialization:
+      type: string
+      nullable: true
+    bio:
+      type: string
+      nullable: true
+    avatar:
+      type: string
+      nullable: true
+    rating:
+      type: number
+      format: float
+      example: 4.8
+    totalSessions:
+      type: integer
+    isVerified:
+      type: boolean
+    isFeatured:
+      type: boolean
+    specialties:
+      type: array
+      items:
+        type: string
+    stats:
+      type: object
+      properties:
+        bookings:
+          type: integer
+    createdAt:
+      type: string
+      format: date-time
+
+DoctorDetail:
+  allOf:
+    - $ref: "#/components/schemas/DoctorSummary"
+    - type: object
+      properties:
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+        totalRatings:
+          type: integer
+        experiences:
+          type: array
+          items:
+            $ref: "#/components/schemas/DoctorExperience"
+        certificates:
+          type: array
+          items:
+            $ref: "#/components/schemas/DoctorCertificate"
+        education:
+          type: array
+          items:
+            $ref: "#/components/schemas/DoctorEducation"
+        availability:
+          type: array
+          items:
+            $ref: "#/components/schemas/DoctorAvailabilityDay"
+        stats:
+          type: object
+          properties:
+            bookings:
+              type: integer
+            articles:
+              type: integer
+
+DoctorExperience:
+  type: object
+  properties:
+    id:
+      type: string
+      format: uuid
+    title:
+      type: string
+    workplace:
+      type: string
+    startDate:
+      type: string
+      format: date-time
+    endDate:
+      type: string
+      format: date-time
+      nullable: true
+
+DoctorCertificate:
+  type: object
+  properties:
+    id:
+      type: string
+      format: uuid
+    title:
+      type: string
+    issuer:
+      type: string
+    startDate:
+      type: string
+      format: date-time
+    endDate:
+      type: string
+      format: date-time
+      nullable: true
+    certificateLink:
+      type: string
+      nullable: true
+
+DoctorEducation:
+  type: object
+  properties:
+    id:
+      type: string
+      format: uuid
+    degree:
+      type: string
+    institution:
+      type: string
+    startDate:
+      type: string
+      format: date-time
+    endDate:
+      type: string
+      format: date-time
+      nullable: true
+
+DoctorAvailabilityDay:
+  type: object
+  properties:
+    dayOfWeek:
+      type: integer
+      description: 0=Sunday, 1=Monday, ..., 6=Saturday
+      minimum: 0
+      maximum: 6
+    timeSlots:
+      type: array
+      items:
+        type: string
+        example: "09:00 AM"
+
+AvailableSlot:
+  type: object
+  properties:
+    time:
+      type: string
+      example: "09:00 AM"
+    date:
+      type: string
+      format: date
+    available:
+      type: boolean
+      example: true

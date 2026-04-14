@@ -1,0 +1,94 @@
+DoctorBookingUser:
+  type: object
+  properties:
+    id:
+      type: string
+      format: uuid
+    username:
+      type: string
+      nullable: true
+    avatar:
+      type: string
+      nullable: true
+    phone:
+      type: string
+      nullable: true
+    email:
+      type: string
+      nullable: true
+
+DoctorBookingSummary:
+  type: object
+  properties:
+    id:
+      type: string
+      format: uuid
+    user:
+      $ref: "#/components/schemas/DoctorBookingUser"
+    childId:
+      type: string
+      nullable: true
+    sessionType:
+      type: string
+      enum: [VIDEO, AUDIO, TEXT]
+    duration:
+      type: integer
+    price:
+      type: number
+    status:
+      type: string
+      enum: [PENDING, CONFIRMED, COMPLETED, CANCELLED]
+    scheduledAt:
+      type: string
+      format: date-time
+    videoLink:
+      type: string
+      nullable: true
+    rating:
+      type: integer
+      nullable: true
+    createdAt:
+      type: string
+      format: date-time
+
+DoctorBookingDetail:
+  allOf:
+    - $ref: "#/components/schemas/DoctorBookingSummary"
+    - type: object
+      properties:
+        doctor:
+          type: object
+          properties:
+            id:
+              type: string
+            name:
+              type: string
+            specialization:
+              type: string
+              nullable: true
+            avatar:
+              type: string
+              nullable: true
+            phone:
+              type: string
+            email:
+              type: string
+            rating:
+              type: number
+        completedAt:
+          type: string
+          format: date-time
+          nullable: true
+        cancelledAt:
+          type: string
+          format: date-time
+          nullable: true
+        cancellationReason:
+          type: string
+          nullable: true
+        review:
+          type: string
+          nullable: true
+        updatedAt:
+          type: string
+          format: date-time
