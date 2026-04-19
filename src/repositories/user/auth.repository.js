@@ -12,9 +12,7 @@ export const findById = (id) =>
     include: {
       _count: {
         select: {
-          bookings: true,
-          sentMessages: true,
-          receivedMessages: true
+          bookings: true
         }
       }
     }
