@@ -2,11 +2,18 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import * as authRepo from '../../repositories/user/auth.repository.js';
 
-const signToken = (userId) =>
+const signAccessToken = (userId) =>
   jwt.sign(
     { userId, role: 'USER' },
-    process.env.JWT_SECRET || 'your-secret-key',
-    { expiresIn: '30d' }
+    process.env.ACCESS_TOKEN_SECRET || 'your-secret-key',
+    { expiresIn: process.env.ACCESS_TOKEN_EXPIRY || '1d' }
+  );
+
+const signRefreshToken = (userId) =>
+  jwt.sign(
+    { userId, role: 'USER' },
+    process.env.REFRESH_TOKEN_SECRET || 'your-secret-key',
+    { expiresIn: process.env.REFRESH_TOKEN_EXPIRY || '7d' }
   );
 
 export const register = async ({ username, email, phone, password }) => {
@@ -96,9 +103,10 @@ export const login = async ({ username, password }) => {
     throw err;
   }
 
-  const token = signToken(user.id);
+  const accessToken = signAccessToken(user.id);
+  const refreshToken = signRefreshToken(user.id);
   const { password: _, ...userWithoutPassword } = user;
-  return { user: userWithoutPassword, token };
+  return { user: userWithoutPassword, accessToken, refreshToken };
 };
 
 export const getMe = async (userId) => {

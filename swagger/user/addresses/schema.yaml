@@ -1,0 +1,93 @@
+IdPathParam:
+  name: id
+  in: path
+  required: true
+  schema:
+    type: string
+    format: uuid
+
+UserAddress:
+  type: object
+  properties:
+    id:
+      type: string
+      format: uuid
+    label:
+      type: string
+      example: Home
+    fullAddress:
+      type: string
+      example: 123 Main Street, Cairo
+    latitude:
+      type: number
+      format: double
+      example: 30.0444
+    longitude:
+      type: number
+      format: double
+      example: 31.2357
+    city:
+      type: string
+      example: Cairo
+    country:
+      type: string
+      example: Egypt
+    isDefault:
+      type: boolean
+      example: false
+    createdAt:
+      type: string
+      format: date-time
+    updatedAt:
+      type: string
+      format: date-time
+
+CreateUserAddressRequest:
+  type: object
+  required: [label, fullAddress, latitude, longitude, city, country]
+  properties:
+    label:
+      type: string
+      example: Home
+    fullAddress:
+      type: string
+      example: 123 Main Street, Cairo
+    latitude:
+      type: number
+      format: double
+      example: 30.0444
+    longitude:
+      type: number
+      format: double
+      example: 31.2357
+    city:
+      type: string
+      example: Cairo
+    country:
+      type: string
+      example: Egypt
+    isDefault:
+      type: boolean
+      default: false
+      description: Set as default address
+
+UpdateUserAddressRequest:
+  type: object
+  properties:
+    label:
+      type: string
+    fullAddress:
+      type: string
+    latitude:
+      type: number
+      format: double
+    longitude:
+      type: number
+      format: double
+    city:
+      type: string
+    country:
+      type: string
+    isDefault:
+      type: boolean
+      description: Set as default address

@@ -1,5 +1,6 @@
 import { Prisma } from '@prisma/client';
 import { createHttpError } from './httpError.js';
+import { getBookingScheduledDate } from './booking-schedule.utils.js';
 
 const toDecimal = (value) => new Prisma.Decimal(value || 0);
 
@@ -10,9 +11,11 @@ export const ensureDoctorWallet = (tx, doctorId) =>
     create: { doctorId }
   });
 
-export const calculateSessionDurationMinutes = ({ scheduledAt, completedAt, duration }) => {
-  if (scheduledAt && completedAt) {
-    const diffMs = new Date(completedAt).getTime() - new Date(scheduledAt).getTime();
+export const calculateSessionDurationMinutes = ({ scheduledYear, scheduledMonth, scheduledDay, scheduledTime, completedAt, duration }) => {
+  const scheduledDate = getBookingScheduledDate({ scheduledYear, scheduledMonth, scheduledDay, scheduledTime });
+
+  if (scheduledDate && completedAt) {
+    const diffMs = new Date(completedAt).getTime() - scheduledDate.getTime();
     const diffMinutes = Math.round(diffMs / 60000);
 
     if (Number.isFinite(diffMinutes) && diffMinutes > 0) {
@@ -46,7 +49,10 @@ export const creditDoctorWalletForCompletedBooking = async ({ tx, booking, compl
 
   const wallet = await ensureDoctorWallet(tx, booking.doctorId);
   const durationMinutes = calculateSessionDurationMinutes({
-    scheduledAt: booking.scheduledAt,
+    scheduledYear: booking.scheduledYear,
+    scheduledMonth: booking.scheduledMonth,
+    scheduledDay: booking.scheduledDay,
+    scheduledTime: booking.scheduledTime,
     completedAt,
     duration: booking.duration
   });

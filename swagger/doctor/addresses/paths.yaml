@@ -1,0 +1,164 @@
+/doctor/address:
+  get:
+    tags: [Doctor Addresses]
+    summary: Get all addresses for authenticated doctor
+    operationId: getDoctorAddresses
+    security:
+      - BearerAuth: []
+    responses:
+      "200":
+        description: List of doctor addresses
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  type: object
+                  properties:
+                    addresses:
+                      type: array
+                      items:
+                        $ref: "#/components/schemas/DoctorAddress"
+                    pagination:
+                      $ref: "#/components/schemas/PaginationMeta"
+  post:
+    tags: [Doctor Addresses]
+    summary: Create a new address
+    operationId: createAddress
+    security:
+      - BearerAuth: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/CreateDoctorAddressRequest"
+    responses:
+      "201":
+        description: Address created
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  type: object
+                  properties:
+                    address:
+                      $ref: "#/components/schemas/DoctorAddress"
+      "400":
+        description: Validation error
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+
+/doctor/address/{id}:
+  get:
+    tags: [Doctor Addresses]
+    summary: Get address by ID
+    operationId: getAddressById
+    security:
+      - BearerAuth: []
+    parameters:
+      - $ref: "#/components/schemas/IdPathParam"
+    responses:
+      "200":
+        description: Address details
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  type: object
+                  properties:
+                    address:
+                      $ref: "#/components/schemas/DoctorAddress"
+      "403":
+        description: Forbidden — not your address
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "404":
+        description: Address not found
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+  put:
+    tags: [Doctor Addresses]
+    summary: Update an address
+    operationId: updateAddress
+    security:
+      - BearerAuth: []
+    parameters:
+      - $ref: "#/components/schemas/IdPathParam"
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/UpdateDoctorAddressRequest"
+    responses:
+      "200":
+        description: Address updated
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  type: object
+                  properties:
+                    address:
+                      $ref: "#/components/schemas/DoctorAddress"
+      "403":
+        description: Forbidden
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "404":
+        description: Address not found
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+  delete:
+    tags: [Doctor Addresses]
+    summary: Delete an address
+    operationId: deleteAddress
+    security:
+      - BearerAuth: []
+    parameters:
+      - $ref: "#/components/schemas/IdPathParam"
+    responses:
+      "200":
+        description: Address deleted
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MessageResponse"
+      "403":
+        description: Forbidden
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "404":
+        description: Address not found
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"

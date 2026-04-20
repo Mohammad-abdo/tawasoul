@@ -77,9 +77,18 @@ ChildWithBookings:
                 type: string
               status:
                 type: string
-              scheduledAt:
+              scheduledYear:
+                type: integer
+                nullable: true
+              scheduledMonth:
+                type: integer
+                nullable: true
+              scheduledDay:
+                type: integer
+                nullable: true
+              scheduledTime:
                 type: string
-                format: date-time
+                nullable: true
 
 CreateChildRequest:
   type: object

@@ -2,6 +2,40 @@ import * as availabilityRepo from '../../repositories/doctor/availability.reposi
 import { createHttpError } from '../../utils/httpError.js';
 import { parseTimeSlots } from '../../utils/availability.js';
 
+const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+export const buildNext7Days = (availabilityList) => {
+  /*  dayOfWeek mapping (0-6):  0 = Sunday, 1 = Monday, ..., 6 = Saturday  This matches JavaScript's Date.getDay() convention, which is also confirmed by the  validation error in updateAvailability: "Invalid dayOfWeek. Must be 0-6 (Sunday=0)"  */
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const availabilityMap = new Map();
+  for (const item of availabilityList) {
+    const parsedSlots = parseTimeSlots(item.timeSlots);
+    if (item.isActive && parsedSlots.length > 0) {
+      availabilityMap.set(item.dayOfWeek, parsedSlots);
+    }
+  }
+
+  const result = [];
+  for (let i = 0; i < 7; i++) {
+    const date = new Date(today);
+    date.setDate(date.getDate() + i);
+
+    const dayOfWeek = date.getDay();
+    const slots = availabilityMap.get(dayOfWeek) || [];
+
+    const dateStr = date.toISOString().split('T')[0];
+    result.push({
+      date: dateStr,
+      dayName: DAY_NAMES[dayOfWeek],
+      slots,
+    });
+  }
+
+  return result;
+};
+
 const formatAvailability = (availability) =>
   availability.map((item) => ({
     id: item.id,
@@ -14,7 +48,7 @@ const formatAvailability = (availability) =>
 
 export const getAvailability = async (doctorId) => {
   const availability = await availabilityRepo.findByDoctorId(doctorId);
-  return formatAvailability(availability);
+  return buildNext7Days(availability);
 };
 
 export const updateAvailability = async (doctorId, body) => {

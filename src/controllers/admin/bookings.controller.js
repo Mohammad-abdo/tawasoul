@@ -3,6 +3,7 @@ import { logger } from '../../utils/logger.js';
 // import { getBookingDisplayPrice, omitDoctorSessionPrices } from '../../utils/booking-pricing.utils.js';
 import { getBookingDisplayPrice, stripDoctorPricing } from '../../utils/booking-pricing.utils.js';
 import { creditDoctorWalletForCompletedBooking } from '../../utils/wallet.utils.js';
+import { buildBookingOrderBy } from '../../utils/booking-schedule.utils.js';
 
 const bookingDoctorSelect = {
   id: true,
@@ -73,7 +74,7 @@ export const getAllBookings = async (req, res, next) => {
         where,
         skip,
         take: parseInt(limit),
-        orderBy: { [sort]: 'desc' },
+        orderBy: buildBookingOrderBy(sort, 'desc'),
         include: {
           doctor: {
             select: {

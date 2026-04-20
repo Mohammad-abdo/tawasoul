@@ -2,6 +2,7 @@ import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import 'dotenv/config';
 import { ensureAssessmentAssets } from './ensure-assessment-assets.js';
+import { getBookingScheduledDate } from '../src/utils/booking-schedule.utils.js';
 
 const prisma = new PrismaClient();
 const now = new Date();
@@ -1076,7 +1077,7 @@ async function main() {
   for (let i = 0; i < 12; i += 1) {
     const status = i < 4 ? 'COMPLETED' : i < 8 ? 'CONFIRMED' : i < 10 ? 'PENDING' : 'CANCELLED';
     const slotTime = seedAvailabilitySlots[i % seedAvailabilitySlots.length];
-    const scheduledAt = buildSeedSlotDate({
+    const scheduledDate = buildSeedSlotDate({
       dayOfWeek: i % 5,
       time: slotTime,
       direction: status === 'COMPLETED' ? 'past' : 'future',
@@ -1085,9 +1086,9 @@ async function main() {
     bookings.push(await prisma.booking.create({ data: {
       userId: users[i % users.length].id, doctorId: doctors[i % doctors.length].id, childId: children[i % children.length].id,
       category: i % 4 === 0 ? 'EVALUATION' : 'INDIVIDUAL',
-      duration: 60, status, scheduledAt, scheduledMonth: scheduledAt.getMonth() + 1,
-      scheduledDay: scheduledAt.getDate(), scheduledTime: formatSeedTime(slotTime), notes: 'Seeded booking for testing.',
-      completedAt: status === 'COMPLETED' ? new Date(scheduledAt.getTime() + 60 * 60000) : null, cancelledAt: status === 'CANCELLED' ? plusDays(-1) : null,
+      duration: 60, status, scheduledYear: scheduledDate.getFullYear(), scheduledMonth: scheduledDate.getMonth() + 1,
+      scheduledDay: scheduledDate.getDate(), scheduledTime: formatSeedTime(slotTime), notes: 'Seeded booking for testing.',
+      completedAt: status === 'COMPLETED' ? new Date(scheduledDate.getTime() + 60 * 60000) : null, cancelledAt: status === 'CANCELLED' ? plusDays(-1) : null,
       cancellationReason: status === 'CANCELLED' ? 'Family requested a new schedule.' : null, rating: status === 'COMPLETED' ? 4 + (i % 2) : null,
       review: status === 'COMPLETED' ? 'Supportive session with clear guidance.' : null, videoLink: i % 3 !== 2 ? `https://meet.google.com/room-${i + 1}` : `https://meet.google.com/followup-room-${i + 1}`
     } }));
@@ -1111,8 +1112,10 @@ async function main() {
   for (const booking of bookings.filter((b) => b.status === 'COMPLETED')) {
     const doctor = doctors.find((entry) => entry.id === booking.doctorId);
     const hourlyRate = Number(doctor?.hourlyRate || 0);
+    const scheduledDate = getBookingScheduledDate(booking);
     const sessionDuration = booking.completedAt
-      ? Math.round((new Date(booking.completedAt).getTime() - new Date(booking.scheduledAt).getTime()) / 60000)
+      && scheduledDate
+      ? Math.round((new Date(booking.completedAt).getTime() - scheduledDate.getTime()) / 60000)
       : booking.duration;
     const earningAmount = Number(((hourlyRate * sessionDuration) / 60).toFixed(2));
 

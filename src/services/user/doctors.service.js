@@ -1,7 +1,9 @@
 import * as doctorsRepo from '../../repositories/user/doctors.repository.js';
+import { buildNext7Days } from '../doctor/availability.service.js';
 import {
   buildSlotDate,
   formatDateKey,
+  normalizeTimeSlotValue,
   parseTimeSlots
 } from '../../utils/availability.js';
 
@@ -103,10 +105,7 @@ export const getDoctorById = async (id) => {
     const err = new Error('Doctor not found'); err.code = 'DOCTOR_NOT_FOUND'; err.status = 404; throw err;
   }
 
-  const formattedAvailability = doctor.availability.map(a => ({
-    dayOfWeek: a.dayOfWeek,
-    timeSlots: parseTimeSlots(a.timeSlots)
-  }));
+  const formattedAvailability = buildNext7Days(doctor.availability);
 
   // const orderedPrices = [...doctor.sessionPrices].sort((a, b) => (a.duration || 0) - (b.duration || 0));
   // const preferredPrice = orderedPrices.find((item) => item.duration === ONE_HOUR_SESSION_DURATION) || orderedPrices[0];
@@ -144,20 +143,19 @@ export const getAvailableSlots = async (doctorId, dateStr, options = {}) => {
 
   if (!availability) return { slots: [], date: dateStr };
 
-  const dayStart = new Date(date);
-  dayStart.setHours(0, 0, 0, 0);
-  const dayEnd = new Date(date);
-  dayEnd.setHours(23, 59, 59, 999);
-
   const [rawSlots, bookings] = await Promise.all([
     parseTimeSlots(availability.timeSlots),
-    doctorsRepo.findBookingsForDate(doctorId, dayStart, dayEnd, options.excludeBookingId)
+    doctorsRepo.findBookingsForDate(doctorId, date, options.excludeBookingId)
   ]);
 
   const now = new Date();
   const bookedSlotKeys = new Set(
     bookings
-      .map((booking) => formatDateKey(new Date(booking.scheduledAt)) + '|' + new Date(booking.scheduledAt).toTimeString().slice(0, 5))
+      .map((booking) => {
+        const normalizedTime = normalizeTimeSlotValue(booking.scheduledTime);
+        return normalizedTime ? `${dateStr}|${normalizedTime}` : null;
+      })
+      .filter(Boolean)
   );
 
   const slots = rawSlots

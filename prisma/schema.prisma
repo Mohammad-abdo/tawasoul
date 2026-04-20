@@ -37,6 +37,7 @@ model User {
   coupons          UserCoupon[]
   userPackages     UserPackage[]
   conversations    Conversation[]
+  refreshTokens    RefreshToken[]
 
   @@map("users")
 }
@@ -97,6 +98,8 @@ model Doctor {
   withdrawals       Withdrawal[]
   conversations     Conversation[]
   vbMappEvaluations VbMappSession[]
+  refreshTokens    RefreshToken[]
+  addresses        Address[]
 
   @@map("doctors")
 }
@@ -207,7 +210,7 @@ model Booking {
   category           SessionCategory @default(INDIVIDUAL)
   duration           Int
   status             BookingStatus   @default(PENDING)
-  scheduledAt        DateTime
+  scheduledYear      Int?
   scheduledMonth     Int?
   scheduledDay       Int?
   scheduledTime      String?
@@ -377,6 +380,7 @@ model Admin {
   reports        Report[]
   supportReplies SupportReply[]
   supportTickets SupportTicket[]
+  refreshTokens  RefreshToken[]
 
   @@map("admins")
 }
@@ -679,6 +683,30 @@ model OtpCode {
   @@map("otp_codes")
 }
 
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  
+  userId    String?
+  doctorId  String?
+  adminId   String?
+  
+  expiresAt DateTime
+  isRevoked Boolean  @default(false)
+  createdAt DateTime @default(now())
+  
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  doctor    Doctor?  @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  admin     Admin?   @relation(fields: [adminId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([expiresAt])
+  @@index([userId])
+  @@index([doctorId])
+  @@index([adminId])
+  @@map("refresh_tokens")
+}
+
 model Package {
   id             String        @id @default(uuid())
   name           String
@@ -790,20 +818,23 @@ model CartItem {
 
 model Address {
   id          String   @id @default(uuid())
-  userId      String
+  userId      String?
+  doctorId    String?
   label       String
   fullAddress String   @db.Text
-  latitude    Float?
-  longitude   Float?
-  city        String?
-  country     String?
+  latitude    Float
+  longitude   Float
+  city        String
+  country     String
   isDefault   Boolean  @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user        User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  doctor      Doctor?  @relation(fields: [doctorId], references: [id], onDelete: Cascade)
   orders      Order[]
 
   @@index([userId], map: "addresses_userId_fkey")
+  @@index([doctorId], map: "addresses_doctorId_fkey")
   @@map("addresses")
 }
 

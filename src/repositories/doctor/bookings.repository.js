@@ -1,11 +1,12 @@
 import { prisma } from '../../config/database.js';
+import { bookingScheduleOrderBy } from '../../utils/booking-schedule.utils.js';
 
 export const findManyByDoctor = ({ where, skip, take }) =>
   prisma.booking.findMany({
     where,
     skip,
     take,
-    orderBy: { scheduledAt: 'desc' },
+    orderBy: bookingScheduleOrderBy('desc'),
     include: {
       user: {
         select: {

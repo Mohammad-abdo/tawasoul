@@ -1,5 +1,6 @@
 import { prisma } from '../../config/database.js';
 import { logger } from '../../utils/logger.js';
+import { bookingScheduleOrderBy } from '../../utils/booking-schedule.utils.js';
 
 const formatBookingDoctor = (doctor) => {
   if (!doctor) {
@@ -90,7 +91,7 @@ export const getChildById = async (req, res, next) => {
           }
         },
         bookings: {
-          orderBy: { scheduledAt: 'desc' },
+          orderBy: bookingScheduleOrderBy('desc'),
           include: {
             doctor: {
               select: {

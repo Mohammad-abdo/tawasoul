@@ -17,12 +17,18 @@ const routeConfigs = [
     fileName: 'user.routes.js',
     prefix: '/api/user',
     tag: 'User',
+    subRoutes: {
+      'user/address.routes.js': { tag: 'User Addresses', description: 'User address management' }
+    },
     description: 'User-facing mobile and web endpoints'
   },
   {
     fileName: 'doctor.routes.js',
     prefix: '/api/doctor',
     tag: 'Doctor',
+    subRoutes: {
+      'doctor/address.routes.js': { tag: 'Doctor Addresses', description: 'Doctor address management' }
+    },
     description: 'Doctor portal endpoints'
   },
   {
@@ -122,10 +128,21 @@ const loadPathDefinitions = () => {
       }
 
       const fullPath = normalizePath(config.prefix, parsed.routePath);
+
+      let tag = config.tag;
+      if (config.subRoutes) {
+        for (const [subRouteFile, subConfig] of Object.entries(config.subRoutes)) {
+          if (line.includes(subRouteFile)) {
+            tag = subConfig.tag;
+            break;
+          }
+        }
+      }
+
       const operation = {
-        tags: [config.tag],
+        tags: [tag],
         summary: buildSummary(parsed.handlerName, parsed.method, fullPath),
-        operationId: `${config.tag.toLowerCase()}_${parsed.handlerName || `${parsed.method}_${parsed.routePath}`}`.replace(/[^a-zA-Z0-9_]/g, '_'),
+        operationId: `${tag.toLowerCase()}_${parsed.handlerName || `${parsed.method}_${parsed.routePath}`}`.replace(/[^a-zA-Z0-9_]/g, '_'),
         parameters: getPathParameters(parsed.routePath),
         responses: {
           200: {
@@ -177,7 +194,15 @@ const baseOpenApiSpec = {
     description:
       'Generated Swagger documentation for the Tawasoul backend. Operations are derived from the active Express route files.'
   },
-  tags: routeConfigs.map(({ tag, description }) => ({ name: tag, description })),
+  tags: routeConfigs.flatMap(({ tag, description, subRoutes }) => {
+    const tags = [{ name: tag, description }];
+    if (subRoutes) {
+      for (const subConfig of Object.values(subRoutes)) {
+        tags.push({ name: subConfig.tag, description: subConfig.description });
+      }
+    }
+    return tags;
+  }),
   components: {
     securitySchemes: {
       bearerAuth: {

@@ -2,6 +2,7 @@ import bcrypt from 'bcryptjs';
 import { prisma } from '../../config/database.js';
 import { logger } from '../../utils/logger.js';
 import { getBookingDisplayPrice } from '../../utils/booking-pricing.utils.js';
+import { bookingScheduleOrderBy, getBookingScheduleDateKey } from '../../utils/booking-schedule.utils.js';
 
 const doctorSummarySelect = {
   id: true,
@@ -113,7 +114,7 @@ export const getDoctorById = async (req, res, next) => {
         // sessionPrices: true,
         availability: true,
         bookings: {
-          orderBy: { scheduledAt: 'desc' },
+          orderBy: bookingScheduleOrderBy('desc'),
           include: {
             user: {
               select: {
@@ -190,12 +191,12 @@ export const getDoctorById = async (req, res, next) => {
         price: getBookingDisplayPrice({ ...booking, doctor })
       };
 
-      if (booking.scheduledAt) {
-        const date = new Date(booking.scheduledAt).toISOString().split('T')[0];
-        if (!bookingsByDay[date]) {
-          bookingsByDay[date] = [];
+      const dateKey = getBookingScheduleDateKey(booking);
+      if (dateKey) {
+        if (!bookingsByDay[dateKey]) {
+          bookingsByDay[dateKey] = [];
         }
-        bookingsByDay[date].push(bookingWithPrice);
+        bookingsByDay[dateKey].push(bookingWithPrice);
       }
     });
 

@@ -24,7 +24,7 @@ export const findById = (id) =>
       certificates: { orderBy: { startDate: 'desc' }, select: { id: true, title: true, issuer: true, startDate: true, endDate: true, certificateLink: true } },
       education: { orderBy: { startDate: 'desc' }, select: { id: true, degree: true, institution: true, startDate: true, endDate: true } },
       // sessionPrices: { select: { duration: true, price: true } },
-      availability: { where: { isActive: true }, select: { dayOfWeek: true, timeSlots: true } },
+      availability: { select: { dayOfWeek: true, timeSlots: true, isActive: true } },
       _count: { select: { bookings: true, articles: true } }
     }
   });
@@ -32,20 +32,22 @@ export const findById = (id) =>
 export const findAvailability = (doctorId, dayOfWeek) =>
   prisma.availability.findFirst({ where: { doctorId, dayOfWeek, isActive: true } });
 
-export const findBookingsForDate = (doctorId, dayStart, dayEnd, excludeBookingId) =>
+export const findBookingsForDate = (doctorId, date, excludeBookingId) =>
   prisma.booking.findMany({
     where: {
       doctorId,
       status: { not: 'CANCELLED' },
-      scheduledAt: {
-        gte: dayStart,
-        lte: dayEnd
-      },
+      scheduledYear: date.getFullYear(),
+      scheduledMonth: date.getMonth() + 1,
+      scheduledDay: date.getDate(),
       ...(excludeBookingId ? { id: { not: excludeBookingId } } : {})
     },
     select: {
       id: true,
-      scheduledAt: true,
+      scheduledYear: true,
+      scheduledMonth: true,
+      scheduledDay: true,
+      scheduledTime: true,
       duration: true,
       status: true
     }

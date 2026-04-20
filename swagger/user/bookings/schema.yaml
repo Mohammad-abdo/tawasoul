@@ -33,9 +33,18 @@ BookingSummary:
     status:
       type: string
       enum: [PENDING, CONFIRMED, COMPLETED, CANCELLED]
-    scheduledAt:
+    scheduledYear:
+      type: integer
+      nullable: true
+    scheduledMonth:
+      type: integer
+      nullable: true
+    scheduledDay:
+      type: integer
+      nullable: true
+    scheduledTime:
       type: string
-      format: date-time
+      nullable: true
     completedAt:
       type: string
       format: date-time
@@ -79,15 +88,6 @@ BookingDetail:
         videoLink:
           type: string
           nullable: true
-        scheduledMonth:
-          type: integer
-          nullable: true
-        scheduledDay:
-          type: integer
-          nullable: true
-        scheduledTime:
-          type: string
-          nullable: true
         updatedAt:
           type: string
           format: date-time
@@ -121,16 +121,21 @@ BookingCreatedResponse:
     status:
       type: string
       example: PENDING
-    scheduledAt:
+    scheduledYear:
+      type: integer
+    scheduledMonth:
+      type: integer
+    scheduledDay:
+      type: integer
+    scheduledTime:
       type: string
-      format: date-time
     createdAt:
       type: string
       format: date-time
 
 CreateBookingRequest:
   type: object
-  required: [doctorId, sessionType, duration]
+  required: [doctorId, sessionType, duration, scheduledYear, scheduledMonth, scheduledDay, scheduledTime]
   properties:
     doctorId:
       type: string
@@ -146,15 +151,17 @@ CreateBookingRequest:
       type: integer
       enum: [30, 45, 60]
       description: Session duration in minutes
-    scheduledAt:
-      type: string
-      format: date-time
-      description: Full ISO datetime (alternative to month/day/time)
+    scheduledYear:
+      type: integer
+      minimum: 2024
+      maximum: 2100
+      description: The calendar year of the scheduled session
+      example: 2026
     scheduledMonth:
       type: integer
       minimum: 1
       maximum: 12
-      description: Used together with scheduledDay and scheduledTime
+      description: Used together with scheduledYear, scheduledDay, and scheduledTime
     scheduledDay:
       type: integer
       minimum: 1
@@ -169,10 +176,12 @@ CreateBookingRequest:
 
 RescheduleBookingRequest:
   type: object
+  required: [scheduledYear, scheduledMonth, scheduledDay, scheduledTime]
   properties:
-    scheduledAt:
-      type: string
-      format: date-time
+    scheduledYear:
+      type: integer
+      minimum: 2024
+      maximum: 2100
     scheduledMonth:
       type: integer
       minimum: 1

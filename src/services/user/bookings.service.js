@@ -2,34 +2,51 @@ import * as bookingsRepo from '../../repositories/user/bookings.repository.js';
 import { ONE_HOUR_SESSION_DURATION, formatDateKey } from '../../utils/availability.js';
 // import { getBookingDisplayPrice, omitDoctorSessionPrices } from '../../utils/booking-pricing.utils.js';
 import { getBookingDisplayPrice, stripDoctorPricing } from '../../utils/booking-pricing.utils.js';
+import { buildScheduledDate } from '../../utils/booking-schedule.utils.js';
 import { getAvailableSlots } from './doctors.service.js';
 
-const parseScheduledDate = (scheduledAt, scheduledMonth, scheduledDay, scheduledTime) => {
-  if (scheduledAt) {
-    const d = new Date(scheduledAt);
-    return {
-      scheduledDate: d,
-      month: d.getMonth() + 1,
-      day: d.getDate(),
-      time: d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
-    };
-  }
+const parseScheduledDate = (scheduledYear, scheduledMonth, scheduledDay, scheduledTime) => {
+  const year = parseInt(scheduledYear, 10);
+  const month = parseInt(scheduledMonth, 10);
+  const day = parseInt(scheduledDay, 10);
 
-  const match = scheduledTime.match(/(\d+):(\d+)\s*(AM|PM)/i)?.slice(1);
-  if (!match || match.length < 3) {
-    const err = new Error('Time must be in format: HH:MM AM/PM');
-    err.code = 'INVALID_TIME_FORMAT';
+  if (!Number.isInteger(year) || year < 1000 || year > 9999) {
+    const err = new Error('Year must be a valid 4-digit number');
+    err.code = 'INVALID_YEAR';
     err.status = 400;
     throw err;
   }
 
-  const [hours, minutes, period] = match;
-  let hour24 = parseInt(hours);
-  if (period.toUpperCase() === 'PM' && hour24 !== 12) hour24 += 12;
-  if (period.toUpperCase() === 'AM' && hour24 === 12) hour24 = 0;
+  if (!Number.isInteger(month) || month < 1 || month > 12) {
+    const err = new Error('Month must be between 1 and 12');
+    err.code = 'INVALID_MONTH';
+    err.status = 400;
+    throw err;
+  }
 
-  const d = new Date(new Date().getFullYear(), parseInt(scheduledMonth) - 1, parseInt(scheduledDay), hour24, parseInt(minutes));
-  return { scheduledDate: d, month: parseInt(scheduledMonth), day: parseInt(scheduledDay), time: scheduledTime };
+  if (!Number.isInteger(day) || day < 1 || day > 31) {
+    const err = new Error('Day must be between 1 and 31');
+    err.code = 'INVALID_DAY';
+    err.status = 400;
+    throw err;
+  }
+
+  const parsed = buildScheduledDate({ scheduledYear: year, scheduledMonth: month, scheduledDay: day, scheduledTime });
+  if (!parsed) {
+    const err = new Error('Scheduled date and time must be valid');
+    err.code = 'INVALID_SCHEDULE';
+    err.status = 400;
+    throw err;
+  }
+
+  return {
+    scheduledDate: parsed.date,
+    year: parsed.year,
+    month: parsed.month,
+    day: parsed.day,
+    time: parsed.displayTime,
+    normalizedTime: parsed.normalizedTime
+  };
 };
 
 // const getEffectiveSessionPrice = (sessionPrices) => {
@@ -61,7 +78,10 @@ export const getUserBookings = async (userId, { status, page = 1, limit = 20 }) 
     duration: b.duration,
     price: getBookingDisplayPrice(b),
     status: b.status,
-    scheduledAt: b.scheduledAt,
+    scheduledYear: b.scheduledYear,
+    scheduledMonth: b.scheduledMonth,
+    scheduledDay: b.scheduledDay,
+    scheduledTime: b.scheduledTime,
     completedAt: b.completedAt,
     cancelledAt: b.cancelledAt,
     cancellationReason: b.cancellationReason,
@@ -77,7 +97,7 @@ export const getUserBookings = async (userId, { status, page = 1, limit = 20 }) 
 };
 
 export const createBooking = async (userId, body) => {
-  const { doctorId, childId, sessionType, duration, scheduledAt, scheduledMonth, scheduledDay, scheduledTime, notes } = body;
+  const { doctorId, childId, sessionType, duration, scheduledYear, scheduledMonth, scheduledDay, scheduledTime, notes } = body;
   const parsedDuration = parseInt(duration);
 
   if (!doctorId || !sessionType || !duration) {
@@ -85,8 +105,8 @@ export const createBooking = async (userId, body) => {
     err.code = 'VALIDATION_ERROR'; err.status = 400; throw err;
   }
 
-  if (!scheduledAt && (!scheduledMonth || !scheduledDay || !scheduledTime)) {
-    const err = new Error('Either scheduledAt or month/day/time must be provided');
+  if (!scheduledYear || !scheduledMonth || !scheduledDay || !scheduledTime) {
+    const err = new Error('Scheduled year, month, day, and time are required');
     err.code = 'VALIDATION_ERROR'; err.status = 400; throw err;
   }
 
@@ -116,22 +136,14 @@ export const createBooking = async (userId, body) => {
     const err = new Error('Doctor does not have a valid hourly rate configured'); err.code = 'INVALID_DURATION'; err.status = 400; throw err;
   }
 
-  const { scheduledDate, month, day, time } = parseScheduledDate(scheduledAt, scheduledMonth, scheduledDay, scheduledTime);
+  const { scheduledDate, year, month, day, time, normalizedTime } = parseScheduledDate(scheduledYear, scheduledMonth, scheduledDay, scheduledTime);
 
   if (scheduledDate < new Date()) {
     const err = new Error('Scheduled time must be in the future'); err.code = 'INVALID_TIME'; err.status = 400; throw err;
   }
 
-  if (month < 1 || month > 12) {
-    const err = new Error('Month must be between 1 and 12'); err.code = 'INVALID_MONTH'; err.status = 400; throw err;
-  }
-
-  if (day < 1 || day > 31) {
-    const err = new Error('Day must be between 1 and 31'); err.code = 'INVALID_DAY'; err.status = 400; throw err;
-  }
-
   const availableSlots = await getAvailableSlots(doctorId, formatDateKey(scheduledDate));
-  const isSelectedSlotAvailable = availableSlots.slots.some((slot) => slot.time === scheduledDate.toTimeString().slice(0, 5));
+  const isSelectedSlotAvailable = availableSlots.slots.some((slot) => slot.time === normalizedTime);
   if (!isSelectedSlotAvailable) {
     const err = new Error('Selected slot is not available'); err.code = 'SLOT_UNAVAILABLE'; err.status = 400; throw err;
   }
@@ -146,14 +158,16 @@ export const createBooking = async (userId, body) => {
   const booking = await bookingsRepo.createBooking({
     userId, doctorId, childId: childId || null, sessionType,
     duration: ONE_HOUR_SESSION_DURATION,
-    scheduledAt: scheduledDate, scheduledMonth: month, scheduledDay: day,
+    scheduledYear: year, scheduledMonth: month, scheduledDay: day,
     scheduledTime: time, notes: notes || null, status: 'PENDING'
   });
 
   return {
     id: booking.id, doctor: stripDoctorPricing(booking.doctor), sessionType: booking.sessionType,
     duration: booking.duration, price: bookingPrice, status: booking.status,
-    scheduledAt: booking.scheduledAt, createdAt: booking.createdAt
+    scheduledYear: booking.scheduledYear, scheduledMonth: booking.scheduledMonth,
+    scheduledDay: booking.scheduledDay, scheduledTime: booking.scheduledTime,
+    createdAt: booking.createdAt
   };
 };
 
@@ -171,7 +185,9 @@ export const getBookingById = async (userId, id) => {
   return {
     id: booking.id, doctor: stripDoctorPricing(booking.doctor), sessionType: booking.sessionType,
     duration: booking.duration, price: getBookingDisplayPrice(booking), status: booking.status,
-    scheduledAt: booking.scheduledAt, completedAt: booking.completedAt,
+    scheduledYear: booking.scheduledYear, scheduledMonth: booking.scheduledMonth,
+    scheduledDay: booking.scheduledDay, scheduledTime: booking.scheduledTime,
+    completedAt: booking.completedAt,
     cancelledAt: booking.cancelledAt, cancellationReason: booking.cancellationReason,
     rating: booking.rating, review: booking.review,
     createdAt: booking.createdAt, updatedAt: booking.updatedAt
@@ -199,7 +215,7 @@ export const cancelBooking = async (userId, id, reason) => {
 };
 
 export const rescheduleBooking = async (userId, id, body) => {
-  const { scheduledAt, scheduledMonth, scheduledDay, scheduledTime } = body;
+  const { scheduledYear, scheduledMonth, scheduledDay, scheduledTime } = body;
   const booking = await bookingsRepo.findByIdSimple(id);
 
   if (!booking) {
@@ -215,31 +231,31 @@ export const rescheduleBooking = async (userId, id, body) => {
     const err = new Error('Cannot reschedule a completed booking'); err.code = 'CANNOT_RESCHEDULE'; err.status = 400; throw err;
   }
 
-  if (!scheduledAt && (!scheduledMonth || !scheduledDay || !scheduledTime)) {
-    const err = new Error('Either scheduledAt or month/day/time must be provided');
+  if (!scheduledYear || !scheduledMonth || !scheduledDay || !scheduledTime) {
+    const err = new Error('Scheduled year, month, day, and time are required');
     err.code = 'VALIDATION_ERROR'; err.status = 400; throw err;
   }
 
-  const { scheduledDate, month, day, time } = parseScheduledDate(scheduledAt, scheduledMonth, scheduledDay, scheduledTime);
+  const { scheduledDate, year, month, day, time, normalizedTime } = parseScheduledDate(scheduledYear, scheduledMonth, scheduledDay, scheduledTime);
 
   if (scheduledDate < new Date()) {
     const err = new Error('Scheduled time must be in the future'); err.code = 'INVALID_TIME'; err.status = 400; throw err;
   }
 
   const availableSlots = await getAvailableSlots(booking.doctorId, formatDateKey(scheduledDate), { excludeBookingId: id });
-  const isSelectedSlotAvailable = availableSlots.slots.some((slot) => slot.time === scheduledDate.toTimeString().slice(0, 5));
+  const isSelectedSlotAvailable = availableSlots.slots.some((slot) => slot.time === normalizedTime);
   if (!isSelectedSlotAvailable) {
     const err = new Error('Selected slot is not available'); err.code = 'SLOT_UNAVAILABLE'; err.status = 400; throw err;
   }
 
   const updated = await bookingsRepo.rescheduleBooking(id, {
-    scheduledAt: scheduledDate, scheduledMonth: month, scheduledDay: day, scheduledTime: time, status: 'PENDING'
+    scheduledYear: year, scheduledMonth: month, scheduledDay: day, scheduledTime: time, status: 'PENDING'
   });
 
   return {
     id: updated.id, doctor: stripDoctorPricing(updated.doctor), child: updated.child,
     sessionType: updated.sessionType, duration: updated.duration, price: getBookingDisplayPrice(updated),
-    status: updated.status, scheduledAt: updated.scheduledAt,
+    status: updated.status, scheduledYear: updated.scheduledYear,
     scheduledMonth: updated.scheduledMonth, scheduledDay: updated.scheduledDay, scheduledTime: updated.scheduledTime,
     message: 'Booking rescheduled successfully'
   };

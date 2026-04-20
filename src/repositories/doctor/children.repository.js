@@ -1,4 +1,5 @@
 import { prisma } from '../../config/database.js';
+import { bookingScheduleOrderBy } from '../../utils/booking-schedule.utils.js';
 
 export const findDistinctChildrenByDoctor = (doctorId) =>
   prisma.booking.findMany({
@@ -82,7 +83,7 @@ export const findChildDetails = (doctorId, childId) =>
       },
       bookings: {
         where: { doctorId },
-        orderBy: { scheduledAt: 'desc' },
+        orderBy: bookingScheduleOrderBy('desc'),
         take: 5
       }
     }

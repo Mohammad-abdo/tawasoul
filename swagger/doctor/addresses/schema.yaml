@@ -1,0 +1,93 @@
+IdPathParam:
+  name: id
+  in: path
+  required: true
+  schema:
+    type: string
+    format: uuid
+
+DoctorAddress:
+  type: object
+  properties:
+    id:
+      type: string
+      format: uuid
+    label:
+      type: string
+      example: Clinic
+    fullAddress:
+      type: string
+      example: 456 Medical Center, Alexandria
+    latitude:
+      type: number
+      format: double
+      example: 31.2001
+    longitude:
+      type: number
+      format: double
+      example: 29.9187
+    city:
+      type: string
+      example: Alexandria
+    country:
+      type: string
+      example: Egypt
+    isDefault:
+      type: boolean
+      example: false
+    createdAt:
+      type: string
+      format: date-time
+    updatedAt:
+      type: string
+      format: date-time
+
+CreateDoctorAddressRequest:
+  type: object
+  required: [label, fullAddress, latitude, longitude, city, country]
+  properties:
+    label:
+      type: string
+      example: Clinic
+    fullAddress:
+      type: string
+      example: 456 Medical Center, Alexandria
+    latitude:
+      type: number
+      format: double
+      example: 31.2001
+    longitude:
+      type: number
+      format: double
+      example: 29.9187
+    city:
+      type: string
+      example: Alexandria
+    country:
+      type: string
+      example: Egypt
+    isDefault:
+      type: boolean
+      default: false
+      description: Set as default address
+
+UpdateDoctorAddressRequest:
+  type: object
+  properties:
+    label:
+      type: string
+    fullAddress:
+      type: string
+    latitude:
+      type: number
+      format: double
+    longitude:
+      type: number
+      format: double
+    city:
+      type: string
+    country:
+      type: string
+    isDefault:
+      type: boolean
+      description: Set as default address

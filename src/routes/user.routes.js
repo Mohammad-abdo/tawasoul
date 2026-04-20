@@ -14,6 +14,7 @@ import ordersRoutes from './user/orders.routes.js';
 import settingsRoutes from './user/settings.routes.js';
 import assessmentRoutes from './user/assessment.routes.js';
 import maharaActivitiesRoutes from './user/mahara-activities.routes.js';
+import addressRoutes from './user/address.routes.js';
 
 const router = express.Router();
 
@@ -32,5 +33,6 @@ router.use('/orders', ordersRoutes);
 router.use('/settings', settingsRoutes);
 router.use('/assessments', assessmentRoutes);
 router.use('/mahara/activities', maharaActivitiesRoutes);
+router.use('/address', addressRoutes);
 
 export default router;

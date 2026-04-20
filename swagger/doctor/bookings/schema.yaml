@@ -38,9 +38,18 @@ DoctorBookingSummary:
     status:
       type: string
       enum: [PENDING, CONFIRMED, COMPLETED, CANCELLED]
-    scheduledAt:
+    scheduledYear:
+      type: integer
+      nullable: true
+    scheduledMonth:
+      type: integer
+      nullable: true
+    scheduledDay:
+      type: integer
+      nullable: true
+    scheduledTime:
       type: string
-      format: date-time
+      nullable: true
     videoLink:
       type: string
       nullable: true

@@ -1,5 +1,6 @@
 import { prisma } from '../../config/database.js';
 import { aggregatePaymentsByCalendarMonth } from '../../utils/dashboard-aggregates.js';
+import { bookingScheduleOrderBy } from '../../utils/booking-schedule.utils.js';
 
 export const countBookings = (where) => prisma.booking.count({ where });
 
@@ -20,11 +21,9 @@ export const findUpcomingBookings = (doctorId) =>
   prisma.booking.findMany({
     where: {
       doctorId,
-      status: { in: ['PENDING', 'CONFIRMED'] },
-      scheduledAt: { gte: new Date() }
+      status: { in: ['PENDING', 'CONFIRMED'] }
     },
-    take: 5,
-    orderBy: { scheduledAt: 'asc' },
+    orderBy: bookingScheduleOrderBy('asc'),
     include: {
       user: {
         select: {

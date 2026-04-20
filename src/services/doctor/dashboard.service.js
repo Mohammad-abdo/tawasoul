@@ -1,4 +1,5 @@
 import * as dashboardRepo from '../../repositories/doctor/dashboard.repository.js';
+import { getBookingScheduledDate } from '../../utils/booking-schedule.utils.js';
 
 export const getDashboardStats = async (doctorId) => {
   const [
@@ -26,6 +27,13 @@ export const getDashboardStats = async (doctorId) => {
   const sixMonthsAgo = new Date();
   sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
   const monthlyEarnings = await dashboardRepo.groupMonthlyEarnings(doctorId, sixMonthsAgo);
+  const now = new Date();
+  const nextUpcomingBookings = upcomingBookings
+    .filter((booking) => {
+      const scheduledDate = getBookingScheduledDate(booking);
+      return scheduledDate && scheduledDate >= now;
+    })
+    .slice(0, 5);
 
   return {
     stats: {
@@ -43,12 +51,15 @@ export const getDashboardStats = async (doctorId) => {
         articles: totalArticles
       }
     },
-    upcomingBookings: upcomingBookings.map((booking) => ({
+    upcomingBookings: nextUpcomingBookings.map((booking) => ({
       id: booking.id,
       user: booking.user,
       sessionType: booking.sessionType,
       duration: booking.duration,
-      scheduledAt: booking.scheduledAt,
+      scheduledYear: booking.scheduledYear,
+      scheduledMonth: booking.scheduledMonth,
+      scheduledDay: booking.scheduledDay,
+      scheduledTime: booking.scheduledTime,
       status: booking.status
     })),
     recentBookings: recentBookings.map((booking) => ({
