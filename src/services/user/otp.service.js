@@ -2,6 +2,7 @@ import jwt from 'jsonwebtoken';
 import { logger } from '../../utils/logger.js';
 import { mapRelationType } from '../../utils/relationTypeMapper.js';
 import * as otpRepo from '../../repositories/user/otp.repository.js';
+import { getUserAccessTokenSecret } from '../../utils/jwt.utils.js';
 
 const generateOTP = () => {
   const TEST_MODE = process.env.OTP_TEST_MODE !== 'false';
@@ -114,7 +115,7 @@ export const verifyOTP = async ({ phone, code, otp }) => {
 
   const token = jwt.sign(
     { userId: user.id, role: 'USER' },
-    process.env.JWT_SECRET || 'your-secret-key',
+    getUserAccessTokenSecret(),
     { expiresIn: '30d' }
   );
 

@@ -1,6 +1,6 @@
 import { Server } from 'socket.io';
 import { logger } from '../utils/logger.js';
-import jwt from 'jsonwebtoken';
+import { verifyUserOrDoctorToken } from '../utils/jwt.utils.js';
 
 let io; // هنحفظ فيها الـ instance عشان نقدر نستخدمه من بره
 
@@ -27,7 +27,7 @@ export const initSocket = (httpServer) => {
         return next(new Error('AUTH_REQUIRED'));
       }
 
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      const decoded = verifyUserOrDoctorToken(token);
       if (decoded?.role === 'USER' && decoded?.userId) {
         socket.data.actor = { role: 'USER', id: decoded.userId };
         return next();

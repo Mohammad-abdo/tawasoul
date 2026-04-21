@@ -1,19 +1,25 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import * as authRepo from '../../repositories/user/auth.repository.js';
+import {
+  getRefreshTokenExpiry,
+  getRefreshTokenSecret,
+  getUserAccessTokenExpiry,
+  getUserAccessTokenSecret
+} from '../../utils/jwt.utils.js';
 
 const signAccessToken = (userId) =>
   jwt.sign(
     { userId, role: 'USER' },
-    process.env.ACCESS_TOKEN_SECRET || 'your-secret-key',
-    { expiresIn: process.env.ACCESS_TOKEN_EXPIRY || '1d' }
+    getUserAccessTokenSecret(),
+    { expiresIn: getUserAccessTokenExpiry() }
   );
 
 const signRefreshToken = (userId) =>
   jwt.sign(
     { userId, role: 'USER' },
-    process.env.REFRESH_TOKEN_SECRET || 'your-secret-key',
-    { expiresIn: process.env.REFRESH_TOKEN_EXPIRY || '7d' }
+    getRefreshTokenSecret(),
+    { expiresIn: getRefreshTokenExpiry() }
   );
 
 export const register = async ({ username, email, phone, password }) => {
@@ -60,7 +66,7 @@ export const register = async ({ username, email, phone, password }) => {
     isApproved: true
   });
 
-  const token = signToken(user.id);
+  const token = signAccessToken(user.id);
   return { user, token };
 };
 

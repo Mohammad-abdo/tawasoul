@@ -1,6 +1,11 @@
 import jwt from 'jsonwebtoken';
 import { prisma } from '../config/database.js';
 import { logger } from '../utils/logger.js';
+import {
+  verifyGeneralJwtToken,
+  verifyUserAccessToken,
+  verifyUserOrDoctorToken
+} from '../utils/jwt.utils.js';
 
 /**
  * Authentication middleware for Users
@@ -19,7 +24,7 @@ export const authenticateUser = async (req, res, next) => {
       });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = verifyUserAccessToken(token);
 
     if (decoded.role !== 'USER') {
       return res.status(403).json({
@@ -85,7 +90,7 @@ export const authenticateDoctor = async (req, res, next) => {
       });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = verifyGeneralJwtToken(token);
 
     if (decoded.role !== 'DOCTOR') {
       return res.status(403).json({
@@ -152,7 +157,7 @@ export const authenticateUserOrDoctor = async (req, res, next) => {
       });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = verifyUserOrDoctorToken(token);
 
     if (decoded.role === 'USER') {
       const user = await prisma.user.findUnique({
