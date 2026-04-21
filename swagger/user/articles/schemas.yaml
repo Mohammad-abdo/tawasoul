@@ -1,0 +1,94 @@
+ArticleSummary:
+  type: object
+  properties:
+    id:
+      type: string
+      format: uuid
+    title:
+      type: string
+    excerpt:
+      type: string
+      nullable: true
+    author:
+      $ref: "#/components/schemas/ArticleAuthor"
+    views:
+      type: integer
+    likes:
+      type: integer
+    comments:
+      type: integer
+    isRecommended:
+      type: boolean
+    isFeatured:
+      type: boolean
+    createdAt:
+      type: string
+      format: date-time
+    updatedAt:
+      type: string
+      format: date-time
+
+ArticleDetail:
+  allOf:
+    - $ref: "#/components/schemas/ArticleSummary"
+    - type: object
+      properties:
+        content:
+          type: string
+
+ArticleAuthor:
+  type: object
+  properties:
+    id:
+      type: string
+      format: uuid
+    name:
+      type: string
+    specialization:
+      type: string
+      nullable: true
+    avatar:
+      type: string
+      nullable: true
+    isVerified:
+      type: boolean
+
+AddArticleCommentRequest:
+  type: object
+  required: [content]
+  properties:
+    content:
+      type: string
+      minLength: 1
+
+ArticleComment:
+  type: object
+  properties:
+    id:
+      type: string
+      format: uuid
+    articleId:
+      type: string
+      format: uuid
+    userId:
+      type: string
+      format: uuid
+    content:
+      type: string
+    createdAt:
+      type: string
+      format: date-time
+    updatedAt:
+      type: string
+      format: date-time
+    user:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        fullName:
+          type: string
+        avatar:
+          type: string
+          nullable: true

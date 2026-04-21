@@ -6,5 +6,8 @@ const router = express.Router();
 
 router.get('/', authenticateUser, articlesController.getAllArticles);
 router.get('/:id', authenticateUser, articlesController.getArticleById);
+router.post('/:id/comments', authenticateUser, articlesController.addArticleComment);
+router.delete('/:id/comments', authenticateUser, articlesController.deleteArticleComment);
+router.post('/:id/like', authenticateUser, articlesController.addArticleLike);
 
 export default router;

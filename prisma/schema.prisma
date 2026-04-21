@@ -8,36 +8,40 @@ datasource db {
 }
 
 model User {
-  id               String          @id @default(uuid())
-  fullName         String?
-  username         String?         @unique
-  email            String?         @unique
-  phone            String?         @unique
-  password         String?
-  relationType     RelationType?
-  language         String          @default("ar")
-  allowPrivateMsg  Boolean         @default(true)
-  isAnonymous      Boolean         @default(false)
-  avatar           String?
-  isActive         Boolean         @default(true)
-  isApproved       Boolean         @default(true)
-  isPhoneVerified  Boolean         @default(false)
-  createdAt        DateTime        @default(now())
-  updatedAt        DateTime        @updatedAt
-  addresses        Address[]
-  bookings         Booking[]
-  cartItems        CartItem[]
-  children         Child[]
-  notifications    Notification[]
-  orders           Order[]
-  otpCodes         OtpCode[]
-  productReviews   ProductReview[]
-  supportReplies   SupportReply[]
-  supportTickets   SupportTicket[]
-  coupons          UserCoupon[]
-  userPackages     UserPackage[]
-  conversations    Conversation[]
-  refreshTokens    RefreshToken[]
+  id                     String          @id @default(uuid())
+  fullName                String?
+  username               String?         @unique
+  email                  String?         @unique
+  phone                  String?         @unique
+  password               String?
+  relationType            RelationType?
+  language               String          @default("ar")
+  allowPrivateMsg        Boolean         @default(true)
+  isAnonymous           Boolean         @default(false)
+  avatar                 String?
+  isActive               Boolean         @default(true)
+  isApproved             Boolean         @default(true)
+  isPhoneVerified        Boolean         @default(false)
+  isEmailVerified        Boolean         @default(false)
+  emailVerificationToken String?        @unique
+  emailVerificationExpiry DateTime?
+  createdAt              DateTime        @default(now())
+  updatedAt              DateTime        @updatedAt
+  addresses              Address[]
+  bookings              Booking[]
+  cartItems              CartItem[]
+  children               Child[]
+  notifications          Notification[]
+  orders                Order[]
+  otpCodes               OtpCode[]
+  productReviews        ProductReview[]
+  supportReplies         SupportReply[]
+  supportTickets        SupportTicket[]
+  coupons                UserCoupon[]
+  userPackages          UserPackage[]
+  conversations          Conversation[]
+  refreshTokens          RefreshToken[]
+  articleComments      ArticleComment[]
 
   @@map("users")
 }
@@ -57,9 +61,26 @@ model Article {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   author        Doctor   @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  articleComments ArticleComment[]
 
   @@index([authorId], map: "articles_authorId_fkey")
   @@map("articles")
+}
+
+model ArticleComment {
+  id        String   @id @default(uuid())
+  articleId String
+  userId    String
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  article   Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([articleId])
+  @@index([userId])
+  @@map("article_comments")
 }
 
 model Doctor {
@@ -208,6 +229,7 @@ model Booking {
   doctorId           String
   childId            String?
   category           SessionCategory @default(INDIVIDUAL)
+  sessionType SessionType?
   duration           Int
   status             BookingStatus   @default(PENDING)
   scheduledYear      Int?
@@ -1237,6 +1259,11 @@ model Q_AuditoryMemory_Answer {
 enum VisualMemoryQType {
   YES_NO
   MCQ
+}
+
+enum SessionType {
+  VIDEO
+  IN_PERSON
 }
 
 model Q_SequenceOrder {

@@ -76,3 +76,15 @@ export const buildSlotDate = (date, time) => {
   return slotDate;
 };
 
+export const getSlotStatus = (slotDate, now) => {
+  if (slotDate <= now) {
+    return 'expired';
+  }
+  return 'available';
+};
+
+export const formatSlotWithStatus = (time, status) => ({
+  time,
+  status
+});
+

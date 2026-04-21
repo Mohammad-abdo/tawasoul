@@ -19,6 +19,7 @@ dotenv.config();
 import userRoutes from './routes/user.routes.js';
 import doctorRoutes from './routes/doctor.routes.js';
 import adminRoutes from './routes/admin.routes.js';
+import authRoutes from './routes/auth.routes.js';
 import publicRoutes from './routes/public.routes.js';
 import agoraRoutes from './routes/agora.routes.js';
 
@@ -97,6 +98,7 @@ app.get('/health', (req, res) => {
 });
 
 app.use('/api/public', publicRoutes); 
+app.use('/api/auth', authRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/doctor', doctorRoutes);
 app.use('/api/admin', adminRoutes);

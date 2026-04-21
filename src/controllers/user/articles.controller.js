@@ -193,3 +193,123 @@ export const getArticleById = async (req, res, next) => {
   }
 };
 
+/**
+ * Add Article Comment
+ */
+export const addArticleComment = async (req, res, next) => {
+  try {
+    const { id: articleId } = req.params;
+    const { content } = req.body;
+    const userId = req.user.id;
+
+    if (!content || !content.trim()) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: 'Comment content is required' }
+      });
+    }
+
+    const article = await prisma.article.findUnique({ where: { id: articleId } });
+    if (!article) {
+      return res.status(404).json({
+        success: false,
+        error: { code: 'ARTICLE_NOT_FOUND', message: 'Article not found' }
+      });
+    }
+
+    const comment = await prisma.articleComment.create({
+      data: {
+        articleId,
+        userId,
+        content: content.trim()
+      },
+      include: {
+        user: {
+          select: { id: true, fullName: true, avatar: true }
+        }
+      }
+    });
+
+    await prisma.article.update({
+      where: { id: articleId },
+      data: { comments: { increment: 1 } }
+    });
+
+    res.status(201).json({
+      success: true,
+      data: comment
+    });
+  } catch (error) {
+    logger.error('Add article comment error:', error);
+    next(error);
+  }
+};
+
+/**
+ * Delete Article Comment
+ */
+export const deleteArticleComment = async (req, res, next) => {
+  try {
+    const { id: articleId } = req.params;
+    const userId = req.user.id;
+
+    const comment = await prisma.articleComment.findFirst({
+      where: { articleId, userId }
+    });
+
+    if (!comment) {
+      return res.status(404).json({
+        success: false,
+        error: { code: 'COMMENT_NOT_FOUND', message: 'Comment not found' }
+      });
+    }
+
+    await prisma.articleComment.delete({
+      where: { id: comment.id }
+    });
+
+    await prisma.article.update({
+      where: { id: articleId },
+      data: { comments: { decrement: 1 } }
+    });
+
+    res.json({
+      success: true,
+      message: 'Comment deleted'
+    });
+  } catch (error) {
+    logger.error('Delete article comment error:', error);
+    next(error);
+  }
+};
+
+/**
+ * Add Article Like
+ */
+export const addArticleLike = async (req, res, next) => {
+  try {
+    const { id: articleId } = req.params;
+
+    const article = await prisma.article.findUnique({ where: { id: articleId } });
+    if (!article) {
+      return res.status(404).json({
+        success: false,
+        error: { code: 'ARTICLE_NOT_FOUND', message: 'Article not found' }
+      });
+    }
+
+    await prisma.article.update({
+      where: { id: articleId },
+      data: { likes: { increment: 1 } }
+    });
+
+    res.json({
+      success: true,
+      message: 'Article liked'
+    });
+  } catch (error) {
+    logger.error('Add article like error:', error);
+    next(error);
+  }
+};
+

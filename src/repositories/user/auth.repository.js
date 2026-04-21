@@ -32,3 +32,21 @@ export const createUser = (data) =>
       createdAt: true
     }
   });
+
+export const updateUser = (id, data) =>
+  prisma.user.update({
+    where: { id },
+    data,
+    select: {
+      id: true,
+      email: true,
+      isEmailVerified: true,
+      emailVerificationToken: true,
+      emailVerificationExpiry: true
+    }
+  });
+
+export const findUserByVerificationToken = (token) =>
+  prisma.user.findFirst({
+    where: { emailVerificationToken: token }
+  });

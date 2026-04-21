@@ -1,23 +1,18 @@
 import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
 import { logger } from '../../utils/logger.js';
 import { mapRelationType } from '../../utils/relationTypeMapper.js';
 import * as otpRepo from '../../repositories/user/otp.repository.js';
 import { getUserAccessTokenSecret } from '../../utils/jwt.utils.js';
 
-const generateOTP = () => {
-  const TEST_MODE = process.env.OTP_TEST_MODE !== 'false';
-  const TEST_OTP = process.env.TEST_OTP || '12345';
+const generateOTP = () => crypto.randomInt(100000, 999999).toString();
 
-  if (TEST_MODE || process.env.NODE_ENV !== 'production') {
-    logger.info(`🧪 TEST MODE: Using fixed OTP: ${TEST_OTP}`);
-    return TEST_OTP;
-  }
-
-  return Math.floor(10000 + Math.random() * 90000).toString();
+const sendSmsOtp = (phone, code) => {
+  console.log(`[SMS PLACEHOLDER] Sending OTP ${code} to phone: ${phone}`);
+  logger.info(`SMS placeholder: OTP sent to ${phone}`);
 };
 
-const isTestMode = () =>
-  process.env.OTP_TEST_MODE !== 'false' || process.env.NODE_ENV !== 'production';
+const OTP_EXPIRY_MINUTES = 10;
 
 export const sendOTP = async ({ phone, fullName, relationType, agreedToTerms }) => {
   if (!phone) {
@@ -46,7 +41,7 @@ export const sendOTP = async ({ phone, fullName, relationType, agreedToTerms }) 
   const normalizedPhone = cleanedPhone;
   const otpCode = generateOTP();
   const expiresAt = new Date();
-  expiresAt.setMinutes(expiresAt.getMinutes() + 10);
+  expiresAt.setMinutes(expiresAt.getMinutes() + OTP_EXPIRY_MINUTES);
 
   let user = await otpRepo.findUserByPhone(normalizedPhone);
 
@@ -75,17 +70,11 @@ export const sendOTP = async ({ phone, fullName, relationType, agreedToTerms }) 
     await otpRepo.createOTP({ userId: user.id, phone: normalizedPhone, code: otpCode, expiresAt });
   }
 
-  const testMode = isTestMode();
-  if (testMode) {
-    logger.info(`🧪 TEST MODE - OTP for ${normalizedPhone}: ${otpCode}`);
-  } else {
-    logger.info(`📱 OTP sent via SMS to: ${normalizedPhone}`);
-  }
+  sendSmsOtp(normalizedPhone, otpCode);
 
   return {
     message: 'OTP sent successfully',
-    ...(testMode && { otp: otpCode }),
-    expiresIn: 600
+    expiresIn: OTP_EXPIRY_MINUTES * 60
   };
 };
 
@@ -100,12 +89,25 @@ export const verifyOTP = async ({ phone, code, otp }) => {
   }
 
   const normalizedPhone = phone.replace(/\s/g, '').replace(/^\+/, '');
-
-  const otpRecord = await otpRepo.findValidOTP(normalizedPhone, otpCode);
+  const otpRecord = await otpRepo.findOTPByPhoneAndCode(normalizedPhone, otpCode);
 
   if (!otpRecord) {
-    const err = new Error('Invalid or expired OTP code');
-    err.code = 'INVALID_OTP';
+    const err = new Error('OTP code not found');
+    err.code = 'OTP_NOT_FOUND';
+    err.status = 404;
+    throw err;
+  }
+
+  if (otpRecord.isUsed) {
+    const err = new Error('OTP code has already been used');
+    err.code = 'OTP_ALREADY_USED';
+    err.status = 400;
+    throw err;
+  }
+
+  if (otpRecord.expiresAt < new Date()) {
+    const err = new Error('OTP code has expired');
+    err.code = 'OTP_EXPIRED';
     err.status = 400;
     throw err;
   }
@@ -132,8 +134,8 @@ export const resendOTP = async ({ phone }) => {
   }
 
   const normalizedPhone = phone.replace(/\s/g, '').replace(/^\+/, '');
-
   const user = await otpRepo.findUserByPhone(normalizedPhone);
+
   if (!user) {
     const err = new Error('User not found. Please register first.');
     err.code = 'USER_NOT_FOUND';
@@ -143,21 +145,14 @@ export const resendOTP = async ({ phone }) => {
 
   const otpCode = generateOTP();
   const expiresAt = new Date();
-  expiresAt.setMinutes(expiresAt.getMinutes() + 10);
+  expiresAt.setMinutes(expiresAt.getMinutes() + OTP_EXPIRY_MINUTES);
 
   await otpRepo.invalidatePreviousOTPs(normalizedPhone);
   await otpRepo.createOTP({ userId: user.id, phone: normalizedPhone, code: otpCode, expiresAt });
-
-  const testMode = isTestMode();
-  if (testMode) {
-    logger.info(`🧪 TEST MODE - Resent OTP for ${normalizedPhone}: ${otpCode}`);
-  } else {
-    logger.info(`📱 OTP resent via SMS to: ${normalizedPhone}`);
-  }
+  sendSmsOtp(normalizedPhone, otpCode);
 
   return {
     message: 'OTP resent successfully',
-    ...(testMode && { otp: otpCode }),
-    expiresIn: 600
+    expiresIn: OTP_EXPIRY_MINUTES * 60
   };
 };

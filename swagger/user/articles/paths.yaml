@@ -1,0 +1,178 @@
+/user/articles:
+  get:
+    tags: [User Articles]
+    summary: Get all published articles
+    operationId: getAllArticles
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: page
+        in: query
+        schema:
+          type: integer
+          default: 1
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          default: 20
+      - name: recommended
+        in: query
+        schema:
+          type: string
+          enum: [true, false]
+        description: Filter by recommended articles
+      - name: sort
+        in: query
+        schema:
+          type: string
+          enum: [latest, popular, featured]
+          default: latest
+        description: Sort order - latest (newest first), popular (most views), featured
+      - name: search
+        in: query
+        schema:
+          type: string
+        description: Search in title, content, or excerpt
+    responses:
+      "200":
+        description: Paginated list of articles
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  type: object
+                  properties:
+                    articles:
+                      type: array
+                      items:
+                        $ref: "#/components/schemas/ArticleSummary"
+                    pagination:
+                      $ref: "#/components/schemas/PaginationMeta"
+
+/user/articles/{id}:
+  get:
+    tags: [User Articles]
+    summary: Get article by ID
+    operationId: getArticleById
+    security:
+      - BearerAuth: []
+    parameters:
+      - $ref: "#/components/schemas/IdPathParam"
+    responses:
+      "200":
+        description: Article detail
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  $ref: "#/components/schemas/ArticleDetail"
+      "404":
+        description: Article not found
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+
+/user/articles/{id}/comments:
+  post:
+    tags: [User Articles]
+    summary: Add a comment to an article
+    operationId: addArticleComment
+    security:
+      - BearerAuth: []
+    parameters:
+      - $ref: "#/components/schemas/IdPathParam"
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/AddArticleCommentRequest"
+    responses:
+      "201":
+        description: Comment added
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  $ref: "#/components/schemas/ArticleComment"
+      "400":
+        description: Validation error
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "404":
+        description: Article not found
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+
+  delete:
+    tags: [User Articles]
+    summary: Delete user's own comment from an article
+    operationId: deleteArticleComment
+    security:
+      - BearerAuth: []
+    parameters:
+      - $ref: "#/components/schemas/IdPathParam"
+    responses:
+      "200":
+        description: Comment deleted
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                message:
+                  type: string
+      "404":
+        description: Comment not found
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+
+/user/articles/{id}/like:
+  post:
+    tags: [User Articles]
+    summary: Like an article
+    operationId: addArticleLike
+    security:
+      - BearerAuth: []
+    parameters:
+      - $ref: "#/components/schemas/IdPathParam"
+    responses:
+      "200":
+        description: Article liked
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                message:
+                  type: string
+      "404":
+        description: Article not found
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"

@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken';
 import { prisma } from '../config/database.js';
+import { isTokenRevoked } from '../services/refresh-token.service.js';
 import { logger } from '../utils/logger.js';
 import {
   verifyGeneralJwtToken,
@@ -25,6 +26,17 @@ export const authenticateUser = async (req, res, next) => {
     }
 
     const decoded = verifyUserAccessToken(token);
+    const revoked = await isTokenRevoked(token);
+
+    if (revoked) {
+      return res.status(401).json({
+        success: false,
+        error: {
+          code: 'INVALID_TOKEN',
+          message: 'Invalid or expired token'
+        }
+      });
+    }
 
     if (decoded.role !== 'USER') {
       return res.status(403).json({
@@ -158,6 +170,17 @@ export const authenticateUserOrDoctor = async (req, res, next) => {
     }
 
     const decoded = verifyUserOrDoctorToken(token);
+    const revoked = await isTokenRevoked(token);
+
+    if (revoked) {
+      return res.status(401).json({
+        success: false,
+        error: {
+          code: 'INVALID_TOKEN',
+          message: 'Invalid or expired token'
+        }
+      });
+    }
 
     if (decoded.role === 'USER') {
       const user = await prisma.user.findUnique({

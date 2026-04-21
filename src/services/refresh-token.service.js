@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+import jwt from 'jsonwebtoken';
 import { prisma } from '../config/database.js';
 
 const TOKEN_EXPIRY_DAYS = parseInt(process.env.REFRESH_TOKEN_EXPIRY_DAYS || '30', 10);
@@ -17,12 +18,7 @@ const validateOwnerGuard = (userId, doctorId, adminId) => {
   }
 };
 
-export const createToken = async (ownerId, role) => {
-  const token = crypto.randomBytes(64).toString('hex');
-  const tokenHash = hashToken(token);
-  const expiresAt = new Date();
-  expiresAt.setDate(expiresAt.getDate() + TOKEN_EXPIRY_DAYS);
-
+const resolveOwnerFields = (ownerId, role) => {
   let userId = null;
   let doctorId = null;
   let adminId = null;
@@ -36,6 +32,16 @@ export const createToken = async (ownerId, role) => {
   }
 
   validateOwnerGuard(userId, doctorId, adminId);
+  return { userId, doctorId, adminId };
+};
+
+export const createToken = async (ownerId, role) => {
+  const token = crypto.randomBytes(64).toString('hex');
+  const tokenHash = hashToken(token);
+  const expiresAt = new Date();
+  expiresAt.setDate(expiresAt.getDate() + TOKEN_EXPIRY_DAYS);
+
+  const { userId, doctorId, adminId } = resolveOwnerFields(ownerId, role);
 
   await prisma.refreshToken.create({
     data: {
@@ -49,6 +55,53 @@ export const createToken = async (ownerId, role) => {
   });
 
   return token;
+};
+
+export const blacklistJwtToken = async (token, ownerId, role) => {
+  const decoded = jwt.decode(token);
+  if (!decoded || typeof decoded !== 'object' || typeof decoded.exp !== 'number') {
+    const err = new Error('Invalid token');
+    err.code = 'INVALID_TOKEN';
+    err.status = 401;
+    throw err;
+  }
+
+  const expiresAt = new Date(decoded.exp * 1000);
+  const tokenHash = hashToken(token);
+  const { userId, doctorId, adminId } = resolveOwnerFields(ownerId, role);
+
+  await prisma.refreshToken.upsert({
+    where: { token: tokenHash },
+    update: {
+      userId,
+      doctorId,
+      adminId,
+      expiresAt,
+      isRevoked: true
+    },
+    create: {
+      token: tokenHash,
+      userId,
+      doctorId,
+      adminId,
+      expiresAt,
+      isRevoked: true
+    }
+  });
+};
+
+export const isTokenRevoked = async (token) => {
+  const tokenHash = hashToken(token);
+
+  const existingToken = await prisma.refreshToken.findUnique({
+    where: { token: tokenHash },
+    select: {
+      isRevoked: true,
+      expiresAt: true
+    }
+  });
+
+  return Boolean(existingToken?.isRevoked && existingToken.expiresAt >= new Date());
 };
 
 export const rotateToken = async (oldToken) => {
@@ -123,17 +176,7 @@ export const revokeToken = async (token) => {
 };
 
 export const revokeAllForOwner = async (ownerId, role) => {
-  let userId = null;
-  let doctorId = null;
-  let adminId = null;
-
-  if (role === 'USER') {
-    userId = ownerId;
-  } else if (role === 'DOCTOR') {
-    doctorId = ownerId;
-  } else if (role === 'ADMIN') {
-    adminId = ownerId;
-  }
+  const { userId, doctorId, adminId } = resolveOwnerFields(ownerId, role);
 
   await prisma.refreshToken.updateMany({
     where: {

@@ -1,11 +1,10 @@
 import * as availabilityRepo from '../../repositories/doctor/availability.repository.js';
 import { createHttpError } from '../../utils/httpError.js';
-import { parseTimeSlots } from '../../utils/availability.js';
+import { formatDateKey, getSlotStatus, parseTimeSlots } from '../../utils/availability.js';
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
-export const buildNext7Days = (availabilityList) => {
-  /*  dayOfWeek mapping (0-6):  0 = Sunday, 1 = Monday, ..., 6 = Saturday  This matches JavaScript's Date.getDay() convention, which is also confirmed by the  validation error in updateAvailability: "Invalid dayOfWeek. Must be 0-6 (Sunday=0)"  */
+export const buildNext7Days = async (availabilityList, doctorId) => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
@@ -17,15 +16,41 @@ export const buildNext7Days = (availabilityList) => {
     }
   }
 
+  const endDate = new Date(today);
+  endDate.setDate(endDate.getDate() + 6);
+  const bookings = await availabilityRepo.findBookingsForDoctor(doctorId, today, endDate);
+
+  const bookedSlotKeys = new Set(
+    bookings.map((booking) => {
+      const dateStr = `${booking.scheduledYear}-${String(booking.scheduledMonth).padStart(2, '0')}-${String(booking.scheduledDay).padStart(2, '0')}`;
+      return `${dateStr}|${booking.scheduledTime}`;
+    })
+  );
+
+  const now = new Date();
   const result = [];
   for (let i = 0; i < 7; i++) {
     const date = new Date(today);
     date.setDate(date.getDate() + i);
 
     const dayOfWeek = date.getDay();
-    const slots = availabilityMap.get(dayOfWeek) || [];
+    const rawSlots = availabilityMap.get(dayOfWeek) || [];
+    const dateStr = formatDateKey(date);
 
-    const dateStr = date.toISOString().split('T')[0];
+    const slots = rawSlots.map((time) => {
+      const slotDate = new Date(date);
+      const [hours, minutes] = time.split(':').map(Number);
+      slotDate.setHours(hours, minutes, 0, 0);
+
+      const slotKey = `${dateStr}|${time}`;
+      let status = getSlotStatus(slotDate, now);
+      if (status === 'available' && bookedSlotKeys.has(slotKey)) {
+        status = 'booked';
+      }
+
+      return { time, status };
+    });
+
     result.push({
       date: dateStr,
       dayName: DAY_NAMES[dayOfWeek],
@@ -48,7 +73,7 @@ const formatAvailability = (availability) =>
 
 export const getAvailability = async (doctorId) => {
   const availability = await availabilityRepo.findByDoctorId(doctorId);
-  return buildNext7Days(availability);
+  return buildNext7Days(availability, doctorId);
 };
 
 export const updateAvailability = async (doctorId, body) => {

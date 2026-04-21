@@ -1,6 +1,9 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
 import * as authRepo from '../../repositories/user/auth.repository.js';
+import * as refreshTokenService from '../refresh-token.service.js';
+import { sendVerificationEmail } from '../../utils/mailer.js';
 import {
   getRefreshTokenExpiry,
   getRefreshTokenSecret,
@@ -127,4 +130,91 @@ export const getMe = async (userId) => {
 
   const { password: _, ...userWithoutPassword } = user;
   return userWithoutPassword;
+};
+
+export const logout = async ({ userId, accessToken }) => {
+  if (!userId || !accessToken) {
+    const err = new Error('Authentication required');
+    err.code = 'AUTH_REQUIRED';
+    err.status = 401;
+    throw err;
+  }
+
+  await Promise.all([
+    refreshTokenService.blacklistJwtToken(accessToken, userId, 'USER'),
+    refreshTokenService.revokeAllForOwner(userId, 'USER')
+  ]);
+};
+
+export const requestEmailVerification = async (userId, email) => {
+  if (!email) {
+    const err = new Error('Email is required');
+    err.code = 'VALIDATION_ERROR';
+    err.status = 400;
+    throw err;
+  }
+
+  const user = await authRepo.findById(userId);
+  if (!user) {
+    const err = new Error('User not found');
+    err.code = 'USER_NOT_FOUND';
+    err.status = 404;
+    throw err;
+  }
+
+  const normalizedEmail = String(email).trim().toLowerCase();
+  const existingUser = await authRepo.findByEmail(normalizedEmail);
+  if (existingUser && existingUser.id !== userId) {
+    const err = new Error('Email already in use');
+    err.code = 'EMAIL_EXISTS';
+    err.status = 409;
+    throw err;
+  }
+
+  const token = crypto.randomBytes(32).toString('hex');
+  const expiresAt = new Date();
+  expiresAt.setHours(expiresAt.getHours() + 24);
+
+  await authRepo.updateUser(userId, {
+    emailVerificationToken: token,
+    emailVerificationExpiry: expiresAt,
+    email: normalizedEmail
+  });
+
+  await sendVerificationEmail({ to: normalizedEmail, token });
+
+  return { message: 'Verification email sent' };
+};
+
+export const verifyEmail = async (token) => {
+  if (!token) {
+    const err = new Error('Verification token is required');
+    err.code = 'VALIDATION_ERROR';
+    err.status = 400;
+    throw err;
+  }
+
+  const user = await authRepo.findUserByVerificationToken(token);
+
+  if (!user) {
+    const err = new Error('Invalid verification token');
+    err.code = 'INVALID_TOKEN';
+    err.status = 400;
+    throw err;
+  }
+
+  if (user.emailVerificationExpiry < new Date()) {
+    const err = new Error('Verification token has expired');
+    err.code = 'TOKEN_EXPIRED';
+    err.status = 400;
+    throw err;
+  }
+
+  await authRepo.updateUser(user.id, {
+    isEmailVerified: true,
+    emailVerificationToken: null,
+    emailVerificationExpiry: null
+  });
+
+  return { message: 'Email verified successfully' };
 };

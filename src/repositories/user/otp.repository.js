@@ -27,6 +27,12 @@ export const findValidOTP = (phone, code) =>
     include: { user: true }
   });
 
+export const findOTPByPhoneAndCode = (phone, code) =>
+  prisma.otpCode.findFirst({
+    where: { phone, code },
+    orderBy: { createdAt: 'desc' }
+  });
+
 export const markOTPUsed = (id) =>
   prisma.otpCode.update({ where: { id }, data: { isUsed: true } });
 

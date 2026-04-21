@@ -105,7 +105,7 @@ export const getDoctorById = async (id) => {
     const err = new Error('Doctor not found'); err.code = 'DOCTOR_NOT_FOUND'; err.status = 404; throw err;
   }
 
-  const formattedAvailability = buildNext7Days(doctor.availability);
+  const formattedAvailability = await buildNext7Days(doctor.availability, doctor.id);
 
   // const orderedPrices = [...doctor.sessionPrices].sort((a, b) => (a.duration || 0) - (b.duration || 0));
   // const preferredPrice = orderedPrices.find((item) => item.duration === ONE_HOUR_SESSION_DURATION) || orderedPrices[0];
@@ -163,16 +163,15 @@ export const getAvailableSlots = async (doctorId, dateStr, options = {}) => {
       const slotDate = buildSlotDate(date, time);
       if (!slotDate) return null;
 
-      const slotKey = `${formatDateKey(slotDate)}|${time}`;
-      const isBooked = bookedSlotKeys.has(slotKey);
-      const isPast = slotDate <= now;
-      return {
-        time,
-        date: dateStr,
-        available: !isBooked && !isPast
-      };
+      let status = slotDate <= now ? 'expired' : 'available';
+      const slotKey = `${dateStr}|${time}`;
+      if (status === 'available' && bookedSlotKeys.has(slotKey)) {
+        status = 'booked';
+      }
+
+      return { time, status };
     })
-    .filter((slot) => slot && slot.available);
+    .filter(Boolean);
 
   return { slots, date: dateStr };
 };
