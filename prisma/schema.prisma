@@ -589,7 +589,9 @@ model AppSettings {
   emailService              String?
   createdAt                 DateTime @default(now())
   updatedAt                 DateTime @updatedAt
-
+  supportEmail              String?  @default("support@tawasoul.com")
+  supportPhone              String?  @default("+966123456789")
+  supportWhatsapp           String?  @default("+966123456789")
   @@map("app_settings")
 }
 
