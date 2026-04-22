@@ -52,8 +52,7 @@ export const getUserConversations = async (req, res, next) => {
  */
 export const getConversationMessages = async (req, res, next) => {
   try {
-    const userId = req.user.id;
-    const { doctorId } = req.params;
+    const conversationId = req.params.conversationId;
     const { page = 1, limit = 50 } = req.query;
 
     const skip = (parseInt(page) - 1) * parseInt(limit);
@@ -61,7 +60,7 @@ export const getConversationMessages = async (req, res, next) => {
 
     // 1. ندور على المحادثة
     const conversation = await messagesRepo.findConversation({
-      userId_doctorId: { userId, doctorId }
+      id: conversationId
     });
 
     if (!conversation) {

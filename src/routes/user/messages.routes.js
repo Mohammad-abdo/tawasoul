@@ -9,7 +9,7 @@ const router = express.Router();
 router.get('/conversations', authenticateUser, messagesController.getUserConversations);
 
 // جلب رسائل محادثة معينة مع دكتور
-router.get('/conversation/:doctorId', authenticateUser, messagesController.getConversationMessages);
+router.get('/conversations/:conversationId', authenticateUser, messagesController.getConversationMessages);
 
 // إرسال رسالة
 router.post('/send', authenticateUser, moderateTextMiddleware, messagesController.sendMessage);

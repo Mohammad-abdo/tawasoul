@@ -50,21 +50,33 @@
                 data:
                   $ref: "#/components/schemas/Message"
 
-/user/messages/conversations/{userId}:
+/user/messages/conversations/{conversationId}:
   get:
     tags: [User Messages]
-    summary: Get messages in a conversation with a specific user
-    operationId: getConversation
+    summary: Get messages in a specific conversation
+    operationId: getConversationMessages
     security:
       - BearerAuth: []
     parameters:
-      - name: userId
+      - name: conversationId
         in: path
         required: true
         schema:
           type: string
           format: uuid
-        description: The other user's ID
+        description: The conversation ID
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          default: 1
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          default: 20
     responses:
       "200":
         description: Messages in conversation
