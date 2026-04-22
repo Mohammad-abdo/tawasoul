@@ -63,9 +63,9 @@ Conversation:
 
 SendMessageRequest:
   type: object
-  required: [receiverId, messageType]
+  required: [doctorId, content]
   properties:
-    receiverId:
+    doctorId:
       type: string
       format: uuid
     messageType:

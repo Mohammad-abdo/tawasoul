@@ -223,7 +223,7 @@ export const getOpenApiSpec = (req) => ({
       description: 'Production server'
     },
     {
-      url: 'http://localhost:3000/api',
+      url: 'http://localhost:5000/api',
       description: 'Local development server'
     },
     {

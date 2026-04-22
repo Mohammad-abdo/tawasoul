@@ -22,7 +22,7 @@ export const getUserConversations = async (req, res, next) => {
         take,
         orderBy: { updatedAt: 'desc' },
         include: {
-          doctor: { select: { id: true, name: true, avatar: true, specialty: true } },
+          doctor: { select: { id: true, name: true, avatar: true, specialties: true } },
           messages: { orderBy: { createdAt: 'desc' }, take: 1 }
         }
       }),

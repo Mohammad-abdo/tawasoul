@@ -75,9 +75,9 @@ export const initSocket = (httpServer) => {
       logger.info(`Doctor ${doctorId} joined their room`);
     });
 
-    socket.on('join-admin-room', () => {
-      socket.join('admin-room');
-    });
+    // socket.on('join-admin-room', () => {
+    //   socket.join('admin-room');
+    // });
 
     // ==========================================
     // 2. Chat Real-time Events (Typing...)
