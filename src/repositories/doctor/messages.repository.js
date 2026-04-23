@@ -17,3 +17,12 @@ export const findUserById = (id) =>
 
 export const createNotification = (data) =>
   prisma.notification.create({ data });
+
+export const findMessageById = (where) =>
+  prisma.message.findUnique({ where });
+
+export const updateMessage = ({ where, data }) =>
+  prisma.message.update({ where, data });
+
+export const deleteMessage = (where) =>
+  prisma.message.delete({ where });

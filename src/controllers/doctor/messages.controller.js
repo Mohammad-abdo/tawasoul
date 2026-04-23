@@ -1,3 +1,4 @@
+import * as messagesService from '../../services/doctor/messages.service.js';
 import * as messagesRepo from '../../repositories/doctor/messages.repository.js';
 import * as conversationsRepo from '../../repositories/doctor/conversations.repository.js';
 import { logger } from '../../utils/logger.js';
@@ -18,33 +19,8 @@ export const sendMessageToUser = async (req, res, next) => {
       voiceDuration
     } = req.body;
 
-    if (!userId) {
-      return res.status(400).json({ success: false, error: { message: 'User ID is required' } });
-    }
-
-    const user = await messagesRepo.findUserById(userId);
-    if (!user) {
-      return res.status(404).json({ success: false, error: { message: 'User not found' } });
-    }
-
-    const conversation = await conversationsRepo.upsertConversation({
-      where: { userId_doctorId: { userId, doctorId } },
-      update: { updatedAt: new Date() },
-      create: { userId, doctorId }
-    });
-
-    const message = await messagesRepo.createMessage({
-      conversationId: conversation.id,
-      senderId: doctorId,
-      senderRole: 'DOCTOR',
-      content: content ? content.trim() : null,
-      messageType,
-      imageUrl: imageUrl || null,
-      videoUrl: videoUrl || null,
-      fileUrl: fileUrl || null,
-      fileName: fileName || null,
-      voiceUrl: voiceUrl || null,
-      voiceDuration: voiceDuration ? parseInt(voiceDuration) : null
+    const message = await messagesService.sendMessageToUser(doctorId, {
+      userId, content, messageType, imageUrl, videoUrl, fileUrl, fileName, voiceUrl, voiceDuration
     });
 
     const notification = await messagesRepo.createNotification({
@@ -68,6 +44,66 @@ export const sendMessageToUser = async (req, res, next) => {
     });
   } catch (error) {
     logger.error('Doctor send message error:', error);
+    next(error);
+  }
+};
+
+export const getMessageById = async (req, res, next) => {
+  try {
+    const doctorId = req.doctor.id;
+    const { messageId } = req.params;
+
+    const message = await messagesService.getMessageById(messageId);
+
+    if (!message) {
+      return res.status(404).json({ success: false, error: { message: 'Message not found' } });
+    }
+
+    if (message.senderId !== doctorId || message.senderRole !== 'DOCTOR') {
+      return res.status(403).json({ success: false, error: { message: 'You do not have permission to view this message' } });
+    }
+
+    res.json({
+      success: true,
+      data: message
+    });
+  } catch (error) {
+    logger.error('Get message by ID error:', error);
+    next(error);
+  }
+};
+
+export const updateMessage = async (req, res, next) => {
+  try {
+    const doctorId = req.doctor.id;
+    const { messageId } = req.params;
+    const { content } = req.body;
+
+    const message = await messagesService.updateMessage(messageId, doctorId, { content });
+
+    res.json({
+      success: true,
+      data: message
+    });
+  } catch (error) {
+    logger.error('Update message error:', error);
+    next(error);
+  }
+};
+
+export const deleteMessage = async (req, res, next) => {
+  try {
+    const doctorId = req.doctor.id;
+    const { messageId } = req.params;
+
+    await messagesService.deleteMessage(messageId, doctorId);
+
+    res.json({
+      success: true,
+      data: { message: 'Message deleted successfully' }
+    });
+  } catch (error) {
+    logger.error('Delete message error:', error);
     next(error);
   }
 };

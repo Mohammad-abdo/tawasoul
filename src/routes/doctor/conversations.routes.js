@@ -6,8 +6,12 @@ const router = express.Router();
 
 router.use(authenticateDoctor);
 
-router.get('/conversations', conversationsController.getDoctorConversations);
+router.get('', conversationsController.getDoctorConversations);
 
-router.get('/conversation/:userId', conversationsController.getConversationMessages);
+router.post('', conversationsController.createConversation);
+
+router.get('/:conversationId/details', conversationsController.getConversationById);
+
+router.delete('/:conversationId', conversationsController.deleteConversation);
 
 export default router;

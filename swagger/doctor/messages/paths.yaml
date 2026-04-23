@@ -24,3 +24,111 @@
                   type: boolean
                 data:
                   $ref: "#/components/schemas/DoctorMessage"
+
+/doctor/messages/{messageId}:
+  get:
+    tags: [Doctor Messages]
+    summary: Get a single message by ID
+    operationId: getMessageById
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: messageId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: The message ID
+    responses:
+      "200":
+        description: Message details
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  $ref: "#/components/schemas/DoctorMessage"
+      "403":
+        description: Forbidden
+      "404":
+        description: Not found
+
+  patch:
+    tags: [Doctor Messages]
+    summary: Update a message content
+    operationId: updateMessage
+    security:
+      - BearerAuth: []
+    description: Content is moderated before updating.
+    parameters:
+      - name: messageId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: The message ID
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              content:
+                type: string
+                description: New message content
+    responses:
+      "200":
+        description: Message updated
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  $ref: "#/components/schemas/DoctorMessage"
+      "403":
+        description: Forbidden
+      "404":
+        description: Not found
+
+  delete:
+    tags: [Doctor Messages]
+    summary: Delete a message by ID
+    operationId: deleteMessage
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: messageId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: The message ID
+    responses:
+      "200":
+        description: Message deleted
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  type: object
+                  properties:
+                    message:
+                      type: string
+      "403":
+        description: Forbidden
+      "404":
+        description: Not found

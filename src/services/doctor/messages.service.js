@@ -1,17 +1,17 @@
-import * as messagesRepo from '../../repositories/user/messages.repository.js';
-import * as conversationsRepo from '../../repositories/user/conversations.repository.js';
+import * as messagesRepo from '../../repositories/doctor/messages.repository.js';
+import * as conversationsRepo from '../../repositories/doctor/conversations.repository.js';
 import { createHttpError } from '../../utils/httpError.js';
 
 export const getMessageById = async (messageId) => {
   return await messagesRepo.findMessageById({ id: messageId });
 };
 
-export const updateMessage = async (messageId, userId, data) => {
+export const updateMessage = async (messageId, doctorId, data) => {
   const message = await messagesRepo.findMessageById({ id: messageId });
   if (!message) {
     throw createHttpError(404, 'MESSAGE_NOT_FOUND', 'Message not found');
   }
-  if (message.senderId !== userId || message.senderRole !== 'USER') {
+  if (message.senderId !== doctorId || message.senderRole !== 'DOCTOR') {
     throw createHttpError(403, 'FORBIDDEN', 'You can only edit your own messages');
   }
   if (data.content !== undefined) {
@@ -20,22 +20,22 @@ export const updateMessage = async (messageId, userId, data) => {
   return await messagesRepo.updateMessage({ where: { id: messageId }, data });
 };
 
-export const deleteMessage = async (messageId, userId) => {
+export const deleteMessage = async (messageId, doctorId) => {
   const message = await messagesRepo.findMessageById({ id: messageId });
   if (!message) {
     throw createHttpError(404, 'MESSAGE_NOT_FOUND', 'Message not found');
   }
-  if (message.senderId !== userId || message.senderRole !== 'USER') {
+  if (message.senderId !== doctorId || message.senderRole !== 'DOCTOR') {
     throw createHttpError(403, 'FORBIDDEN', 'You can only delete your own messages');
   }
   return await messagesRepo.deleteMessage({ id: messageId });
 };
 
-export const sendMessage = async (userId, body) => {
-  const { doctorId, content, messageType = 'TEXT', imageUrl, videoUrl, fileUrl, fileName, voiceUrl, voiceDuration } = body;
+export const sendMessageToUser = async (doctorId, body) => {
+  const { userId, content, messageType = 'TEXT', imageUrl, videoUrl, fileUrl, fileName, voiceUrl, voiceDuration } = body;
 
-  if (!doctorId) {
-    throw createHttpError(400, 'VALIDATION_ERROR', 'Doctor ID is required');
+  if (!userId) {
+    throw createHttpError(400, 'VALIDATION_ERROR', 'User ID is required');
   }
 
   if (!['TEXT', 'IMAGE', 'VIDEO', 'FILE', 'VOICE'].includes(messageType)) {
@@ -46,9 +46,9 @@ export const sendMessage = async (userId, body) => {
     throw createHttpError(400, 'VALIDATION_ERROR', 'Content is required for TEXT messages');
   }
 
-  const doctor = await messagesRepo.findDoctorById(doctorId);
-  if (!doctor) {
-    throw createHttpError(404, 'DOCTOR_NOT_FOUND', 'Doctor not found');
+  const user = await messagesRepo.findUserById(userId);
+  if (!user) {
+    throw createHttpError(404, 'USER_NOT_FOUND', 'User not found');
   }
 
   const conversation = await conversationsRepo.upsertConversation({
@@ -59,8 +59,8 @@ export const sendMessage = async (userId, body) => {
 
   const message = await messagesRepo.createMessage({
     conversationId: conversation.id,
-    senderId: userId,
-    senderRole: 'USER',
+    senderId: doctorId,
+    senderRole: 'DOCTOR',
     content: content ? content.trim() : null,
     messageType,
     imageUrl: imageUrl || null,

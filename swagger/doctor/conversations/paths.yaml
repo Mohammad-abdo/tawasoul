@@ -38,6 +38,42 @@
                     pagination:
                       $ref: "#/components/schemas/Pagination"
 
+  post:
+    tags: [Doctor Conversations]
+    summary: Create a new conversation with a user
+    operationId: createConversation
+    security:
+      - BearerAuth: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - userId
+            properties:
+              userId:
+                type: string
+                format: uuid
+                description: The user ID to start a conversation with
+    responses:
+      "201":
+        description: Conversation created (or existing one returned)
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  $ref: "#/components/schemas/DoctorConversation"
+      "400":
+        description: Bad request
+      "404":
+        description: User not found
+
 /doctor/conversation/{userId}:
   get:
     tags: [Doctor Conversations]
@@ -87,3 +123,70 @@
                         $ref: "#/components/schemas/DoctorMessage"
                     pagination:
                       $ref: "#/components/schemas/Pagination"
+
+/doctor/conversations/{conversationId}/details:
+  get:
+    tags: [Doctor Conversations]
+    summary: Get a single conversation by ID with full details
+    operationId: getConversationById
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: conversationId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: The conversation ID
+    responses:
+      "200":
+        description: Conversation details
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  $ref: "#/components/schemas/DoctorConversation"
+      "403":
+        description: Forbidden
+      "404":
+        description: Not found
+
+/doctor/conversations/{conversationId}:
+  delete:
+    tags: [Doctor Conversations]
+    summary: Delete a conversation by ID
+    operationId: deleteConversation
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: conversationId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: The conversation ID
+    responses:
+      "200":
+        description: Conversation deleted
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  type: object
+                  properties:
+                    message:
+                      type: string
+      "403":
+        description: Forbidden
+      "404":
+        description: Not found

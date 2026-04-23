@@ -62,3 +62,66 @@ export const getConversationMessages = async (req, res, next) => {
     next(error);
   }
 };
+
+export const getConversationById = async (req, res, next) => {
+  try {
+    const doctorId = req.doctor.id;
+    const { conversationId } = req.params;
+
+    const conversation = await conversationsRepo.findConversation({ id: conversationId });
+
+    if (!conversation) {
+      return res.status(404).json({ success: false, error: { message: 'Conversation not found' } });
+    }
+
+    if (conversation.doctorId !== doctorId) {
+      return res.status(403).json({ success: false, error: { message: 'You do not have permission to view this conversation' } });
+    }
+
+    res.json({
+      success: true,
+      data: conversation
+    });
+  } catch (error) {
+    logger.error('Get conversation by ID error:', error);
+    next(error);
+  }
+};
+
+export const createConversation = async (req, res, next) => {
+  try {
+    const doctorId = req.doctor.id;
+    const { userId } = req.body;
+
+    if (!userId) {
+      return res.status(400).json({ success: false, error: { message: 'User ID is required' } });
+    }
+
+    const conversation = await conversationsService.createConversation(doctorId, userId);
+
+    res.status(201).json({
+      success: true,
+      data: conversation
+    });
+  } catch (error) {
+    logger.error('Create conversation error:', error);
+    next(error);
+  }
+};
+
+export const deleteConversation = async (req, res, next) => {
+  try {
+    const doctorId = req.doctor.id;
+    const { conversationId } = req.params;
+
+    await conversationsService.deleteConversation(conversationId, doctorId);
+
+    res.json({
+      success: true,
+      data: { message: 'Conversation deleted successfully' }
+    });
+  } catch (error) {
+    logger.error('Delete conversation error:', error);
+    next(error);
+  }
+};

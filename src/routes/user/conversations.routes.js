@@ -4,8 +4,14 @@ import * as conversationsController from '../../controllers/user/conversations.c
 
 const router = express.Router();
 
-router.get('/conversations', authenticateUser, conversationsController.getUserConversations);
+router.get('', authenticateUser, conversationsController.getUserConversations);
 
-router.get('/conversations/:conversationId', authenticateUser, conversationsController.getConversationMessages);
+router.post('', authenticateUser, conversationsController.createConversation);
+
+router.get('/:conversationId', authenticateUser, conversationsController.getConversationMessages);
+
+router.get('/:conversationId/details', authenticateUser, conversationsController.getConversationById);
+
+router.delete('/:conversationId', authenticateUser, conversationsController.deleteConversation);
 
 export default router;

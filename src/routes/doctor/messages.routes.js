@@ -9,4 +9,10 @@ router.use(authenticateDoctor);
 
 router.post('/send', moderateTextMiddleware, messagesController.sendMessageToUser);
 
+router.get('/:messageId', messagesController.getMessageById);
+
+router.patch('/:messageId', moderateTextMiddleware, messagesController.updateMessage);
+
+router.delete('/:messageId', messagesController.deleteMessage);
+
 export default router;
