@@ -18,7 +18,9 @@ const routeConfigs = [
     prefix: '/api/user',
     tag: 'User',
     subRoutes: {
-      'user/address.routes.js': { tag: 'User Addresses', description: 'User address management' }
+      'user/address.routes.js': { tag: 'User Addresses', description: 'User address management' },
+      'user/conversations.routes.js': { tag: 'User Conversations', description: 'User conversation management' },
+      'user/messages.routes.js': { tag: 'User Messages', description: 'User messaging' }
     },
     description: 'User-facing mobile and web endpoints'
   },
@@ -27,7 +29,9 @@ const routeConfigs = [
     prefix: '/api/doctor',
     tag: 'Doctor',
     subRoutes: {
-      'doctor/address.routes.js': { tag: 'Doctor Addresses', description: 'Doctor address management' }
+      'doctor/address.routes.js': { tag: 'Doctor Addresses', description: 'Doctor address management' },
+      'doctor/conversations.routes.js': { tag: 'Doctor Conversations', description: 'Doctor conversation management' },
+      'doctor/messages.routes.js': { tag: 'Doctor Messages', description: 'Doctor messaging' }
     },
     description: 'Doctor portal endpoints'
   },

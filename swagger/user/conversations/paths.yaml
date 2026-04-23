@@ -1,0 +1,89 @@
+/user/conversations:
+  get:
+    tags: [User Conversations]
+    summary: Get all conversations (inbox)
+    operationId: getUserConversations
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          default: 1
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          default: 20
+    responses:
+      "200":
+        description: List of conversations
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  type: object
+                  properties:
+                    conversations:
+                      type: array
+                      items:
+                        $ref: "#/components/schemas/Conversation"
+                    pagination:
+                      $ref: "#/components/schemas/Pagination"
+
+/user/conversations/{conversationId}:
+  get:
+    tags: [User Conversations]
+    summary: Get messages in a specific conversation
+    operationId: getConversationMessages
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: conversationId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: The conversation ID
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          default: 1
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          default: 50
+    responses:
+      "200":
+        description: Messages in conversation
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  type: object
+                  properties:
+                    conversationId:
+                      type: string
+                      format: uuid
+                    messages:
+                      type: array
+                      items:
+                        $ref: "#/components/schemas/Message"
+                    pagination:
+                      $ref: "#/components/schemas/Pagination"

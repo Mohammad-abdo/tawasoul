@@ -1,8 +1,8 @@
-/user/messages/send:
+/doctor/messages/send:
   post:
-    tags: [User Messages]
-    summary: Send a message to a doctor
-    operationId: sendMessage
+    tags: [Doctor Messages]
+    summary: Send a message to a user
+    operationId: sendMessageToUser
     security:
       - BearerAuth: []
     description: Content is moderated before sending. Supports TEXT, IMAGE, VIDEO, FILE, and VOICE.
@@ -11,7 +11,7 @@
       content:
         application/json:
           schema:
-            $ref: "#/components/schemas/SendMessageRequest"
+            $ref: "#/components/schemas/DoctorSendMessageRequest"
     responses:
       "201":
         description: Message sent
@@ -23,4 +23,4 @@
                 success:
                   type: boolean
                 data:
-                  $ref: "#/components/schemas/Message"
+                  $ref: "#/components/schemas/DoctorMessage"

@@ -44,6 +44,54 @@ Message:
       type: string
       format: date-time
 
+Conversation:
+  type: object
+  properties:
+    id:
+      type: string
+      format: uuid
+    userId:
+      type: string
+      format: uuid
+    doctorId:
+      type: string
+      format: uuid
+    updatedAt:
+      type: string
+      format: date-time
+    doctor:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        avatar:
+          type: string
+          nullable: true
+        specialties:
+          type: array
+          items:
+            type: object
+    messages:
+      type: array
+      items:
+        $ref: "#/components/schemas/Message"
+      description: Last message (take: 1)
+
+Pagination:
+  type: object
+  properties:
+    page:
+      type: integer
+    limit:
+      type: integer
+    total:
+      type: integer
+    pages:
+      type: integer
+
 SendMessageRequest:
   type: object
   required: [doctorId]

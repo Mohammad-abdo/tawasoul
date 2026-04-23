@@ -1,4 +1,4 @@
-Message:
+DoctorMessage:
   type: object
   properties:
     id:
@@ -44,11 +44,11 @@ Message:
       type: string
       format: date-time
 
-SendMessageRequest:
+DoctorSendMessageRequest:
   type: object
-  required: [doctorId]
+  required: [userId]
   properties:
-    doctorId:
+    userId:
       type: string
       format: uuid
     messageType:

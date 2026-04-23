@@ -1,4 +1,4 @@
-Message:
+DoctorMessage:
   type: object
   properties:
     id:
@@ -44,11 +44,58 @@ Message:
       type: string
       format: date-time
 
-SendMessageRequest:
+DoctorConversation:
   type: object
-  required: [doctorId]
   properties:
+    id:
+      type: string
+      format: uuid
+    userId:
+      type: string
+      format: uuid
     doctorId:
+      type: string
+      format: uuid
+    updatedAt:
+      type: string
+      format: date-time
+    user:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        fullName:
+          type: string
+        username:
+          type: string
+          nullable: true
+        avatar:
+          type: string
+          nullable: true
+    messages:
+      type: array
+      items:
+        $ref: "#/components/schemas/DoctorMessage"
+      description: Last message (take: 1)
+
+Pagination:
+  type: object
+  properties:
+    page:
+      type: integer
+    limit:
+      type: integer
+    total:
+      type: integer
+    pages:
+      type: integer
+
+DoctorSendMessageRequest:
+  type: object
+  required: [userId]
+  properties:
+    userId:
       type: string
       format: uuid
     messageType:

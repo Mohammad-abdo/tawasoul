@@ -5,13 +5,6 @@ import * as messagesController from '../../controllers/user/messages.controller.
 
 const router = express.Router();
 
-// جلب قائمة المحادثات (الصندوق الوارد)
-router.get('/conversations', authenticateUser, messagesController.getUserConversations);
-
-// جلب رسائل محادثة معينة مع دكتور
-router.get('/conversations/:conversationId', authenticateUser, messagesController.getConversationMessages);
-
-// إرسال رسالة
 router.post('/send', authenticateUser, moderateTextMiddleware, messagesController.sendMessage);
 
 export default router;

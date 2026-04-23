@@ -9,7 +9,8 @@ import walletRoutes from './doctor/wallet.routes.js';
 import withdrawalsRoutes from './doctor/withdrawals.routes.js';
 import childrenRoutes from './doctor/children.routes.js';
 import assessmentRoutes from './doctor/assessment.routes.js';
-import doctorMessagesRoutes from './doctor/messages.routes.js';
+import conversationsRoutes from './doctor/conversations.routes.js';
+import messagesRoutes from './doctor/messages.routes.js';
 import addressRoutes from './doctor/address.routes.js';
 
 const router = express.Router();
@@ -24,7 +25,8 @@ router.use('/wallet', walletRoutes);
 router.use('/withdrawals', withdrawalsRoutes);
 router.use('/children', childrenRoutes);
 router.use('/assessments', assessmentRoutes);
-router.use('/messages', doctorMessagesRoutes);
+router.use('/conversations', conversationsRoutes);
+router.use('/messages', messagesRoutes);
 router.use('/address', addressRoutes);
 
 export default router;
