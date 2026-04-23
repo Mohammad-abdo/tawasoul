@@ -41,6 +41,57 @@ function collectFiles(dir, filename, results = []) {
   return results;
 }
 
+function collectOperationTags(paths) {
+  const tags = [];
+  const seen = new Set();
+
+  for (const pathItem of Object.values(paths)) {
+    for (const operation of Object.values(pathItem || {})) {
+      if (!operation || !Array.isArray(operation.tags)) {
+        continue;
+      }
+
+      for (const tag of operation.tags) {
+        if (!seen.has(tag)) {
+          seen.add(tag);
+          tags.push(tag);
+        }
+      }
+    }
+  }
+
+  return tags;
+}
+
+function insertTagInRelatedSection(tags, tagName) {
+  const tagPrefix = tagName.split(' ')[0];
+  const tagEntry = { name: tagName };
+  const lastRelatedIndex = tags
+    .map((tag) => tag.name)
+    .findLastIndex((name) => name === tagPrefix || name.startsWith(`${tagPrefix} `));
+
+  if (lastRelatedIndex === -1) {
+    tags.push(tagEntry);
+    return;
+  }
+
+  tags.splice(lastRelatedIndex + 1, 0, tagEntry);
+}
+
+function declareOperationTags(spec) {
+  spec.tags = [...(spec.tags || [])];
+  const declared = new Set(spec.tags.map((tag) => tag.name));
+
+  for (const tagName of collectOperationTags(spec.paths)) {
+    if (declared.has(tagName)) {
+      continue;
+    }
+
+    insertTagInRelatedSection(spec.tags, tagName);
+    declared.add(tagName);
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Build the merged OpenAPI spec
 // ---------------------------------------------------------------------------
@@ -72,6 +123,8 @@ function buildSpec() {
       Object.assign(spec.components.schemas, schemas);
     }
   }
+
+  declareOperationTags(spec);
 
   return spec;
 }

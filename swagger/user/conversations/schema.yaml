@@ -78,7 +78,7 @@ Conversation:
       type: array
       items:
         $ref: "#/components/schemas/Message"
-      description: Last message (take: 1)
+      description: "Last message (take: 1)"
 
 Pagination:
   type: object

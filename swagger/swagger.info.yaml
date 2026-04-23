@@ -37,6 +37,8 @@ tags:
     description: Browse and find doctors
   - name: User Bookings
     description: Book and manage therapy sessions
+  - name: User Conversations
+    description: User conversation inbox and conversation history
   - name: User Messages
     description: Direct messaging between users
   - name: User Notifications
@@ -45,6 +47,8 @@ tags:
     description: Session bundle subscriptions
   - name: User Products & Store
     description: Products, cart, and orders
+  - name: User Articles
+    description: Browse educational articles
   - name: User Settings
     description: Account settings and password management
   - name: User Assessments
@@ -57,6 +61,10 @@ tags:
     description: Doctor registration, login, and profile management
   - name: Doctor Bookings
     description: Manage incoming session bookings
+  - name: Doctor Conversations
+    description: Doctor conversation inbox and conversation history
+  - name: Doctor Messages
+    description: Direct messaging from doctors to users
   - name: Doctor Availability
     description: Weekly schedule management
   - name: Doctor Articles
@@ -107,6 +115,10 @@ tags:
     description: Assessment tests, question banks, verbal nonsense content, and HELP skill management
   - name: Admin Mahara
     description: Mahara Kids categories, skill groups, and activities management
+  - name: Admin Activity Logs
+    description: Admin activity audit trail
+  - name: Admin Bulk Operations
+    description: Bulk administrative actions and exports
 
 components:
   securitySchemes:

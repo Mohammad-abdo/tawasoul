@@ -77,7 +77,7 @@ DoctorConversation:
       type: array
       items:
         $ref: "#/components/schemas/DoctorMessage"
-      description: Last message (take: 1)
+      description: "Last message (take: 1)"
 
 Pagination:
   type: object

@@ -11,35 +11,39 @@ const routeConfigs = [
     fileName: 'public.routes.js',
     prefix: '/api/public',
     tag: 'Public',
-    description: 'Public content and onboarding endpoints'
+    description: 'Public content and onboarding endpoints',
+    order: 0
   },
   {
     fileName: 'user.routes.js',
     prefix: '/api/user',
     tag: 'User',
     subRoutes: {
-      'user/address.routes.js': { tag: 'User Addresses', description: 'User address management' },
-      'user/conversations.routes.js': { tag: 'User Conversations', description: 'User conversation management' },
-      'user/messages.routes.js': { tag: 'User Messages', description: 'User messaging' }
+      'user/conversations.routes.js': { tag: 'User Conversations', description: 'User conversation management', order: 1 },
+      'user/messages.routes.js': { tag: 'User Messages', description: 'User messaging', order: 2 },
+      'user/address.routes.js': { tag: 'User Addresses', description: 'User address management', order: 3 }
     },
-    description: 'User-facing mobile and web endpoints'
+    description: 'User-facing mobile and web endpoints',
+    order: 10
   },
   {
     fileName: 'doctor.routes.js',
     prefix: '/api/doctor',
     tag: 'Doctor',
     subRoutes: {
-      'doctor/address.routes.js': { tag: 'Doctor Addresses', description: 'Doctor address management' },
-      'doctor/conversations.routes.js': { tag: 'Doctor Conversations', description: 'Doctor conversation management' },
-      'doctor/messages.routes.js': { tag: 'Doctor Messages', description: 'Doctor messaging' }
+      'doctor/conversations.routes.js': { tag: 'Doctor Conversations', description: 'Doctor conversation management', order: 1 },
+      'doctor/messages.routes.js': { tag: 'Doctor Messages', description: 'Doctor messaging', order: 2 },
+      'doctor/address.routes.js': { tag: 'Doctor Addresses', description: 'Doctor address management', order: 3 }
     },
-    description: 'Doctor portal endpoints'
+    description: 'Doctor portal endpoints',
+    order: 20
   },
   {
     fileName: 'admin.routes.js',
     prefix: '/api/admin',
     tag: 'Admin',
-    description: 'Admin dashboard and management endpoints'
+    description: 'Admin dashboard and management endpoints',
+    order: 30
   }
 ];
 
@@ -198,15 +202,20 @@ const baseOpenApiSpec = {
     description:
       'Generated Swagger documentation for the Tawasoul backend. Operations are derived from the active Express route files.'
   },
-  tags: routeConfigs.flatMap(({ tag, description, subRoutes }) => {
-    const tags = [{ name: tag, description }];
-    if (subRoutes) {
-      for (const subConfig of Object.values(subRoutes)) {
-        tags.push({ name: subConfig.tag, description: subConfig.description });
+  tags: (() => {
+    const allTags = [];
+    const sortedConfigs = [...routeConfigs].sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
+    for (const config of sortedConfigs) {
+      allTags.push({ name: config.tag, description: config.description, order: config.order ?? 999 });
+      if (config.subRoutes) {
+        const subSorted = Object.values(config.subRoutes).sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
+        for (const subConfig of subSorted) {
+          allTags.push({ name: subConfig.tag, description: subConfig.description, order: subConfig.order ?? 999 });
+        }
       }
     }
-    return tags;
-  }),
+    return allTags.sort((a, b) => a.order - b.order).map(({ name, description }) => ({ name, description }));
+  })(),
   components: {
     securitySchemes: {
       bearerAuth: {
