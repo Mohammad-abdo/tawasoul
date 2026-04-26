@@ -770,6 +770,11 @@ model UserPackage {
   @@map("user_packages")
 }
 
+enum DiscountType {
+  FIXED
+  PERCENTAGE
+}
+
 model ProductCategory {
   id        String    @id @default(uuid())
   name      String
@@ -792,6 +797,7 @@ model Product {
   price               Float
   priceBeforeDiscount Float?
   discount            Float?
+  discountType        DiscountType     @default(PERCENTAGE)
   rating              Float            @default(0)
   totalRatings        Int              @default(0)
   stock               Int              @default(0)

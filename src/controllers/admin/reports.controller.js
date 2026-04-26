@@ -1,5 +1,6 @@
 import { prisma } from '../../config/database.js';
 import { logger } from '../../utils/logger.js';
+import * as reportsService from '../../services/admin/reports.service.js';
 
 /**
  * Get All Reports
@@ -70,7 +71,10 @@ export const getAllReports = async (req, res, next) => {
     res.json({
       success: true,
       data: {
-        reports,
+        reports: reports.map(r => ({
+          ...r,
+          filters: r.filters ? JSON.parse(r.filters) : {}
+        })),
         pagination: {
           page: parseInt(page),
           limit: parseInt(limit),
@@ -116,37 +120,17 @@ export const generateReport = async (req, res, next) => {
         name,
         description,
         format,
-        filters: filters,
+        filters: JSON.stringify(filters),
         status: 'PENDING',
         filePath: null, // Will be set when report is generated
         fileUrl: null
       }
     });
 
-    // TODO: Queue report generation job
-    // For now, we'll simulate async processing
-    setTimeout(async () => {
-      try {
-        // Simulate report generation
-        const fileUrl = `/reports/${report.id}.${format.toLowerCase()}`;
-        
-        await prisma.report.update({
-          where: { id: report.id },
-          data: {
-            status: 'COMPLETED',
-            completedAt: new Date(),
-            filePath: fileUrl,
-            fileUrl: fileUrl
-          }
-        });
-      } catch (error) {
-        logger.error('Report generation error:', error);
-        await prisma.report.update({
-          where: { id: report.id },
-          data: { status: 'FAILED' }
-        });
-      }
-    }, 2000);
+    // Trigger report generation (asynchronously)
+    reportsService.processReportGeneration(report.id).catch(err => {
+      logger.error('Background report generation failed:', err);
+    });
 
     // Log activity
     await prisma.activityLog.create({
@@ -283,14 +267,18 @@ export const downloadReport = async (req, res, next) => {
       });
     }
 
-    // TODO: Return actual file
-    // For now, return file URL
-    res.json({
-      success: true,
-      data: {
-        downloadUrl: report.fileUrl
-      }
-    });
+    // Return actual file stream
+    if (!report.filePath) {
+      return res.status(404).json({
+        success: false,
+        error: {
+          code: 'FILE_NOT_FOUND',
+          message: 'Report file path is missing'
+        }
+      });
+    }
+
+    res.download(report.filePath, `${report.name}.${report.format.toLowerCase()}`);
   } catch (error) {
     logger.error('Download report error:', error);
     next(error);

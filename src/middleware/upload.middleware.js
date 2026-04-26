@@ -25,6 +25,8 @@ const storage = multer.diskStorage({
       folder = 'home-services';
     } else if (req.path && req.path.includes('home-articles')) {
       folder = 'home-articles';
+    } else if (req.path && (req.path.includes('products') || req.path.includes('admin/products'))) {
+      folder = 'products';
     } else if (req.path && req.path.includes('assessments')) {
       // Determine subfolder based on file field name
       if (file.fieldname === 'audio') {

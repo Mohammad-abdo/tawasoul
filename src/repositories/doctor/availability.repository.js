@@ -39,20 +39,28 @@ export const findBookingsForDoctor = async (doctorId, startDate, endDate) => {
 };
 
 export const replaceAvailability = async (doctorId, availability) => {
-  await prisma.availability.deleteMany({
-    where: { doctorId }
-  });
+  return prisma.$transaction(async (tx) => {
+    // 1. Delete existing availability for this doctor
+    await tx.availability.deleteMany({
+      where: { doctorId }
+    });
 
-  return Promise.all(
-    availability.map((item) =>
-      prisma.availability.create({
-        data: {
+    // 2. Create new availability records if any
+    if (availability.length > 0) {
+      await tx.availability.createMany({
+        data: availability.map((item) => ({
           doctorId,
           dayOfWeek: item.dayOfWeek,
           timeSlots: JSON.stringify(item.timeSlots),
           isActive: item.isActive !== undefined ? item.isActive : true
-        }
-      })
-    )
-  );
+        }))
+      });
+    }
+
+    // 3. Return the newly created records
+    return tx.availability.findMany({
+      where: { doctorId },
+      orderBy: { dayOfWeek: 'asc' }
+    });
+  });
 };

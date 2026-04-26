@@ -12,6 +12,9 @@ import assessmentRoutes from './doctor/assessment.routes.js';
 import conversationsRoutes from './doctor/conversations.routes.js';
 import messagesRoutes from './doctor/messages.routes.js';
 import addressRoutes from './doctor/address.routes.js';
+import { moderateTextMiddleware } from '../middleware/moderateText.middleware.js';
+import * as messagesController from '../controllers/doctor/messages.controller.js';
+import { authenticateDoctor } from '../middleware/auth.middleware.js';
 
 const router = express.Router();
 
@@ -28,6 +31,7 @@ router.use('/assessments', assessmentRoutes);
 // router.use('/conversation', conversationsRoutes);
 router.use('/conversations', conversationsRoutes);
 router.use('/messages', messagesRoutes);
+router.post('/send', authenticateDoctor, moderateTextMiddleware, messagesController.sendMessageToUser);
 router.use('/address', addressRoutes);
 
 export default router;

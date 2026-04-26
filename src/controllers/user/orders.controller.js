@@ -49,10 +49,22 @@ export const getUserOrders = async (req, res, next) => {
       prisma.order.count({ where })
     ]);
 
+    // Transform orders to parse images in product items
+    const formattedOrders = orders.map(order => ({
+      ...order,
+      items: order.items.map(item => ({
+        ...item,
+        product: item.product ? {
+          ...item.product,
+          images: item.product.images ? (typeof item.product.images === 'string' ? JSON.parse(item.product.images) : item.product.images) : []
+        } : null
+      }))
+    }));
+
     res.json({
       success: true,
       data: {
-        orders,
+        orders: formattedOrders,
         pagination: {
           page: parseInt(page),
           limit: parseInt(limit),
@@ -107,9 +119,21 @@ export const getOrderById = async (req, res, next) => {
       });
     }
 
+    // Transform order to parse images
+    const formattedOrder = {
+      ...order,
+      items: order.items.map(item => ({
+        ...item,
+        product: item.product ? {
+          ...item.product,
+          images: item.product.images ? (typeof item.product.images === 'string' ? JSON.parse(item.product.images) : item.product.images) : []
+        } : null
+      }))
+    };
+
     res.json({
       success: true,
-      data: { order }
+      data: { order: formattedOrder }
     });
   } catch (error) {
     logger.error('Get order error:', error);
@@ -247,10 +271,22 @@ export const createOrder = async (req, res, next) => {
 
     logger.info(`Order created: ${order.id} by user ${userId}`);
 
+    // Transform order to parse images
+    const formattedOrder = {
+      ...order,
+      items: order.items.map(item => ({
+        ...item,
+        product: item.product ? {
+          ...item.product,
+          images: item.product.images ? (typeof item.product.images === 'string' ? JSON.parse(item.product.images) : item.product.images) : []
+        } : null
+      }))
+    };
+
     res.status(201).json({
       success: true,
       data: {
-        order,
+        order: formattedOrder,
         message: 'Order created successfully'
       }
     });

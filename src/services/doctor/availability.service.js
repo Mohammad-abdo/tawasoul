@@ -73,7 +73,7 @@ const formatAvailability = (availability) =>
 
 export const getAvailability = async (doctorId) => {
   const availability = await availabilityRepo.findByDoctorId(doctorId);
-  return buildNext7Days(availability, doctorId);
+  return formatAvailability(availability);
 };
 
 export const updateAvailability = async (doctorId, body) => {

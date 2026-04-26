@@ -50,18 +50,20 @@ export const updateDoctor = (id, data) =>
   });
 
 export const replaceSpecialties = async (doctorId, specialties) => {
-  await prisma.doctorSpecialty.deleteMany({
-    where: { doctorId }
-  });
-
-  if (specialties.length > 0) {
-    await prisma.doctorSpecialty.createMany({
-      data: specialties.map((specialty) => ({
-        doctorId,
-        specialty
-      }))
+  return prisma.$transaction(async (tx) => {
+    await tx.doctorSpecialty.deleteMany({
+      where: { doctorId }
     });
-  }
+
+    if (specialties.length > 0) {
+      await tx.doctorSpecialty.createMany({
+        data: specialties.map((specialty) => ({
+          doctorId,
+          specialty
+        }))
+      });
+    }
+  });
 };
 
 export const upsertSessionPrice = (doctorId, duration, price) =>

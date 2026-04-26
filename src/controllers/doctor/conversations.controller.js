@@ -29,7 +29,14 @@ export const getConversationMessages = async (req, res, next) => {
     const skip = (parseInt(page) - 1) * parseInt(limit);
     const take = parseInt(limit);
 
-    const conversation = await conversationsRepo.findConversation({ id: conversationId });
+    let conversation = await conversationsRepo.findConversation({ id: conversationId });
+
+    if (!conversation) {
+      // Try finding by userId and doctorId
+      conversation = await conversationsRepo.findConversation({
+        userId_doctorId: { userId: conversationId, doctorId }
+      });
+    }
 
     if (!conversation) {
       return res.json({
@@ -38,13 +45,17 @@ export const getConversationMessages = async (req, res, next) => {
       });
     }
 
-    if (conversation.doctorId !== doctorId) {
-      return res.status(403).json({ success: false, error: { message: 'You do not have permission to view this conversation' } });
-    }
-
     const msgWhere = { conversationId: conversation.id };
     const [messages, total] = await Promise.all([
-      messagesRepo.findMessages({ where: msgWhere, skip, take, orderBy: { createdAt: 'desc' } }),
+      messagesRepo.findMessages({ 
+        where: msgWhere, 
+        skip, 
+        take, 
+        orderBy: [
+          { createdAt: 'desc' },
+          { id: 'desc' }
+        ] 
+      }),
       messagesRepo.countMessages(msgWhere)
     ]);
 
@@ -72,7 +83,14 @@ export const getConversationById = async (req, res, next) => {
     const doctorId = req.doctor.id;
     const { conversationId } = req.params;
 
-    const conversation = await conversationsRepo.findConversation({ id: conversationId });
+    let conversation = await conversationsRepo.findConversation({ id: conversationId });
+
+    if (!conversation) {
+      // Try finding by userId and doctorId
+      conversation = await conversationsRepo.findConversation({
+        userId_doctorId: { userId: conversationId, doctorId }
+      });
+    }
 
     if (!conversation) {
       return res.status(404).json({ success: false, error: { message: 'Conversation not found' } });
