@@ -74,7 +74,7 @@
       "404":
         description: User not found
 
-/doctor/conversation/{userId}:
+/doctor/conversations/{userId}:
   get:
     tags: [Doctor Conversations]
     summary: Get messages in a specific conversation with a user

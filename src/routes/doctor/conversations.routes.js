@@ -10,6 +10,8 @@ router.get('', conversationsController.getDoctorConversations);
 
 router.post('', conversationsController.createConversation);
 
+router.get('/:conversationId', conversationsController.getConversationMessages);
+
 router.get('/:conversationId/details', conversationsController.getConversationById);
 
 router.delete('/:conversationId', conversationsController.deleteConversation);

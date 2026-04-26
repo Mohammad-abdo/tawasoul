@@ -23,19 +23,23 @@ export const getDoctorConversations = async (req, res, next) => {
 export const getConversationMessages = async (req, res, next) => {
   try {
     const doctorId = req.doctor.id;
-    const { userId } = req.params;
+    const { conversationId } = req.params;
     const { page = 1, limit = 50 } = req.query;
 
     const skip = (parseInt(page) - 1) * parseInt(limit);
     const take = parseInt(limit);
 
-    const conversation = await conversationsRepo.findConversation({ userId_doctorId: { userId, doctorId } });
+    const conversation = await conversationsRepo.findConversation({ id: conversationId });
 
     if (!conversation) {
       return res.json({
         success: true,
         data: { messages: [], pagination: { page: 1, limit: parseInt(limit), total: 0, pages: 0 } }
       });
+    }
+
+    if (conversation.doctorId !== doctorId) {
+      return res.status(403).json({ success: false, error: { message: 'You do not have permission to view this conversation' } });
     }
 
     const msgWhere = { conversationId: conversation.id };
